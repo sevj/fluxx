@@ -7,7 +7,7 @@ namespace Fluxx\Workflow;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
-use Fluxx\Workflow\Lock\WorkflowExecutionLockManager;
+use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Throwable;
@@ -18,7 +18,7 @@ final readonly class FluxxEngine
         private SynchronizationRegistry $registry,
         private EntityManagerInterface $entityManager,
         private MessageBusInterface $messageBus,
-        private WorkflowExecutionLockManager $workflowExecutionLockManager,
+        private WorkflowExecutionLockManagerInterface $workflowExecutionLockManager,
         private WorkflowErrorPayloadFactory $workflowErrorPayloadFactory,
     ) {
     }

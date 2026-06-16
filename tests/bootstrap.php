@@ -11,6 +11,10 @@ foreach ($autoloadCandidates as $autoloadFile) {
     if (is_file($autoloadFile)) {
         require $autoloadFile;
 
+        foreach (glob(__DIR__ . '/Fixture/*.php') ?: [] as $fixtureFile) {
+            require_once $fixtureFile;
+        }
+
         return;
     }
 }

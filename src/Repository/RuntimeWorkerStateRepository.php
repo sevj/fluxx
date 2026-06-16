@@ -12,7 +12,7 @@ use Fluxx\Entity\RuntimeWorkerState;
 /**
  * @extends ServiceEntityRepository<RuntimeWorkerState>
  */
-final class RuntimeWorkerStateRepository extends ServiceEntityRepository
+final class RuntimeWorkerStateRepository extends ServiceEntityRepository implements RuntimeWorkerStateLookupInterface
 {
     public function __construct(ManagerRegistry $registry)
     {

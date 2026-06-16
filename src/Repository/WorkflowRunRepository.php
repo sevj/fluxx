@@ -15,7 +15,7 @@ use Fluxx\Ui\WorkflowRunFilters;
 /**
  * @extends ServiceEntityRepository<WorkflowRun>
  */
-final class WorkflowRunRepository extends ServiceEntityRepository
+final class WorkflowRunRepository extends ServiceEntityRepository implements WorkflowRunLookupInterface
 {
     public function __construct(ManagerRegistry $registry)
     {

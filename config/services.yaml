@@ -22,3 +22,8 @@ services:
     Fluxx\StepType\StepTypeRegistry:
         arguments:
             $providers: !tagged_iterator { tag: fluxx.step_type_provider }
+
+    Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface: '@Fluxx\Workflow\Lock\WorkflowExecutionLockManager'
+    Fluxx\Repository\WorkflowExecutionLockStoreInterface: '@Fluxx\Repository\WorkflowExecutionLockRepository'
+    Fluxx\Repository\WorkflowRunLookupInterface: '@Fluxx\Repository\WorkflowRunRepository'
+    Fluxx\Repository\RuntimeWorkerStateLookupInterface: '@Fluxx\Repository\RuntimeWorkerStateRepository'

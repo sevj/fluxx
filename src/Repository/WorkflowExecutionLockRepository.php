@@ -11,7 +11,7 @@ use Fluxx\Entity\WorkflowExecutionLock;
 /**
  * @extends ServiceEntityRepository<WorkflowExecutionLock>
  */
-final class WorkflowExecutionLockRepository extends ServiceEntityRepository
+final class WorkflowExecutionLockRepository extends ServiceEntityRepository implements WorkflowExecutionLockStoreInterface
 {
     public function __construct(ManagerRegistry $registry)
     {

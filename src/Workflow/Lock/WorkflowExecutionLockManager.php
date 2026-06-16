@@ -10,19 +10,19 @@ use Fluxx\Entity\Enum\WorkflowExecutionLockScope;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowExecutionLock;
 use Fluxx\Entity\WorkflowRun;
-use Fluxx\Repository\RuntimeWorkerStateRepository;
-use Fluxx\Repository\WorkflowExecutionLockRepository;
-use Fluxx\Repository\WorkflowRunRepository;
+use Fluxx\Repository\RuntimeWorkerStateLookupInterface;
+use Fluxx\Repository\WorkflowExecutionLockStoreInterface;
+use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Workflow\WorkflowDefinition;
 use InvalidArgumentException;
 
-final readonly class WorkflowExecutionLockManager
+final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLockManagerInterface
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private WorkflowExecutionLockRepository $workflowExecutionLockRepository,
-        private WorkflowRunRepository $workflowRunRepository,
-        private RuntimeWorkerStateRepository $runtimeWorkerStateRepository,
+        private WorkflowExecutionLockStoreInterface $workflowExecutionLockRepository,
+        private WorkflowRunLookupInterface $workflowRunRepository,
+        private RuntimeWorkerStateLookupInterface $runtimeWorkerStateRepository,
     ) {
     }
 
