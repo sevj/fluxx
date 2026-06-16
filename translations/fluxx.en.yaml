@@ -8,6 +8,12 @@ navigation:
     theme_toggle: Toggle color theme
     theme_light: Light mode
     theme_dark: Dark mode
+    theme_variant_label: Dark theme variant
+    theme_variant_graphite: Graphite
+    theme_variant_fluxx: Fluxx Cyan
+    theme_variant_ops: Ops Blue
+    theme_variant_aurora: Aurora
+    theme_variant_ember: Ember
     logout: Logout
 
 login:

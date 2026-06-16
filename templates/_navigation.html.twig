@@ -45,21 +45,6 @@
     </div>
 
     <div class="fluxx-topbar-actions">
-        <button
-            type="button"
-            class="fluxx-theme-toggle"
-            data-theme-toggle
-            data-label-light="{{ 'navigation.theme_light'|trans }}"
-            data-label-dark="{{ 'navigation.theme_dark'|trans }}"
-            aria-label="{{ 'navigation.theme_toggle'|trans }}"
-        >
-            <span class="button-icon button-icon-toggle" aria-hidden="true">
-                <span class="icon-when-active">{{ icons.icon('sun') }}</span>
-                <span class="icon-when-inactive">{{ icons.icon('moon') }}</span>
-            </span>
-            <span class="button-label" data-theme-toggle-label>{{ 'navigation.theme_toggle'|trans }}</span>
-        </button>
-
         {% if app.user %}
             <a
                 href="{{ path('fluxx_logout') }}"
