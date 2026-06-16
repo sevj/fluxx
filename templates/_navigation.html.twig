@@ -24,6 +24,18 @@
                 {{ 'navigation.runtime'|trans }}
             </a>
             <a
+                href="{{ path('fluxx_system_health') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_system_health' ? ' is-active' : '' }}"
+            >
+                {{ 'navigation.health'|trans }}
+            </a>
+            <a
+                href="{{ path('fluxx_troubleshooting_index') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_troubleshooting_index' ? ' is-active' : '' }}"
+            >
+                {{ 'navigation.troubleshooting'|trans }}
+            </a>
+            <a
                 href="{{ path('fluxx_user_index') }}"
                 class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_user_index' ? ' is-active' : '' }}"
             >

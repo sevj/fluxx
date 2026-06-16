@@ -1,0 +1,168 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'troubleshooting.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <header class="header">
+            <div>
+                <h1 class="title">{{ 'troubleshooting.heading'|trans }}</h1>
+            </div>
+            <div class="header-tools">
+                <form method="get" class="search-form">
+                    <label class="search-label" for="troubleshooting-search">{{ 'troubleshooting.search_label'|trans }}</label>
+                    <input
+                        id="troubleshooting-search"
+                        type="search"
+                        name="q"
+                        value="{{ searchQuery }}"
+                        class="search-input"
+                        placeholder="{{ 'troubleshooting.search_placeholder'|trans }}"
+                    >
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('search') }}</span>
+                        <span class="button-label">{{ 'troubleshooting.search_submit'|trans }}</span>
+                    </button>
+                    {% if searchQuery %}
+                        <a href="{{ path('fluxx_troubleshooting_index') }}" class="secondary-button">
+                            <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                            <span class="button-label">{{ 'troubleshooting.search_reset'|trans }}</span>
+                        </a>
+                    {% endif %}
+                </form>
+                <div class="count">
+                    {{ 'troubleshooting.count'|trans({
+                        '%from%': issuePage.firstItemNumber,
+                        '%to%': issuePage.lastItemNumber,
+                        '%total%': issuePage.totalItems
+                    }) }}
+                </div>
+            </div>
+        </header>
+
+        {% if issuePage.items is empty %}
+            <section class="empty">
+                {{ searchQuery ? 'troubleshooting.empty_search'|trans({'%query%': searchQuery}) : 'troubleshooting.empty'|trans }}
+            </section>
+        {% else %}
+            <section class="workflow-list">
+                <table class="troubleshooting-table">
+                    <colgroup>
+                        <col style="width: 19%">
+                        <col style="width: 7%">
+                        <col style="width: 7%">
+                        <col style="width: 16%">
+                        <col style="width: 15%">
+                        <col style="width: 6%">
+                        <col style="width: 10%">
+                        <col style="width: 20%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>{{ 'troubleshooting.workflow'|trans }}</th>
+                            <th>{{ 'troubleshooting.source_system'|trans }}</th>
+                            <th>{{ 'troubleshooting.target_system'|trans }}</th>
+                            <th>{{ 'troubleshooting.run'|trans }}</th>
+                            <th>{{ 'troubleshooting.step'|trans }}</th>
+                            <th>{{ 'troubleshooting.fail_count'|trans }}</th>
+                            <th>{{ 'troubleshooting.failed_at'|trans }}</th>
+                            <th>{{ 'troubleshooting.error'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in issuePage.items %}
+                            <tr>
+                                <td data-label="{{ 'troubleshooting.workflow'|trans }}">
+                                    <a href="{{ path('fluxx_workflow_show', {'code': issue.workflowCode}) }}" class="workflow-link">
+                                        <div class="workflow-name">{{ issue.workflowName }}</div>
+                                    </a>
+                                    <div class="item-code">{{ issue.workflowCode }}</div>
+                                </td>
+                                <td data-label="{{ 'troubleshooting.source_system'|trans }}">
+                                    <span class="system-chip system-chip-source">{{ issue.sourceSystem }}</span>
+                                </td>
+                                <td data-label="{{ 'troubleshooting.target_system'|trans }}">
+                                    <span class="system-chip system-chip-target">{{ issue.targetSystem }}</span>
+                                </td>
+                                <td data-label="{{ 'troubleshooting.run'|trans }}">
+                                    <a
+                                        href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': issue.workflowCode, 'runId': issue.runId, 'stepCode': issue.stepCode}) }}"
+                                        class="run-id"
+                                    >
+                                        {{ issue.runId }}
+                                    </a>
+                                </td>
+                                <td data-label="{{ 'troubleshooting.step'|trans }}">
+                                    <a
+                                        href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': issue.workflowCode, 'runId': issue.runId, 'stepCode': issue.stepCode}) }}"
+                                        class="workflow-link"
+                                    >
+                                        <div class="workflow-name troubleshooting-step-name">{{ issue.stepName }}</div>
+                                    </a>
+                                    <div class="item-code">{{ issue.stepCode }}</div>
+                                </td>
+                                <td data-label="{{ 'troubleshooting.fail_count'|trans }}">
+                                    <span class="error-count">{{ issue.failureCount }}</span>
+                                </td>
+                                <td data-label="{{ 'troubleshooting.failed_at'|trans }}">
+                                    {% if issue.failedAt %}
+                                        <span class="metric-value metric-error">{{ issue.failedAt|date('Y-m-d H:i') }}</span>
+                                    {% else %}
+                                        <span class="metric-empty">-</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="{{ 'troubleshooting.error'|trans }}">
+                                    <pre class="code-block troubleshooting-error-block">{{ issue.errorMessage }}</pre>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            {% if issuePage.totalPages > 1 %}
+                <nav class="pagination" aria-label="{{ 'pagination.label'|trans }}">
+                    <a
+                        href="{{ path('fluxx_troubleshooting_index', {'page': issuePage.previousPage, 'q': searchQuery}) }}"
+                        class="pagination-link{{ not issuePage.hasPreviousPage ? ' is-disabled' : '' }}"
+                        {{ not issuePage.hasPreviousPage ? 'aria-disabled="true"' : '' }}
+                    >
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                        <span class="button-label">{{ 'pagination.previous'|trans }}</span>
+                    </a>
+
+                    <div class="pagination-pages">
+                        {% for pageNumber in issuePage.pages %}
+                            <a
+                                href="{{ path('fluxx_troubleshooting_index', {'page': pageNumber, 'q': searchQuery}) }}"
+                                class="pagination-link{{ pageNumber == issuePage.currentPage ? ' is-active' : '' }}"
+                            >
+                                {{ pageNumber }}
+                            </a>
+                        {% endfor %}
+                    </div>
+
+                    <a
+                        href="{{ path('fluxx_troubleshooting_index', {'page': issuePage.nextPage, 'q': searchQuery}) }}"
+                        class="pagination-link{{ not issuePage.hasNextPage ? ' is-disabled' : '' }}"
+                        {{ not issuePage.hasNextPage ? 'aria-disabled="true"' : '' }}
+                    >
+                        <span class="button-label">{{ 'pagination.next'|trans }}</span>
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
+                    </a>
+                </nav>
+            {% endif %}
+        {% endif %}
+    </main>
+</body>
+</html>

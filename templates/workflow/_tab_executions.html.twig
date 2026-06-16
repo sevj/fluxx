@@ -34,7 +34,7 @@
             <span class="run-filter-label">{{ 'workflow_show.execution_filter_status_label'|trans }}</span>
             <select name="status" class="search-input">
                 <option value="">{{ 'workflow_show.execution_filter_status_all'|trans }}</option>
-                {% for status in ['pending', 'relaunched', 'retrying', 'running', 'completed', 'failed', 'partially_failed'] %}
+                {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'failed', 'partially_failed'] %}
                     <option value="{{ status }}"{{ executionFilters.status == status ? ' selected' : '' }}>
                         {{ ('workflow_status.' ~ status)|trans }}
                     </option>
@@ -82,14 +82,25 @@
         {{ 'workflow_show.executions_empty'|trans }}
     </section>
 {% else %}
+    <div class="execution-status-legend" aria-label="{{ 'workflow_show.execution_status_legend'|trans }}">
+        <span class="execution-status-legend-label">{{ 'workflow_show.execution_status_legend'|trans }}</span>
+        {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'failed'] %}
+            <span class="execution-status-legend-item">
+                <span class="step-status-dot step-status-dot-inline step-status-dot-{{ status|replace({'_': '-'}) }}" aria-hidden="true"></span>
+                <span>{{ ('workflow_status.' ~ status)|trans }}</span>
+            </span>
+        {% endfor %}
+    </div>
+
     <section class="workflow-list">
         <table class="workflow-table-compact">
             <colgroup>
                 <col style="width: 11%">
                 <col style="width: 7%">
                 <col style="width: 8%">
-                <col style="width: 59%">
-                <col style="width: 15%">
+                <col style="width: 49%">
+                <col style="width: 14%">
+                <col style="width: 11%">
             </colgroup>
             <thead>
                 <tr>
@@ -98,6 +109,7 @@
                     <th>{{ 'workflow_show.status'|trans }}</th>
                     <th>{{ 'workflow_show.step_statuses'|trans }}</th>
                     <th>{{ 'workflow_show.dates'|trans }}</th>
+                    <th>{{ 'workflow_show.actions'|trans }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -137,15 +149,11 @@
                                                 {% set step = execution.stepMap[stepDefinition.code] %}
                                                 <a href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': workflow.code, 'runId': execution.runId, 'stepCode': step.code}) }}" class="step-status-link{{ row.connectsToMergeNext ? ' has-merge-next' : '' }}" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};">
                                                     <div class="step-status-cell execution-step-card step-tone-{{ step.typeTone }} step-tone-surface"{% if step.typeToneStyle %} style="{{ step.typeToneStyle }}"{% endif %}>
-                                                        {% if step.status == 'completed' %}
-                                                            <span class="step-status-dot step-status-dot-completed" aria-label="{{ ('workflow_status.' ~ step.status)|trans }}"></span>
-                                                        {% elseif step.status == 'failed' %}
-                                                            <span class="step-status-dot step-status-dot-failed" aria-label="{{ ('workflow_status.' ~ step.status)|trans }}"></span>
-                                                        {% else %}
-                                                            <span class="step-status-capsule step-status-capsule-{{ step.status|replace({'_': '-'}) }}" title="{{ ('workflow_status.' ~ step.status)|trans }}">
-                                                                {{ ('workflow_status.' ~ step.status)|trans }}
-                                                            </span>
-                                                        {% endif %}
+                                                        <span
+                                                            class="step-status-dot step-status-dot-{{ step.status|replace({'_': '-'}) }}"
+                                                            title="{{ ('workflow_status.' ~ step.status)|trans }}"
+                                                            aria-label="{{ ('workflow_status.' ~ step.status)|trans }}"
+                                                        ></span>
                                                         <div class="step-definition-type">
                                                             <span class="step-tone-pill" title="{{ step.typeLabel }}">{{ step.typeLabel }}</span>
                                                         </div>
@@ -211,6 +219,31 @@
                                         <span class="metric-empty">{{ 'workflow_show.not_finished'|trans }}</span>
                                     {% endif %}
                                 </div>
+                            </div>
+                        </td>
+                        <td data-label="{{ 'workflow_show.actions'|trans }}" class="execution-cell-actions">
+                            <div class="execution-actions">
+                                {% if execution.status in ['failed', 'partially_failed', 'cancelled'] %}
+                                    <form method="post" action="{{ path('fluxx_workflow_run_relaunch', {'workflowCode': workflow.code, 'runId': execution.runId}) }}" class="execution-action-form">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('fluxx.relaunch.run.' ~ execution.runId) }}">
+                                        <input type="hidden" name="_redirect" value="{{ path('fluxx_workflow_show', {'code': workflow.code, 'tab': 'executions'}) }}">
+                                        <button type="submit" class="secondary-button">
+                                            <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                                            <span class="button-label">{{ 'workflow_show.retry_run'|trans }}</span>
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                {% if execution.status in ['pending', 'relaunched', 'retrying', 'running'] %}
+                                    <form method="post" action="{{ path('fluxx_workflow_run_cancel', {'workflowCode': workflow.code, 'runId': execution.runId}) }}" class="execution-action-form">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('fluxx.cancel.run.' ~ execution.runId) }}">
+                                        <input type="hidden" name="_redirect" value="{{ path('fluxx_workflow_show', {'code': workflow.code, 'tab': 'executions'}) }}">
+                                        <button type="submit" class="danger-button" onclick="return confirm('{{ 'workflow_show.cancel_confirm'|trans|e('js') }}');">
+                                            <span class="button-icon" aria-hidden="true">{{ icons.icon('x') }}</span>
+                                            <span class="button-label">{{ 'workflow_show.cancel_run'|trans }}</span>
+                                        </button>
+                                    </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>

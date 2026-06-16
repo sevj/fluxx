@@ -255,11 +255,16 @@
         };
 
         let initialTab = availableTabs[0] || 'steps';
+        const requestedInitialTab = tabs.dataset.tabInitial || '';
+
+        if (requestedInitialTab && availableTabs.includes(requestedInitialTab)) {
+            initialTab = requestedInitialTab;
+        }
 
         try {
             const storedTab = sessionStorage.getItem(pageStorageKey);
 
-            if (storedTab && availableTabs.includes(storedTab)) {
+            if (!requestedInitialTab && storedTab && availableTabs.includes(storedTab)) {
                 initialTab = storedTab;
             }
         } catch (error) {

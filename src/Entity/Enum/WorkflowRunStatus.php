@@ -10,6 +10,7 @@ enum WorkflowRunStatus: string
     case Relaunched = 'relaunched';
     case Retrying = 'retrying';
     case Running = 'running';
+    case Cancelled = 'cancelled';
     case Completed = 'completed';
     case Failed = 'failed';
     case PartiallyFailed = 'partially_failed';

@@ -196,6 +196,16 @@ class WorkflowRun
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function cancellationMetadata(): ?array
+    {
+        $cancellation = $this->metadata['cancellation'] ?? null;
+
+        return is_array($cancellation) ? $cancellation : null;
+    }
+
+    /**
      * @param array<string, mixed> $metadata
      */
     public function replaceMetadata(array $metadata): void
@@ -258,6 +268,14 @@ class WorkflowRun
     {
         $this->status = WorkflowRunStatus::Completed;
         $this->startedAt ??= new DateTimeImmutable();
+        $this->finishedAt = $finishedAt ?? new DateTimeImmutable();
+        $this->errorMessage = null;
+        $this->clearErrorPayload();
+    }
+
+    public function markCancelled(?DateTimeImmutable $finishedAt = null): void
+    {
+        $this->status = WorkflowRunStatus::Cancelled;
         $this->finishedAt = $finishedAt ?? new DateTimeImmutable();
         $this->errorMessage = null;
         $this->clearErrorPayload();

@@ -1,0 +1,68 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'system_health.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main class="page page-runtime page-health">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <header class="header">
+            <div>
+                <h1 class="title">{{ 'system_health.heading'|trans }}</h1>
+            </div>
+            <div class="header-actions">
+                <span class="status-badge status-badge-{{ health.overallState == 'critical' ? 'failed' : (health.overallState == 'warning' ? 'warning' : 'completed') }}">
+                    {{ ('system_health.state_' ~ health.overallState)|trans }}
+                </span>
+                <a href="{{ path('fluxx_runtime_index') }}" class="secondary-button">
+                    <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                    <span class="button-label">{{ 'system_health.back_to_runtime'|trans }}</span>
+                </a>
+            </div>
+        </header>
+
+        <section class="health-layout">
+            <section class="section-card health-panel health-panel-left">
+                <div class="health-fact-list">
+                    {% for fact in health.facts %}
+                        <article class="health-fact-row health-fact-row-{{ fact.tone }}">
+                            <span class="health-fact-label">{{ fact.labelKey|trans }}</span>
+                            <span class="health-fact-value">{{ fact.value }}</span>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="section-card health-panel health-panel-right">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'system_health.checks_title'|trans }}</h2>
+                    </div>
+                </div>
+
+                <div class="health-check-grid">
+                    {% for check in health.checks %}
+                        <article class="health-check health-check-{{ check.state }}">
+                            <div class="health-check-head">
+                                <span class="status-badge status-badge-{{ check.state == 'critical' ? 'failed' : (check.state == 'warning' ? 'warning' : 'completed') }}">
+                                    {{ ('system_health.state_' ~ check.state)|trans }}
+                                </span>
+                                <h3 class="health-check-title">{{ check.labelKey|trans }}</h3>
+                            </div>
+                            <p class="health-check-message">{{ check.detail }}</p>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+        </section>
+    </main>
+</body>
+</html>

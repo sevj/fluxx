@@ -28,6 +28,31 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
     }
 
     /**
+     * @return array{status: string, metadata: array<string, mixed>, finishedAt: ?DateTimeImmutable}|null
+     */
+    public function findPersistedRunStateByRunId(string $runId): ?array
+    {
+        $row = $this->getEntityManager()->getConnection()->fetchAssociative(
+            'SELECT status, metadata, finished_at FROM fluxx_workflow_run WHERE run_id = :runId',
+            ['runId' => $runId],
+        );
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $metadata = json_decode((string) ($row['metadata'] ?? '[]'), true);
+
+        return [
+            'status' => (string) ($row['status'] ?? ''),
+            'metadata' => is_array($metadata) ? $metadata : [],
+            'finishedAt' => isset($row['finished_at']) && is_string($row['finished_at']) && $row['finished_at'] !== ''
+                ? new DateTimeImmutable($row['finished_at'])
+                : null,
+        ];
+    }
+
+    /**
      * @param list<string> $runIds
      * @return array<string, WorkflowRun>
      */

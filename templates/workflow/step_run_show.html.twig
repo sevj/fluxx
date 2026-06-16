@@ -29,9 +29,19 @@
                     <div class="item-code item-code-hero">{{ stepRun.stepCode }}</div>
                 </div>
                 <div class="header-actions">
+                    {% if stepRun.workflowStatus in ['pending', 'relaunched', 'retrying', 'running'] %}
+                        <form method="post" action="{{ path('fluxx_workflow_run_cancel', {'workflowCode': stepRun.workflowCode, 'runId': stepRun.runId}) }}" class="inline-action-form">
+                            <input type="hidden" name="_token" value="{{ csrf_token('fluxx.cancel.run.' ~ stepRun.runId) }}">
+                            <input type="hidden" name="_redirect" value="{{ path('fluxx_workflow_step_run_show', {'workflowCode': stepRun.workflowCode, 'runId': stepRun.runId, 'stepCode': stepRun.stepCode}) }}">
+                            <button type="submit" class="danger-button" onclick="return confirm('{{ 'workflow_show.cancel_confirm'|trans|e('js') }}');">
+                                <span class="button-icon" aria-hidden="true">{{ icons.icon('x') }}</span>
+                                <span class="button-label">{{ 'workflow_show.cancel_run'|trans }}</span>
+                            </button>
+                        </form>
+                    {% endif %}
                     <a href="#manual-operations" class="secondary-button">
                         <span class="button-icon" aria-hidden="true">{{ icons.icon('refresh-cw') }}</span>
-                        <span class="button-label">{{ 'step_run_show.relaunch_step'|trans }}</span>
+                        <span class="button-label">{{ 'step_run_show.retry_step'|trans }}</span>
                     </a>
                     <a href="{{ path('fluxx_workflow_show', {'code': stepRun.workflowCode}) }}" class="secondary-button">
                         <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
@@ -265,7 +275,7 @@
                     <div class="header-actions">
                         <button type="submit" class="secondary-button">
                             <span class="button-icon" aria-hidden="true">{{ icons.icon('refresh-cw') }}</span>
-                            <span class="button-label">{{ 'step_run_show.relaunch_step'|trans }}</span>
+                            <span class="button-label">{{ 'step_run_show.retry_step'|trans }}</span>
                         </button>
                     </div>
                 </form>

@@ -7,6 +7,7 @@ namespace Fluxx\Repository;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
+use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 
@@ -169,5 +170,36 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository
             ->getOneOrNullResult();
 
         return $stepRun;
+    }
+
+    /**
+     * @param list<string> $workflowNames
+     * @return list<WorkflowStepRun>
+     */
+    public function findFailedByWorkflowNames(array $workflowNames): array
+    {
+        if ($workflowNames === []) {
+            return [];
+        }
+
+        /** @var list<WorkflowStepRun> $stepRuns */
+        return $this->createQueryBuilder('workflow_step_run')
+            ->innerJoin('workflow_step_run.workflowRun', 'workflow_run')
+            ->addSelect('workflow_run')
+            ->andWhere('workflow_run.workflowName IN (:workflowNames)')
+            ->andWhere('workflow_step_run.status = :stepStatus')
+            ->andWhere('workflow_run.status IN (:runStatuses)')
+            ->setParameter('workflowNames', array_values(array_unique($workflowNames)))
+            ->setParameter('stepStatus', WorkflowStepRunStatus::Failed)
+            ->setParameter('runStatuses', [
+                WorkflowRunStatus::Failed,
+                WorkflowRunStatus::PartiallyFailed,
+            ])
+            ->orderBy('workflow_run.workflowName', 'ASC')
+            ->addOrderBy('workflow_step_run.finishedAt', 'DESC')
+            ->addOrderBy('workflow_run.createdAt', 'DESC')
+            ->addOrderBy('workflow_step_run.id', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 }

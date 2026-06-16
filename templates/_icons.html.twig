@@ -84,5 +84,15 @@
             <path d="M13 17V5"></path>
             <path d="M8 17v-3"></path>
         </svg>
+    {% elseif name == 'x' %}
+        <svg class="{{ classes }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M18 6 6 18"></path>
+            <path d="m6 6 12 12"></path>
+        </svg>
+    {% elseif name == 'heart-pulse' %}
+        <svg class="{{ classes }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M19.5 13.5 16 17l-3-5-2 3H5"></path>
+            <path d="M20.4 4.6a5.5 5.5 0 0 0-7.8 0L12 5.2l-.6-.6a5.5 5.5 0 0 0-7.8 7.8l.6.6L12 20.8l7.8-7.8.6-.6a5.5 5.5 0 0 0 0-7.8Z"></path>
+        </svg>
     {% endif %}
 {% endmacro %}

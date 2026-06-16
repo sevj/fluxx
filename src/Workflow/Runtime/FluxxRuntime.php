@@ -55,6 +55,7 @@ final readonly class FluxxRuntime
             WorkflowRunStatus::Completed,
             WorkflowRunStatus::Failed,
             WorkflowRunStatus::PartiallyFailed,
+            WorkflowRunStatus::Cancelled,
         ], true)) {
             return [];
         }
@@ -124,6 +125,12 @@ final readonly class FluxxRuntime
                 durationMs: $this->computeDurationMs($stepStartedAt),
                 memoryPeakBytes: $this->measurePeakMemoryBytes(),
             );
+
+            if ($this->synchronizeCancelledRunIfNeeded($workflowRun)) {
+                $this->entityManager->flush();
+
+                return [];
+            }
 
             $this->finalizeWorkflowRunState($workflowRun, $definition);
 
@@ -438,6 +445,10 @@ final readonly class FluxxRuntime
         WorkflowDefinition $definition,
         string $stepCode,
     ): array {
+        if ($this->synchronizeCancelledRunIfNeeded($workflowRun)) {
+            return [];
+        }
+
         $runnable = [];
         $allowedStepCodes = array_flip($this->completionStepCodes($workflowRun, $definition));
 
@@ -466,6 +477,10 @@ final readonly class FluxxRuntime
         ?string $errorMessage = null,
         ?array $errorPayload = null,
     ): void {
+        if ($this->synchronizeCancelledRunIfNeeded($workflowRun)) {
+            return;
+        }
+
         $latestStepRunsByCode = $this->latestStepRunsByCode($workflowRun);
         $decision = $this->workflowRunCompletionDecider->decide(
             $definition,
@@ -544,6 +559,20 @@ final readonly class FluxxRuntime
             'message' => null,
             'payload' => null,
         ];
+    }
+
+    private function synchronizeCancelledRunIfNeeded(WorkflowRun $workflowRun): bool
+    {
+        $persistedState = $this->workflowRunRepository->findPersistedRunStateByRunId($workflowRun->runId());
+
+        if (($persistedState['status'] ?? null) !== WorkflowRunStatus::Cancelled->value) {
+            return false;
+        }
+
+        $workflowRun->replaceMetadata($persistedState['metadata']);
+        $workflowRun->markCancelled($persistedState['finishedAt']);
+
+        return true;
     }
 
     private function resolveRetryPolicy(

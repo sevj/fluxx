@@ -99,6 +99,10 @@ final class WorkflowRunCompletionDecider
             return $this->stepStates[$stepCode] = 'failed';
         }
 
+        if ($status === WorkflowStepRunStatus::Cancelled) {
+            return $this->stepStates[$stepCode] = 'failed';
+        }
+
         if ($status === WorkflowStepRunStatus::Running) {
             return $this->stepStates[$stepCode] = 'running';
         }

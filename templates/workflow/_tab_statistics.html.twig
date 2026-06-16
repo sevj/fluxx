@@ -4,13 +4,6 @@
         <h2 class="section-title">{{ 'workflow_show.statistics_title'|trans }}</h2>
         <p class="subtitle section-subtitle">{{ 'workflow_show.statistics_subtitle'|trans }}</p>
     </div>
-    <div class="statistics-controls">
-        {% for range in workflow.statistics.ranges %}
-            <a href="{{ path('fluxx_workflow_tab_show', {'code': workflow.code, 'tab': 'statistics', 'page': workflow.executionPage.currentPage, 'range': range.value}) }}" data-tab-nav="statistics" class="statistics-range{{ range.selected ? ' is-active' : '' }}">
-                {{ range.labelKey|trans }}
-            </a>
-        {% endfor %}
-    </div>
 </div>
 
 {% if workflow.statistics.isEmpty %}
@@ -29,23 +22,100 @@
         </div>
     </div>
 
-    <div class="statistics-chart">
-        <div class="statistics-y-axis">
-            {% for tick in workflow.statistics.yAxisTicks %}
-                <span>{{ tick }}</span>
+    <div class="statistics-summary statistics-summary-extended">
+        {% for metric in workflow.statistics.metrics %}
+            <div class="statistics-summary-item statistics-summary-item-{{ metric.tone }}">
+                <span class="statistics-summary-label">{{ metric.labelKey|trans }}</span>
+                <span class="statistics-summary-value">{{ metric.value }}</span>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="statistics-chart-section">
+        <div class="statistics-controls">
+            {% for range in workflow.statistics.ranges %}
+                <a href="{{ path('fluxx_workflow_tab_show', {'code': workflow.code, 'tab': 'statistics', 'page': workflow.executionPage.currentPage, 'range': range.value}) }}" data-tab-nav="statistics" class="statistics-range{{ range.selected ? ' is-active' : '' }}">
+                    {{ range.labelKey|trans }}
+                </a>
             {% endfor %}
         </div>
 
-        <div class="statistics-bars">
-            {% for point in workflow.statistics.points %}
-                <div class="statistics-bar-group">
-                    <div class="statistics-bar-stage">
-                        <div class="statistics-bar statistics-bar-executions" style="height: {{ point.executionHeightPercent }}%;" title="{{ point.label }}: {{ point.executionCount }} executions"></div>
-                        <div class="statistics-bar statistics-bar-errors" style="height: {{ point.errorHeightPercent }}%;" title="{{ point.label }}: {{ point.errorCount }} errors"></div>
+        <div class="statistics-chart">
+            <div class="statistics-y-axis">
+                {% for tick in workflow.statistics.yAxisTicks %}
+                    <span>{{ tick }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="statistics-bars">
+                {% for point in workflow.statistics.points %}
+                    <div class="statistics-bar-group">
+                        <div class="statistics-bar-stage">
+                            <div class="statistics-bar statistics-bar-executions" style="height: {{ point.executionHeightPercent }}%;" title="{{ point.label }}: {{ point.executionCount }} executions"></div>
+                            <div class="statistics-bar statistics-bar-errors" style="height: {{ point.errorHeightPercent }}%;" title="{{ point.label }}: {{ point.errorCount }} errors"></div>
+                        </div>
+                        <div class="statistics-axis-label">{{ point.axisLabel }}</div>
                     </div>
-                    <div class="statistics-axis-label">{{ point.axisLabel }}</div>
-                </div>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
     </div>
+
+    <section class="statistics-step-section">
+        <div class="section-heading section-heading-compact">
+            <div>
+                <h3 class="section-title section-title-compact">{{ 'workflow_show.step_metrics_title'|trans }}</h3>
+            </div>
+        </div>
+
+        <section class="workflow-list">
+            <table class="workflow-table-compact">
+                <colgroup>
+                    <col style="width: 28%">
+                    <col style="width: 18%">
+                    <col style="width: 14%">
+                    <col style="width: 14%">
+                    <col style="width: 14%">
+                    <col style="width: 12%">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>{{ 'workflow_show.step'|trans }}</th>
+                        <th>{{ 'workflow_show.metric_avg_duration'|trans }}</th>
+                        <th>{{ 'workflow_show.step_failures'|trans }}</th>
+                        <th>{{ 'workflow_show.step_retries'|trans }}</th>
+                        <th>{{ 'workflow_show.step_idempotence_hits'|trans }}</th>
+                        <th>{{ 'workflow_show.step_executions'|trans }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stepMetric in workflow.statistics.stepMetrics %}
+                        <tr>
+                            <td data-label="{{ 'workflow_show.step'|trans }}">
+                                <div class="workflow-name">{{ stepMetric.name }}</div>
+                                <div class="item-code">{{ stepMetric.code }}</div>
+                            </td>
+                            <td data-label="{{ 'workflow_show.metric_avg_duration'|trans }}">
+                                <span class="metric-value">
+                                    {{ stepMetric.averageDurationMs is not null ? stepMetric.averageDurationMs ~ ' ms' : '-' }}
+                                </span>
+                            </td>
+                            <td data-label="{{ 'workflow_show.step_failures'|trans }}">
+                                <span class="metric-value{% if stepMetric.failureCount > 0 %} metric-error{% endif %}">{{ stepMetric.failureCount }}</span>
+                            </td>
+                            <td data-label="{{ 'workflow_show.step_retries'|trans }}">
+                                <span class="metric-value">{{ stepMetric.retryCount }}</span>
+                            </td>
+                            <td data-label="{{ 'workflow_show.step_idempotence_hits'|trans }}">
+                                <span class="metric-value">{{ stepMetric.idempotenceHitCount }}</span>
+                            </td>
+                            <td data-label="{{ 'workflow_show.step_executions'|trans }}">
+                                <span class="metric-value">{{ stepMetric.executionCount }}</span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </section>
 {% endif %}

@@ -618,6 +618,7 @@ final readonly class WorkflowDetails
 
         $maxValue = max($maxValue, 1);
         $points = [];
+        $stepRunsByRunId = $this->workflowStepRunRepository->findByWorkflowRunsGrouped($runs);
 
         foreach ($bucketStarts as $index => $bucketStart) {
             $bucketKey = $bucketStart->format($bucketFormat);
@@ -642,6 +643,8 @@ final readonly class WorkflowDetails
                 new WorkflowStatisticsRangeView('year', 'workflow_show.range_year', $range === 'year'),
             ],
             points: $points,
+            metrics: $this->buildAdvancedStatisticsMetrics($runs, $stepRunsByRunId),
+            stepMetrics: $this->buildStepStatistics($definition, $stepRunsByRunId),
             executionTotal: $executionTotal,
             errorTotal: $errorTotal,
             maxValue: $maxValue,
@@ -707,5 +710,199 @@ final readonly class WorkflowDetails
         $mid = (int) ceil($maxValue / 2);
 
         return array_values(array_unique([$maxValue, $mid, 0]));
+    }
+
+    /**
+     * @param list<WorkflowRun> $runs
+     * @param array<string, list<WorkflowStepRun>> $stepRunsByRunId
+     * @return list<WorkflowStatisticsMetricView>
+     */
+    private function buildAdvancedStatisticsMetrics(array $runs, array $stepRunsByRunId): array
+    {
+        $durations = [];
+        $failedCount = 0;
+        $partialFailedCount = 0;
+        $retryRunCount = 0;
+        $relaunchCount = 0;
+        $processedTotal = 0;
+        $successTotal = 0;
+        $recordErrorTotal = 0;
+
+        foreach ($runs as $run) {
+            if ($run->startedAt() !== null && $run->finishedAt() !== null) {
+                $durations[] = max(0, ($run->finishedAt()->getTimestamp() - $run->startedAt()->getTimestamp()) * 1000);
+            }
+
+            if ($run->status() === WorkflowRunStatus::Failed) {
+                ++$failedCount;
+            }
+
+            if ($run->status() === WorkflowRunStatus::PartiallyFailed) {
+                ++$partialFailedCount;
+            }
+
+            if ($run->relaunchMetadata() !== null) {
+                ++$relaunchCount;
+            }
+
+            $latestStepRuns = $this->latestStepRunsForStatistics($stepRunsByRunId[$run->runId()] ?? []);
+            $hasRetry = false;
+
+            foreach ($latestStepRuns as $stepRun) {
+                if ($stepRun->retryCount() > 0) {
+                    $hasRetry = true;
+                }
+
+                $processedTotal += $stepRun->processedCount();
+                $successTotal += $stepRun->successCount();
+                $recordErrorTotal += $stepRun->errorCount();
+            }
+
+            if ($hasRetry) {
+                ++$retryRunCount;
+            }
+        }
+
+        $runCount = count($runs);
+
+        return [
+            new WorkflowStatisticsMetricView('workflow_show.metric_avg_duration', $this->formatDurationMetric($this->average($durations))),
+            new WorkflowStatisticsMetricView('workflow_show.metric_p95_duration', $this->formatDurationMetric($this->percentile95($durations))),
+            new WorkflowStatisticsMetricView('workflow_show.metric_failure_rate', $this->formatPercentageMetric($failedCount, $runCount), $failedCount > 0 ? 'error' : 'default'),
+            new WorkflowStatisticsMetricView('workflow_show.metric_partial_failure_rate', $this->formatPercentageMetric($partialFailedCount, $runCount), $partialFailedCount > 0 ? 'warning' : 'default'),
+            new WorkflowStatisticsMetricView('workflow_show.metric_retry_rate', $this->formatPercentageMetric($retryRunCount, $runCount), $retryRunCount > 0 ? 'warning' : 'default'),
+            new WorkflowStatisticsMetricView('workflow_show.metric_relaunch_rate', $this->formatPercentageMetric($relaunchCount, $runCount)),
+            new WorkflowStatisticsMetricView('workflow_show.metric_processed_total', (string) $processedTotal),
+            new WorkflowStatisticsMetricView('workflow_show.metric_success_total', (string) $successTotal),
+            new WorkflowStatisticsMetricView('workflow_show.metric_record_errors_total', (string) $recordErrorTotal, $recordErrorTotal > 0 ? 'error' : 'default'),
+        ];
+    }
+
+    /**
+     * @param array<string, list<WorkflowStepRun>> $stepRunsByRunId
+     * @return list<WorkflowStepStatisticsView>
+     */
+    private function buildStepStatistics(WorkflowDefinition $definition, array $stepRunsByRunId): array
+    {
+        $stats = [];
+
+        foreach ($definition->steps() as $step) {
+            $stats[$step->code()] = [
+                'name' => $step->name(),
+                'durationTotal' => 0,
+                'durationCount' => 0,
+                'failureCount' => 0,
+                'retryCount' => 0,
+                'idempotenceHitCount' => 0,
+                'executionCount' => 0,
+            ];
+        }
+
+        foreach ($stepRunsByRunId as $stepRuns) {
+            foreach ($this->latestStepRunsForStatistics($stepRuns) as $stepRun) {
+                if (!isset($stats[$stepRun->stepName()])) {
+                    continue;
+                }
+
+                $stats[$stepRun->stepName()]['retryCount'] += $stepRun->retryCount();
+                ++$stats[$stepRun->stepName()]['executionCount'];
+
+                if ($stepRun->durationMs() !== null) {
+                    $stats[$stepRun->stepName()]['durationTotal'] += $stepRun->durationMs();
+                    ++$stats[$stepRun->stepName()]['durationCount'];
+                }
+
+                if ($stepRun->status() === \Fluxx\Entity\Enum\WorkflowStepRunStatus::Failed) {
+                    ++$stats[$stepRun->stepName()]['failureCount'];
+                }
+
+                if ($stepRun->deduplicationStatus()->value !== 'none') {
+                    ++$stats[$stepRun->stepName()]['idempotenceHitCount'];
+                }
+            }
+        }
+
+        $views = [];
+
+        foreach ($definition->steps() as $step) {
+            $stepStats = $stats[$step->code()];
+            $views[] = new WorkflowStepStatisticsView(
+                code: $step->code(),
+                name: $stepStats['name'],
+                averageDurationMs: $stepStats['durationCount'] > 0
+                    ? (int) floor($stepStats['durationTotal'] / $stepStats['durationCount'])
+                    : null,
+                failureCount: $stepStats['failureCount'],
+                retryCount: $stepStats['retryCount'],
+                idempotenceHitCount: $stepStats['idempotenceHitCount'],
+                executionCount: $stepStats['executionCount'],
+            );
+        }
+
+        return $views;
+    }
+
+    /**
+     * @param list<WorkflowStepRun> $stepRuns
+     * @return array<string, WorkflowStepRun>
+     */
+    private function latestStepRunsForStatistics(array $stepRuns): array
+    {
+        $latest = [];
+
+        foreach ($stepRuns as $stepRun) {
+            $latest[$stepRun->stepName()] = $stepRun;
+        }
+
+        return $latest;
+    }
+
+    /**
+     * @param list<int> $values
+     */
+    private function average(array $values): ?int
+    {
+        if ($values === []) {
+            return null;
+        }
+
+        return (int) floor(array_sum($values) / count($values));
+    }
+
+    /**
+     * @param list<int> $values
+     */
+    private function percentile95(array $values): ?int
+    {
+        if ($values === []) {
+            return null;
+        }
+
+        sort($values);
+        $index = max((int) ceil(count($values) * 0.95) - 1, 0);
+
+        return $values[$index] ?? null;
+    }
+
+    private function formatDurationMetric(?int $durationMs): string
+    {
+        if ($durationMs === null) {
+            return '-';
+        }
+
+        if ($durationMs >= 1000) {
+            return number_format($durationMs / 1000, 1, '.', ' ') . ' s';
+        }
+
+        return $durationMs . ' ms';
+    }
+
+    private function formatPercentageMetric(int $count, int $total): string
+    {
+        if ($total === 0) {
+            return '0%';
+        }
+
+        return number_format(($count / $total) * 100, 1, '.', ' ') . '%';
     }
 }

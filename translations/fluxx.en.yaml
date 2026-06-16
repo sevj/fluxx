@@ -3,6 +3,8 @@ navigation:
     users: Users
     workflows: Workflows
     runtime: Runtime
+    health: Health
+    troubleshooting: Troubleshooting
     theme_toggle: Toggle color theme
     theme_light: Light mode
     theme_dark: Dark mode
@@ -85,20 +87,26 @@ workflow_show:
     execution_filter_to_label: To
     execution_apply_filters: Apply filters
     execution_reset_filters: Reset
+    execution_status_legend: Status legend
     run: Run
     trigger: Trigger
     status: Status
     step_statuses: Step statuses
     dates: Dates
+    actions: Actions
     created_at: Created
     started_at: Started
     finished_at: Finished
+    step: Step
     step_counts_compact: '%success% ok / %errors% err'
     step_runtime_compact: '%duration% ms - %memory% MB'
     lock_scope: Lock scope
     step_idempotent: Idempotent
     step_deduplicated: 'Deduplicated from %runId%'
     relaunch_run: Relaunch run
+    retry_run: Retry run
+    cancel_run: Cancel run
+    cancel_confirm: Cancel this run?
     relaunch_from: 'Relaunched from %runId% (%mode%)'
     not_started: Not started
     not_finished: Not finished
@@ -108,6 +116,20 @@ workflow_show:
     statistics_empty: No execution has been recorded in the selected period.
     executions_total: Executions
     errors_total: Errors
+    metric_avg_duration: Avg duration
+    metric_p95_duration: P95 duration
+    metric_failure_rate: Failure rate
+    metric_partial_failure_rate: Partial failure rate
+    metric_retry_rate: Retry rate
+    metric_relaunch_rate: Relaunch rate
+    metric_processed_total: Processed records
+    metric_success_total: Succeeded records
+    metric_record_errors_total: Record errors
+    step_metrics_title: Step metrics
+    step_failures: Failures
+    step_retries: Retries
+    step_idempotence_hits: Idempotence hits
+    step_executions: Executions
     range_week: Last week
     range_month: Last month
     range_year: Last year
@@ -117,6 +139,7 @@ workflow_status:
     relaunched: Relaunched
     retrying: Retrying
     running: Running
+    cancelled: Cancelled
     completed: Completed
     failed: Failed
     partially_failed: Partially failed
@@ -195,7 +218,7 @@ step_run_show:
     output_payloads_empty: No output payload is available for this step run.
     payload_sequence: 'Sequence %sequence%'
     payload_records: '%count% records'
-    relaunch_step: Relaunch from step
+    retry_step: Retry from step
     manual_title: Manual operations
     manual_subtitle: Confirm the relaunch explicitly before resetting downstream execution for this step.
     reason_label: Operator reason
@@ -226,6 +249,7 @@ runtime_index:
     title: Runtime
     heading: Runtime
     subtitle: Monitor the live state of the fluxx worker queue and the workflow steps currently waiting or running.
+    health: System health
     loading: Loading runtime snapshot
     waiting: Waiting for first snapshot
     state_live: Live
@@ -277,6 +301,65 @@ runtime_index:
     message_consumer: Consumer
     message_delivery: Delivery
     message_age: Age
+
+system_health:
+    title: System health
+    heading: System health
+    subtitle: Application health metrics for Fluxx workers, queue pressure, and execution locks.
+    back_to_runtime: Back to runtime
+    checks_title: Health checks
+    findings_title: Findings
+    findings_empty: No warning or critical finding is currently detected.
+    state_healthy: Healthy
+    state_warning: Warning
+    state_critical: Critical
+    last_refresh: Last refresh
+    metric_snapshot: Snapshot
+    metric_consumers: Consumers
+    metric_backlog: Backlog
+    metric_in_flight: In flight
+    metric_active_locks: Active locks
+    metric_oldest_pending: Oldest pending
+    metric_warning_count: Warnings
+    metric_critical_count: Critical alerts
+    fact_version: Version
+    fact_queue: Queue
+    fact_crons: Crons
+    fact_php: PHP
+    fact_symfony: Symfony
+    fact_environment: Environment
+    fact_opcache: OPcache
+    fact_db_size: DB size
+    fact_cache: Cache
+    fact_logs: Logs
+    fact_disk: Disk
+    fact_migrations: Migrations
+    check_snapshot: Snapshot availability
+    check_workers: Worker health
+    check_queue_pressure: Queue pressure
+    check_queue_latency: Queue latency
+    check_locks: Lock health
+    check_alerts: Active alerts
+
+troubleshooting:
+    title: Troubleshooting
+    heading: Troubleshooting
+    subtitle: Line-by-line list of problematic executions and failed step messages.
+    count: Showing %from%-%to% of %total% issues
+    empty: No problematic execution is currently visible.
+    empty_search: No problematic execution matches "%query%".
+    search_label: Search troubleshooting
+    search_placeholder: Search by workflow, step, run id or error
+    search_submit: Search
+    search_reset: Reset
+    workflow: Workflow
+    source_system: Source
+    target_system: Target
+    run: Run
+    step: Step
+    fail_count: Fails
+    failed_at: Failed at
+    error: Error
 
 pagination:
     label: Workflow pagination

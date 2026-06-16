@@ -105,6 +105,7 @@
                 data-tab-poll-state-error-label="{{ 'workflow_show.state_error'|trans }}"
                 data-tab-poll-state-offline-label="{{ 'workflow_show.state_offline'|trans }}"
                 data-tab-poll-refresh-failed-label="{{ 'workflow_show.refresh_failed'|trans }}"
+                data-tab-initial="{{ app.request.query.get('tab', 'steps') }}"
             >
                 <button type="button" class="section-tab is-active" data-tab-button="steps" aria-selected="true" aria-controls="workflow-tab-steps">
                     <span class="button-icon" aria-hidden="true">{{ icons.icon('list') }}</span>

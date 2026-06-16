@@ -327,6 +327,17 @@ class WorkflowStepRun
         $this->clearErrorPayload();
     }
 
+    public function markCancelled(?DateTimeImmutable $finishedAt = null): void
+    {
+        $this->status = WorkflowStepRunStatus::Cancelled;
+        $this->finishedAt = $finishedAt ?? new DateTimeImmutable();
+        $this->durationMs = null;
+        $this->memoryPeakBytes = null;
+        $this->nextRetryAt = null;
+        $this->errorMessage = null;
+        $this->clearErrorPayload();
+    }
+
     /**
      * @param array<string, mixed>|null $errorPayload
      */
