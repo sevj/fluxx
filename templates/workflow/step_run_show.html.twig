@@ -1,0 +1,352 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ stepRun.stepName }} - {{ 'step_run_show.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <div class="page-stack">
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <section class="section-card">
+                        <div class="status-badge status-badge-{{ type == 'error' ? 'failed' : 'completed' }}">{{ message }}</div>
+                    </section>
+                {% endfor %}
+            {% endfor %}
+
+            <header class="header">
+                <div>
+                    <h1 class="title">{{ stepRun.stepName }}</h1>
+                    <div class="item-code item-code-hero">{{ stepRun.stepCode }}</div>
+                </div>
+                <div class="header-actions">
+                    <a href="#manual-operations" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('refresh-cw') }}</span>
+                        <span class="button-label">{{ 'step_run_show.relaunch_step'|trans }}</span>
+                    </a>
+                    <a href="{{ path('fluxx_workflow_show', {'code': stepRun.workflowCode}) }}" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                        <span class="button-label">{{ 'step_run_show.back'|trans }}</span>
+                    </a>
+                </div>
+            </header>
+
+            <section class="section-card">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'step_run_show.overview_title'|trans }}</h2>
+                    </div>
+                </div>
+
+                <div class="workflow-definition-groups">
+                    <section class="definition-block definition-block-compact">
+                        <div class="definition-label">{{ 'step_run_show.workflow_group'|trans }}</div>
+                        <div class="definition-inline-list">
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.workflow'|trans }}</span>
+                                <span class="definition-inline-value">{{ stepRun.workflowName }}</span>
+                                <span class="item-code">{{ stepRun.workflowCode }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.run'|trans }}</span>
+                                <span class="run-id">{{ stepRun.runId }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.trigger'|trans }}</span>
+                                <span class="system-chip">{{ stepRun.trigger }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.source_system'|trans }}</span>
+                                <span class="system-chip system-chip-source">{{ stepRun.workflowSourceSystem }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.target_system'|trans }}</span>
+                                <span class="system-chip system-chip-target">{{ stepRun.workflowTargetSystem }}</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="definition-block definition-block-compact step-tone-{{ stepRun.stepTypeTone }} step-tone-surface"{% if stepRun.stepTypeToneStyle %} style="{{ stepRun.stepTypeToneStyle }}"{% endif %}>
+                        <div class="definition-label step-tone-text">{{ 'step_run_show.step_group'|trans }}</div>
+                        <div class="definition-inline-list">
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.step_type'|trans }}</span>
+                                <span class="definition-value">
+                                    <span class="step-tone-pill">{{ stepRun.stepTypeLabel }}</span>
+                                </span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.step_status'|trans }}</span>
+                                <span class="status-badge status-badge-{{ stepRun.stepStatus|replace({'_': '-'}) }}">
+                                    {{ ('workflow_status.' ~ stepRun.stepStatus)|trans }}
+                                </span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="definition-block definition-block-compact">
+                        <div class="definition-label">{{ 'step_run_show.execution_group'|trans }}</div>
+                        <div class="definition-inline-list">
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.workflow_status'|trans }}</span>
+                                <span class="status-badge status-badge-{{ stepRun.workflowStatus|replace({'_': '-'}) }}">
+                                    {{ ('workflow_status.' ~ stepRun.workflowStatus)|trans }}
+                                </span>
+                            </div>
+                            {% if stepRun.workflowOriginalRunId %}
+                                <div class="definition-inline-item">
+                                    <span class="definition-inline-key">{{ 'step_run_show.relaunch'|trans }}</span>
+                                    <span class="definition-inline-value">
+                                        {{ 'step_run_show.relaunch_value'|trans({
+                                            '%runId%': stepRun.workflowOriginalRunId,
+                                            '%mode%': ('workflow_relaunch_mode.' ~ stepRun.workflowRelaunchMode)|trans
+                                        }) }}
+                                    </span>
+                                </div>
+                            {% endif %}
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.lock_scope'|trans }}</span>
+                                {% if stepRun.workflowLockScope %}
+                                    <span class="definition-inline-value">{{ ('workflow_lock_scope.' ~ stepRun.workflowLockScope)|trans }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.lock_key'|trans }}</span>
+                                {% if stepRun.workflowLockKey %}
+                                    <span class="item-code">{{ stepRun.workflowLockKey }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.processed_count'|trans }}</span>
+                                <span class="definition-inline-value">{{ stepRun.processedCount }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.success_count'|trans }}</span>
+                                <span class="definition-inline-value">{{ stepRun.successCount }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.error_count'|trans }}</span>
+                                <span class="definition-inline-value">{{ stepRun.errorCount }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.duration'|trans }}</span>
+                                {% if stepRun.durationMs is not null %}
+                                    <span class="definition-inline-value">{{ stepRun.durationMs }} ms</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.memory_peak'|trans }}</span>
+                                {% if stepRun.memoryPeakBytes is not null %}
+                                    <span class="definition-inline-value">{{ (stepRun.memoryPeakBytes / 1048576)|number_format(2, '.', ' ') }} MB</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.retry_count'|trans }}</span>
+                                <span class="definition-inline-value">{{ stepRun.retryCount }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.last_retry_at'|trans }}</span>
+                                {% if stepRun.lastRetryAt %}
+                                    <span class="definition-inline-value">{{ stepRun.lastRetryAt|date('Y-m-d H:i') }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.next_retry_at'|trans }}</span>
+                                {% if stepRun.nextRetryAt %}
+                                    <span class="definition-inline-value">{{ stepRun.nextRetryAt|date('Y-m-d H:i') }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.created_at'|trans }}</span>
+                                <span class="definition-inline-value">{{ stepRun.createdAt|date('Y-m-d H:i') }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.started_at'|trans }}</span>
+                                {% if stepRun.startedAt %}
+                                    <span class="definition-inline-value">{{ stepRun.startedAt|date('Y-m-d H:i') }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_started'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.finished_at'|trans }}</span>
+                                {% if stepRun.finishedAt %}
+                                    <span class="definition-inline-value">{{ stepRun.finishedAt|date('Y-m-d H:i') }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_finished'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.idempotence_key'|trans }}</span>
+                                {% if stepRun.idempotenceKey %}
+                                    <span class="item-code">{{ stepRun.idempotenceKey }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.deduplication_status'|trans }}</span>
+                                <span class="definition-inline-value">{{ ('step_run_show.deduplication_' ~ stepRun.deduplicationStatus)|trans }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'step_run_show.deduplication_source'|trans }}</span>
+                                {% if stepRun.deduplicatedFromRunId %}
+                                    <span class="definition-inline-value">
+                                        {{ 'step_run_show.deduplication_source_value'|trans({
+                                            '%runId%': stepRun.deduplicatedFromRunId,
+                                            '%stepCode%': stepRun.deduplicatedFromStepCode
+                                        }) }}
+                                    </span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                {% if stepRun.errorMessage %}
+                    <div class="detail-message detail-message-error">
+                        {% if stepRun.errorCategory %}
+                            <strong>{{ ('workflow_error_category.' ~ stepRun.errorCategory)|trans }}</strong>
+                            {% if stepRun.errorCode %}
+                                ({{ stepRun.errorCode }})
+                            {% endif %}
+                            <br>
+                        {% endif %}
+                        {{ stepRun.errorMessage }}
+                    </div>
+                {% endif %}
+            </section>
+
+            <section class="section-card" id="manual-operations">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'step_run_show.manual_title'|trans }}</h2>
+                        <p class="subtitle section-subtitle">{{ 'step_run_show.manual_subtitle'|trans }}</p>
+                    </div>
+                </div>
+
+                <form method="post" action="{{ path('fluxx_workflow_step_run_relaunch', {'workflowCode': stepRun.workflowCode, 'runId': stepRun.runId, 'stepCode': stepRun.stepCode}) }}" class="operation-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.relaunch.step.' ~ stepRun.runId ~ '.' ~ stepRun.stepCode) }}">
+                    <input type="hidden" name="_redirect" value="{{ path('fluxx_workflow_step_run_show', {'workflowCode': stepRun.workflowCode, 'runId': stepRun.runId, 'stepCode': stepRun.stepCode}) }}">
+
+                    <label class="operation-field">
+                        <span class="login-label">{{ 'step_run_show.reason_label'|trans }}</span>
+                        <textarea name="reason" rows="3" class="operation-textarea" placeholder="{{ 'step_run_show.reason_placeholder'|trans }}"></textarea>
+                    </label>
+
+                    <label class="operation-confirm">
+                        <input type="checkbox" required>
+                        <span>{{ 'step_run_show.confirm_relaunch'|trans }}</span>
+                    </label>
+
+                    <div class="header-actions">
+                        <button type="submit" class="secondary-button">
+                            <span class="button-icon" aria-hidden="true">{{ icons.icon('refresh-cw') }}</span>
+                            <span class="button-label">{{ 'step_run_show.relaunch_step'|trans }}</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="section-card">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'step_run_show.metadata_title'|trans }}</h2>
+                    </div>
+                </div>
+
+                {% if stepRun.metadata is empty %}
+                    <section class="empty">
+                        {{ 'step_run_show.metadata_empty'|trans }}
+                    </section>
+                {% else %}
+                    <pre class="code-block">{{ stepRun.metadata|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                {% endif %}
+            </section>
+
+            <section class="section-card">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'step_run_show.payloads_title'|trans }}</h2>
+                    </div>
+                </div>
+
+                <div class="payload-grid">
+                    <section class="payload-column">
+                        <h3 class="payload-title">{{ 'step_run_show.input_payloads'|trans }}</h3>
+
+                        {% if stepRun.inputPayloads is empty %}
+                            <section class="empty">
+                                {{ 'step_run_show.input_payloads_empty'|trans }}
+                            </section>
+                        {% else %}
+                            <div class="payload-list">
+                                {% for payload in stepRun.inputPayloads %}
+                                    <article class="payload-card">
+                                        <div class="payload-meta">
+                                            <span class="payload-chip">#{{ payload.id }}</span>
+                                            <span class="payload-chip">{{ 'step_run_show.payload_sequence'|trans({'%sequence%': payload.sequence}) }}</span>
+                                            <span class="payload-chip">{{ 'step_run_show.payload_records'|trans({'%count%': payload.recordCount}) }}</span>
+                                            <span class="payload-chip">{{ payload.format }}</span>
+                                            <span class="payload-chip">{{ payload.compression }}</span>
+                                        </div>
+                                        <pre class="code-block">{{ payload.snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </section>
+
+                    <section class="payload-column">
+                        <h3 class="payload-title">{{ 'step_run_show.output_payloads'|trans }}</h3>
+
+                        {% if stepRun.outputPayloads is empty %}
+                            <section class="empty">
+                                {{ 'step_run_show.output_payloads_empty'|trans }}
+                            </section>
+                        {% else %}
+                            <div class="payload-list">
+                                {% for payload in stepRun.outputPayloads %}
+                                    <article class="payload-card">
+                                        <div class="payload-meta">
+                                            <span class="payload-chip">#{{ payload.id }}</span>
+                                            <span class="payload-chip">{{ 'step_run_show.payload_sequence'|trans({'%sequence%': payload.sequence}) }}</span>
+                                            <span class="payload-chip">{{ 'step_run_show.payload_records'|trans({'%count%': payload.recordCount}) }}</span>
+                                            <span class="payload-chip">{{ payload.format }}</span>
+                                            <span class="payload-chip">{{ payload.compression }}</span>
+                                        </div>
+                                        <pre class="code-block">{{ payload.snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </section>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

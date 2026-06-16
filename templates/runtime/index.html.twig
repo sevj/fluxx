@@ -1,0 +1,256 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'runtime_index.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <script src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main
+        class="page page-runtime"
+        data-runtime-monitor
+        data-runtime-snapshot-url="{{ path('fluxx_runtime_snapshot') }}"
+        data-runtime-label-backlog="{{ 'runtime_index.backlog_count'|trans }}"
+        data-runtime-label-in-flight="{{ 'runtime_index.in_flight_count'|trans }}"
+        data-runtime-label-consumers="{{ 'runtime_index.consumer_count'|trans }}"
+        data-runtime-label-active-locks="{{ 'runtime_index.active_lock_count'|trans }}"
+        data-runtime-label-oldest-pending="{{ 'runtime_index.oldest_pending_age'|trans }}"
+        data-runtime-label-transport="{{ 'runtime_index.transport_name'|trans }}"
+        data-runtime-label-stream="{{ 'runtime_index.redis_stream'|trans }}"
+        data-runtime-label-group="{{ 'runtime_index.redis_group'|trans }}"
+        data-runtime-label-no-workers="{{ 'runtime_index.workers_empty'|trans }}"
+        data-runtime-label-no-messages="{{ 'runtime_index.messages_empty'|trans }}"
+        data-runtime-label-state-live="{{ 'runtime_index.state_live'|trans }}"
+        data-runtime-label-state-error="{{ 'runtime_index.state_error'|trans }}"
+        data-runtime-label-state-offline="{{ 'runtime_index.state_offline'|trans }}"
+        data-runtime-label-message-queued="{{ 'runtime_index.message_state_queued'|trans }}"
+        data-runtime-label-message-in-flight="{{ 'runtime_index.message_state_in_flight'|trans }}"
+        data-runtime-label-refresh-failed="{{ 'runtime_index.refresh_failed'|trans }}"
+        data-runtime-label-worker-state-processing="{{ 'runtime_index.worker_state_processing'|trans }}"
+        data-runtime-label-worker-state-active="{{ 'runtime_index.worker_state_active'|trans }}"
+        data-runtime-label-worker-state-idle="{{ 'runtime_index.worker_state_idle'|trans }}"
+        data-runtime-label-worker-state-stopped="{{ 'runtime_index.worker_state_stopped'|trans }}"
+        data-runtime-label-worker-name="{{ 'runtime_index.worker_name'|trans }}"
+        data-runtime-label-worker-state="{{ 'runtime_index.worker_state'|trans }}"
+        data-runtime-label-worker-pending="{{ 'runtime_index.worker_pending'|trans }}"
+        data-runtime-label-worker-last-seen="{{ 'runtime_index.worker_last_seen'|trans }}"
+        data-runtime-label-worker-current-empty="{{ 'runtime_index.worker_current_empty'|trans }}"
+        data-runtime-label-worker-message="{{ 'runtime_index.worker_message'|trans }}"
+        data-runtime-label-worker-current="{{ 'runtime_index.worker_current'|trans }}"
+        data-runtime-label-worker-runtime="{{ 'runtime_index.worker_runtime'|trans }}"
+        data-runtime-label-no-locks="{{ 'runtime_index.active_locks_empty'|trans }}"
+        data-runtime-label-lock-workflow="{{ 'runtime_index.lock_workflow'|trans }}"
+        data-runtime-label-lock-run="{{ 'runtime_index.lock_run'|trans }}"
+        data-runtime-label-lock-scope="{{ 'runtime_index.lock_scope'|trans }}"
+        data-runtime-label-lock-key="{{ 'runtime_index.lock_key'|trans }}"
+        data-runtime-label-lock-acquired="{{ 'runtime_index.lock_acquired'|trans }}"
+        data-runtime-label-polling="{{ 'runtime_index.polling'|trans }}"
+        data-runtime-label-pause-polling="{{ 'runtime_index.pause_polling'|trans }}"
+        data-runtime-label-resume-polling="{{ 'runtime_index.resume_polling'|trans }}"
+    >
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <header class="header">
+            <div>
+                <h1 class="title">{{ 'runtime_index.heading'|trans }}</h1>
+            </div>
+            <div class="header-tools">
+                <span class="status-badge status-badge-pending" data-runtime-state>{{ 'runtime_index.loading'|trans }}</span>
+                <div class="polling-controls polling-controls-inline">
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-runtime-poll-toggle
+                        aria-pressed="true"
+                    >
+                        <span class="button-icon button-icon-toggle" aria-hidden="true">
+                            <span class="icon-when-active">{{ icons.icon('pause') }}</span>
+                            <span class="icon-when-inactive">{{ icons.icon('play') }}</span>
+                        </span>
+                        <span class="button-label" data-button-label>{{ 'runtime_index.pause_polling'|trans }}</span>
+                    </button>
+                    <span class="polling-indicator" data-runtime-loader hidden>
+                        <span class="polling-spinner" aria-hidden="true"></span>
+                        <span>{{ 'runtime_index.polling'|trans }}</span>
+                    </span>
+                    <span class="runtime-refresh" data-runtime-refresh>{{ 'runtime_index.waiting'|trans }}</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="detail-message detail-message-error" data-runtime-error hidden></section>
+
+        <section class="runtime-overview-grid" data-runtime-summary>
+            <article class="runtime-overview-card">
+                <div class="runtime-overview-label">{{ 'runtime_index.backlog_count'|trans }}</div>
+                <div class="runtime-overview-value">-</div>
+            </article>
+            <article class="runtime-overview-card">
+                <div class="runtime-overview-label">{{ 'runtime_index.in_flight_count'|trans }}</div>
+                <div class="runtime-overview-value">-</div>
+            </article>
+            <article class="runtime-overview-card">
+                <div class="runtime-overview-label">{{ 'runtime_index.consumer_count'|trans }}</div>
+                <div class="runtime-overview-value">-</div>
+            </article>
+            <article class="runtime-overview-card">
+                <div class="runtime-overview-label">{{ 'runtime_index.active_lock_count'|trans }}</div>
+                <div class="runtime-overview-value">-</div>
+            </article>
+            <article class="runtime-overview-card">
+                <div class="runtime-overview-label">{{ 'runtime_index.oldest_pending_age'|trans }}</div>
+                <div class="runtime-overview-value">-</div>
+            </article>
+        </section>
+
+        <section class="section-card">
+            <div class="section-heading">
+                <div>
+                    <h2 class="section-title">{{ 'runtime_index.queue_title'|trans }}</h2>
+                </div>
+            </div>
+
+            <div class="workflow-definition-groups workflow-definition-summary" data-runtime-queue>
+                <section class="definition-block definition-block-compact">
+                    <div class="definition-label">{{ 'runtime_index.transport_name'|trans }}</div>
+                    <div class="definition-inline-list">
+                        <div class="definition-inline-item">
+                            <span class="definition-inline-value">fluxx</span>
+                        </div>
+                    </div>
+                </section>
+                <section class="definition-block definition-block-compact">
+                    <div class="definition-label">{{ 'runtime_index.redis_stream'|trans }}</div>
+                    <div class="definition-inline-list">
+                        <div class="definition-inline-item">
+                            <span class="definition-inline-value">-</span>
+                        </div>
+                    </div>
+                </section>
+                <section class="definition-block definition-block-compact">
+                    <div class="definition-label">{{ 'runtime_index.redis_group'|trans }}</div>
+                    <div class="definition-inline-list">
+                        <div class="definition-inline-item">
+                            <span class="definition-inline-value">-</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="section-card">
+            <div class="section-heading">
+                <div>
+                    <h2 class="section-title">{{ 'runtime_index.active_locks_title'|trans }}</h2>
+                </div>
+            </div>
+
+            <section class="workflow-list">
+                <table>
+                    <colgroup>
+                        <col style="width: 24%">
+                        <col style="width: 16%">
+                        <col style="width: 16%">
+                        <col style="width: 24%">
+                        <col style="width: 20%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>{{ 'runtime_index.lock_workflow'|trans }}</th>
+                            <th>{{ 'runtime_index.lock_run'|trans }}</th>
+                            <th>{{ 'runtime_index.lock_scope'|trans }}</th>
+                            <th>{{ 'runtime_index.lock_key'|trans }}</th>
+                            <th>{{ 'runtime_index.lock_acquired'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody data-runtime-locks>
+                        <tr>
+                            <td colspan="5" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </section>
+
+        <section class="section-card">
+            <div class="section-heading">
+                <div>
+                    <h2 class="section-title">{{ 'runtime_index.workers_title'|trans }}</h2>
+                </div>
+            </div>
+
+            <section class="workflow-list">
+                <table>
+                    <colgroup>
+                        <col style="width: 24%">
+                        <col style="width: 12%">
+                        <col style="width: 8%">
+                        <col style="width: 34%">
+                        <col style="width: 10%">
+                        <col style="width: 12%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>{{ 'runtime_index.worker_name'|trans }}</th>
+                            <th>{{ 'runtime_index.worker_state'|trans }}</th>
+                            <th>{{ 'runtime_index.worker_pending'|trans }}</th>
+                            <th>{{ 'runtime_index.worker_current'|trans }}</th>
+                            <th>{{ 'runtime_index.worker_runtime'|trans }}</th>
+                            <th>{{ 'runtime_index.worker_last_seen'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody data-runtime-workers>
+                        <tr>
+                            <td colspan="6" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </section>
+
+        <section class="section-card">
+            <div class="section-heading">
+                <div>
+                    <h2 class="section-title">{{ 'runtime_index.messages_title'|trans }}</h2>
+                </div>
+            </div>
+
+            <section class="workflow-list">
+                <table class="runtime-messages-table">
+                    <colgroup>
+                        <col style="width: 13%">
+                        <col style="width: 11%">
+                        <col style="width: 22%">
+                        <col style="width: 16%">
+                        <col style="width: 14%">
+                        <col style="width: 10%">
+                        <col style="width: 14%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>{{ 'runtime_index.message_run'|trans }}</th>
+                            <th>{{ 'runtime_index.message_state'|trans }}</th>
+                            <th>{{ 'runtime_index.message_workflow'|trans }}</th>
+                            <th>{{ 'runtime_index.message_step'|trans }}</th>
+                            <th>{{ 'runtime_index.message_consumer'|trans }}</th>
+                            <th>{{ 'runtime_index.message_delivery'|trans }}</th>
+                            <th>{{ 'runtime_index.message_age'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody data-runtime-messages>
+                        <tr>
+                            <td colspan="7" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </section>
+    </main>
+</body>
+</html>

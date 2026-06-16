@@ -1,0 +1,61 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<div class="fluxx-topbar">
+    <div class="fluxx-topbar-main">
+        <a href="{{ path('fluxx_workflow_index') }}" class="fluxx-brand" aria-label="Fluxx">
+            <img
+                src="{{ path('fluxx_logo_asset', {v: '20260616-logo'}) }}"
+                alt="Fluxx"
+                class="fluxx-brand-logo"
+            >
+        </a>
+
+        <nav class="fluxx-nav" aria-label="{{ 'navigation.label'|trans }}">
+            <a
+                href="{{ path('fluxx_workflow_index') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_workflow_index' ? ' is-active' : '' }}"
+            >
+                {{ 'navigation.workflows'|trans }}
+            </a>
+            <a
+                href="{{ path('fluxx_runtime_index') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_runtime_index' ? ' is-active' : '' }}"
+            >
+                {{ 'navigation.runtime'|trans }}
+            </a>
+            <a
+                href="{{ path('fluxx_user_index') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_user_index' ? ' is-active' : '' }}"
+            >
+                {{ 'navigation.users'|trans }}
+            </a>
+        </nav>
+    </div>
+
+    <div class="fluxx-topbar-actions">
+        <button
+            type="button"
+            class="fluxx-theme-toggle"
+            data-theme-toggle
+            data-label-light="{{ 'navigation.theme_light'|trans }}"
+            data-label-dark="{{ 'navigation.theme_dark'|trans }}"
+            aria-label="{{ 'navigation.theme_toggle'|trans }}"
+        >
+            <span class="button-icon button-icon-toggle" aria-hidden="true">
+                <span class="icon-when-active">{{ icons.icon('sun') }}</span>
+                <span class="icon-when-inactive">{{ icons.icon('moon') }}</span>
+            </span>
+            <span class="button-label" data-theme-toggle-label>{{ 'navigation.theme_toggle'|trans }}</span>
+        </button>
+
+        {% if app.user %}
+            <a
+                href="{{ path('fluxx_logout') }}"
+                class="fluxx-logout"
+            >
+                <span class="button-icon" aria-hidden="true">{{ icons.icon('log-out') }}</span>
+                <span class="button-label">{{ 'navigation.logout'|trans }}</span>
+            </a>
+        {% endif %}
+    </div>
+</div>

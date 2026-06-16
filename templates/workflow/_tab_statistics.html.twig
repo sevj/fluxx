@@ -1,0 +1,51 @@
+{% trans_default_domain 'fluxx' %}
+<div class="section-heading">
+    <div>
+        <h2 class="section-title">{{ 'workflow_show.statistics_title'|trans }}</h2>
+        <p class="subtitle section-subtitle">{{ 'workflow_show.statistics_subtitle'|trans }}</p>
+    </div>
+    <div class="statistics-controls">
+        {% for range in workflow.statistics.ranges %}
+            <a href="{{ path('fluxx_workflow_tab_show', {'code': workflow.code, 'tab': 'statistics', 'page': workflow.executionPage.currentPage, 'range': range.value}) }}" data-tab-nav="statistics" class="statistics-range{{ range.selected ? ' is-active' : '' }}">
+                {{ range.labelKey|trans }}
+            </a>
+        {% endfor %}
+    </div>
+</div>
+
+{% if workflow.statistics.isEmpty %}
+    <section class="empty">
+        {{ 'workflow_show.statistics_empty'|trans }}
+    </section>
+{% else %}
+    <div class="statistics-summary">
+        <div class="statistics-summary-item">
+            <span class="statistics-summary-label">{{ 'workflow_show.executions_total'|trans }}</span>
+            <span class="statistics-summary-value">{{ workflow.statistics.executionTotal }}</span>
+        </div>
+        <div class="statistics-summary-item statistics-summary-item-error">
+            <span class="statistics-summary-label">{{ 'workflow_show.errors_total'|trans }}</span>
+            <span class="statistics-summary-value">{{ workflow.statistics.errorTotal }}</span>
+        </div>
+    </div>
+
+    <div class="statistics-chart">
+        <div class="statistics-y-axis">
+            {% for tick in workflow.statistics.yAxisTicks %}
+                <span>{{ tick }}</span>
+            {% endfor %}
+        </div>
+
+        <div class="statistics-bars">
+            {% for point in workflow.statistics.points %}
+                <div class="statistics-bar-group">
+                    <div class="statistics-bar-stage">
+                        <div class="statistics-bar statistics-bar-executions" style="height: {{ point.executionHeightPercent }}%;" title="{{ point.label }}: {{ point.executionCount }} executions"></div>
+                        <div class="statistics-bar statistics-bar-errors" style="height: {{ point.errorHeightPercent }}%;" title="{{ point.label }}: {{ point.errorCount }} errors"></div>
+                    </div>
+                    <div class="statistics-axis-label">{{ point.axisLabel }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}

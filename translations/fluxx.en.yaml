@@ -1,0 +1,284 @@
+navigation:
+    label: Fluxx navigation
+    users: Users
+    workflows: Workflows
+    runtime: Runtime
+    theme_toggle: Toggle color theme
+    theme_light: Light mode
+    theme_dark: Dark mode
+    logout: Logout
+
+login:
+    title: Fluxx login
+    heading: Sign in
+    subtitle: Authenticate with a Fluxx user account to access the back office.
+    email: Email
+    password: Password
+    submit: Sign in
+    error: Invalid credentials.
+
+workflow_index:
+    title: Workflows
+    heading: Workflows
+    subtitle: Configured workflows are discovered from the host Symfony application and listed here.
+    count: Showing %from%-%to% of %total% workflows
+    empty: No workflow is currently registered in the application.
+    empty_search: No workflow matches "%query%".
+    search_label: Search workflows
+    search_placeholder: Search by name, code or system
+    search_submit: Search
+    search_reset: Reset
+    workflow: Workflow
+    source_system: Source
+    target_system: Target
+    last_execution: Last execution
+    execution_count: Executions
+    error_count: Errors
+    last_error: Last error
+    never: Never
+    no_error: No error
+
+workflow_show:
+    title: Workflow details
+    back: Back to workflows
+    definition_overline: Definition
+    definition_title: Workflow definition
+    systems_group: Systems
+    steps_group: Schema
+    executions_group: Executions
+    tabs_label: Workflow detail sections
+    tab_steps: Schema
+    tab_executions: Executions
+    tab_statistics: Statistics
+    tab_loading: Loading tab content
+    tab_error: Unable to load this tab.
+    loading: Loading executions
+    waiting: Waiting for first refresh
+    state_live: Live
+    state_error: Error
+    state_offline: Offline
+    pause_polling: Pause polling
+    resume_polling: Resume polling
+    polling: Refreshing
+    refresh_failed: Execution refresh failed
+    source_system: Source system
+    target_system: Target system
+    execution_count: Executions
+    error_count: Errors
+    last_execution: Last execution
+    last_error: Last error
+    never: Never
+    no_error: No error
+    executions_overline: Runtime
+    executions_title: Latest executions
+    execution_count_page: Showing %from%-%to% of %total% executions
+    executions_empty: No execution has been recorded for this workflow yet.
+    execution_search_placeholder: Search by run id, trigger or error
+    execution_filter_search_label: Search
+    execution_filter_status_label: Status
+    execution_filter_status_all: All statuses
+    execution_filter_errors_label: Errors
+    execution_filter_errors_all: All runs
+    execution_filter_errors_with: With errors
+    execution_filter_errors_without: Without errors
+    execution_filter_from_label: From
+    execution_filter_to_label: To
+    execution_apply_filters: Apply filters
+    execution_reset_filters: Reset
+    run: Run
+    trigger: Trigger
+    status: Status
+    step_statuses: Step statuses
+    dates: Dates
+    created_at: Created
+    started_at: Started
+    finished_at: Finished
+    step_counts_compact: '%success% ok / %errors% err'
+    step_runtime_compact: '%duration% ms - %memory% MB'
+    lock_scope: Lock scope
+    step_idempotent: Idempotent
+    step_deduplicated: 'Deduplicated from %runId%'
+    relaunch_run: Relaunch run
+    relaunch_from: 'Relaunched from %runId% (%mode%)'
+    not_started: Not started
+    not_finished: Not finished
+    statistics_overline: Statistics
+    statistics_title: Statistics
+    statistics_subtitle: Execution volume and errors over the selected period.
+    statistics_empty: No execution has been recorded in the selected period.
+    executions_total: Executions
+    errors_total: Errors
+    range_week: Last week
+    range_month: Last month
+    range_year: Last year
+
+workflow_status:
+    pending: Pending
+    relaunched: Relaunched
+    retrying: Retrying
+    running: Running
+    completed: Completed
+    failed: Failed
+    partially_failed: Partially failed
+
+workflow_relaunch_mode:
+    full: Full run
+    step: From step
+    branch: Single branch
+
+workflow_error_category:
+    technical: Technical
+    business: Business
+
+workflow_lock_scope:
+    workflow: Workflow
+    workflow_source: Workflow + source
+    workflow_source_target: Workflow + source/target
+    workflow_business_partition: Workflow + business partition
+
+step_type:
+    read: Read
+    splitter: Splitter
+    transform: Transform
+    write: Write
+    linker: Linker
+
+step_run_show:
+    title: Step run details
+    back: Back to workflow
+    overview_overline: Execution
+    overview_title: Step run overview
+    workflow_group: Workflow
+    step_group: Step
+    execution_group: Execution
+    workflow: Workflow
+    run: Run
+    trigger: Trigger
+    step_type: Step type
+    workflow_status: Workflow status
+    relaunch: Relaunch
+    relaunch_value: 'From %runId% (%mode%)'
+    lock_scope: Lock scope
+    lock_key: Lock key
+    step_status: Step status
+    source_system: Source system
+    target_system: Target system
+    processed_count: Processed
+    success_count: Succeeded
+    error_count: Errors
+    duration: Duration
+    memory_peak: Peak memory
+    retry_count: Retries
+    last_retry_at: Last retry
+    next_retry_at: Next retry
+    created_at: Created
+    started_at: Started
+    finished_at: Finished
+    idempotence_key: Idempotence key
+    deduplication_status: Deduplication
+    deduplication_source: Dedup source
+    deduplication_none: None
+    deduplication_applied: Applied
+    deduplication_deduplicated: Deduplicated
+    deduplication_source_value: 'Run %runId% / step %stepCode%'
+    not_started: Not started
+    not_finished: Not finished
+    not_available: Not available
+    metadata_overline: Metadata
+    metadata_title: Step run metadata
+    metadata_empty: No metadata is stored for this step run.
+    payloads_overline: Payloads
+    payloads_title: Step payloads
+    input_payloads: Input payloads
+    output_payloads: Output payloads
+    input_payloads_empty: No input payload is available for this step run.
+    output_payloads_empty: No output payload is available for this step run.
+    payload_sequence: 'Sequence %sequence%'
+    payload_records: '%count% records'
+    relaunch_step: Relaunch from step
+    manual_title: Manual operations
+    manual_subtitle: Confirm the relaunch explicitly before resetting downstream execution for this step.
+    reason_label: Operator reason
+    reason_placeholder: Why are you relaunching this step?
+    confirm_relaunch: I confirm that this step should be relaunched from here.
+
+user_index:
+    title: Users
+    heading: Users
+    subtitle: Accounts created from the command line are listed here.
+    count: Showing %from%-%to% of %total% users
+    empty: No Fluxx user exists yet.
+    empty_search: No user matches "%query%".
+    search_label: Search users
+    search_placeholder: Search by email or display name
+    search_submit: Search
+    search_reset: Reset
+    email: Email
+    display_name: Display name
+    roles: Roles
+    status: Status
+    created_at: Created
+    enabled: Enabled
+    disabled: Disabled
+    none: None
+
+runtime_index:
+    title: Runtime
+    heading: Runtime
+    subtitle: Monitor the live state of the fluxx worker queue and the workflow steps currently waiting or running.
+    loading: Loading runtime snapshot
+    waiting: Waiting for first snapshot
+    state_live: Live
+    state_error: Error
+    state_offline: Offline
+    polling: Refreshing
+    pause_polling: Pause polling
+    resume_polling: Resume polling
+    refresh_failed: Snapshot request failed
+    backlog_count: Backlog
+    in_flight_count: In flight
+    consumer_count: Consumers
+    active_lock_count: Active locks
+    oldest_pending_age: Oldest pending
+    queue_title: Queue
+    active_locks_title: Active workflow locks
+    transport_name: Transport
+    redis_stream: Redis stream
+    redis_group: Redis group
+    workers_title: Workers
+    workers_empty: No active consumer was detected.
+    worker_name: Worker
+    worker_state: State
+    worker_pending: Pending
+    worker_current: Current message
+    worker_runtime: Runtime
+    worker_idle: Idle
+    worker_last_seen: Last seen
+    worker_state_processing: Processing
+    worker_state_active: Active
+    worker_state_idle: Idle
+    worker_state_stopped: Stopped
+    worker_current_empty: No message is currently being handled.
+    worker_message: Message
+    active_locks_empty: No active workflow lock was detected.
+    lock_workflow: Workflow
+    lock_run: Run
+    lock_scope: Scope
+    lock_key: Lock key
+    lock_acquired: Acquired
+    messages_title: Live messages
+    messages_empty: No message is currently visible in the fluxx queue.
+    message_run: Run
+    message_state: State
+    message_state_queued: Queued
+    message_state_in_flight: In flight
+    message_workflow: Workflow
+    message_step: Step
+    message_consumer: Consumer
+    message_delivery: Delivery
+    message_age: Age
+
+pagination:
+    label: Workflow pagination
+    previous: Previous
+    next: Next

@@ -1,0 +1,133 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'user_index.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <header class="header">
+            <div>
+                <h1 class="title">{{ 'user_index.heading'|trans }}</h1>
+            </div>
+            <div class="header-tools">
+                <form method="get" class="search-form">
+                    <label class="search-label" for="user-search">{{ 'user_index.search_label'|trans }}</label>
+                    <input
+                        id="user-search"
+                        type="search"
+                        name="q"
+                        value="{{ searchQuery }}"
+                        class="search-input"
+                        placeholder="{{ 'user_index.search_placeholder'|trans }}"
+                    >
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('search') }}</span>
+                        <span class="button-label">{{ 'user_index.search_submit'|trans }}</span>
+                    </button>
+                    {% if searchQuery %}
+                        <a href="{{ path('fluxx_user_index') }}" class="secondary-button">
+                            <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                            <span class="button-label">{{ 'user_index.search_reset'|trans }}</span>
+                        </a>
+                    {% endif %}
+                </form>
+                <div class="count">
+                    {{ 'user_index.count'|trans({
+                        '%from%': userPage.firstItemNumber,
+                        '%to%': userPage.lastItemNumber,
+                        '%total%': userPage.totalItems
+                    }) }}
+                </div>
+            </div>
+        </header>
+
+        {% if userPage.items is empty %}
+            <section class="empty">
+                {{ searchQuery ? 'user_index.empty_search'|trans({'%query%': searchQuery}) : 'user_index.empty'|trans }}
+            </section>
+        {% else %}
+            <section class="workflow-list">
+                <table>
+                    <colgroup>
+                        <col style="width: 34%">
+                        <col style="width: 18%">
+                        <col style="width: 22%">
+                        <col style="width: 14%">
+                        <col style="width: 12%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>{{ 'user_index.email'|trans }}</th>
+                            <th>{{ 'user_index.display_name'|trans }}</th>
+                            <th>{{ 'user_index.roles'|trans }}</th>
+                            <th>{{ 'user_index.status'|trans }}</th>
+                            <th>{{ 'user_index.created_at'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in userPage.items %}
+                            <tr>
+                                <td data-label="{{ 'user_index.email'|trans }}">{{ user.email }}</td>
+                                <td data-label="{{ 'user_index.display_name'|trans }}">{{ user.displayName ?: 'user_index.none'|trans }}</td>
+                                <td data-label="{{ 'user_index.roles'|trans }}">
+                                    <span class="role-list">{{ user.roles|join(', ') }}</span>
+                                </td>
+                                <td data-label="{{ 'user_index.status'|trans }}">
+                                    <span class="status-chip{{ user.enabled ? ' is-enabled' : ' is-disabled' }}">
+                                        {{ user.enabled ? 'user_index.enabled'|trans : 'user_index.disabled'|trans }}
+                                    </span>
+                                </td>
+                                <td data-label="{{ 'user_index.created_at'|trans }}">
+                                    <span class="metric-value">{{ user.createdAt|date('Y-m-d H:i') }}</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            {% if userPage.totalPages > 1 %}
+                <nav class="pagination" aria-label="{{ 'pagination.label'|trans }}">
+                    <a
+                        href="{{ path('fluxx_user_index', {'page': userPage.previousPage, 'q': searchQuery}) }}"
+                        class="pagination-link{{ not userPage.hasPreviousPage ? ' is-disabled' : '' }}"
+                        {{ not userPage.hasPreviousPage ? 'aria-disabled="true"' : '' }}
+                    >
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                        <span class="button-label">{{ 'pagination.previous'|trans }}</span>
+                    </a>
+
+                    <div class="pagination-pages">
+                        {% for pageNumber in userPage.pages %}
+                            <a
+                                href="{{ path('fluxx_user_index', {'page': pageNumber, 'q': searchQuery}) }}"
+                                class="pagination-link{{ pageNumber == userPage.currentPage ? ' is-active' : '' }}"
+                            >
+                                {{ pageNumber }}
+                            </a>
+                        {% endfor %}
+                    </div>
+
+                    <a
+                        href="{{ path('fluxx_user_index', {'page': userPage.nextPage, 'q': searchQuery}) }}"
+                        class="pagination-link{{ not userPage.hasNextPage ? ' is-disabled' : '' }}"
+                        {{ not userPage.hasNextPage ? 'aria-disabled="true"' : '' }}
+                    >
+                        <span class="button-label">{{ 'pagination.next'|trans }}</span>
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
+                    </a>
+                </nav>
+            {% endif %}
+        {% endif %}
+    </main>
+</body>
+</html>

@@ -1,0 +1,24 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    _instanceof:
+        Fluxx\Workflow\WorkflowInterface:
+            tags: ['fluxx.workflow']
+        Fluxx\StepType\StepTypeProviderInterface:
+            tags: ['fluxx.step_type_provider']
+
+    Fluxx\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/FluxxBundle.php'
+
+    Fluxx\Workflow\SynchronizationRegistry:
+        arguments:
+            $workflows: !tagged_iterator { tag: fluxx.workflow }
+
+    Fluxx\StepType\StepTypeRegistry:
+        arguments:
+            $providers: !tagged_iterator { tag: fluxx.step_type_provider }

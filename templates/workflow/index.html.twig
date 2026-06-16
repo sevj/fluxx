@@ -1,0 +1,157 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'workflow_index.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <script src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <header class="header">
+            <div>
+                <h1 class="title">{{ 'workflow_index.heading'|trans }}</h1>
+            </div>
+            <div class="header-tools">
+                <form method="get" class="search-form">
+                    <label class="search-label" for="workflow-search">{{ 'workflow_index.search_label'|trans }}</label>
+                    <input
+                        id="workflow-search"
+                        type="search"
+                        name="q"
+                        value="{{ searchQuery }}"
+                        class="search-input"
+                        placeholder="{{ 'workflow_index.search_placeholder'|trans }}"
+                    >
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('search') }}</span>
+                        <span class="button-label">{{ 'workflow_index.search_submit'|trans }}</span>
+                    </button>
+                    {% if searchQuery %}
+                        <a href="{{ path('fluxx_workflow_index') }}" class="secondary-button">
+                            <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                            <span class="button-label">{{ 'workflow_index.search_reset'|trans }}</span>
+                        </a>
+                    {% endif %}
+                </form>
+                <div class="count">
+                    {{ 'workflow_index.count'|trans({
+                        '%from%': workflowPage.firstItemNumber,
+                        '%to%': workflowPage.lastItemNumber,
+                        '%total%': workflowPage.totalItems
+                    }) }}
+                </div>
+            </div>
+        </header>
+
+        {% if workflowPage.items is empty %}
+            <section class="empty">
+                {{ searchQuery ? 'workflow_index.empty_search'|trans({'%query%': searchQuery}) : 'workflow_index.empty'|trans }}
+            </section>
+        {% else %}
+            <section class="workflow-list">
+                <table>
+                    <colgroup>
+                        <col style="width: 22%">
+                        <col style="width: 14%">
+                        <col style="width: 14%">
+                        <col style="width: 10%">
+                        <col style="width: 10%">
+                        <col style="width: 16%">
+                        <col style="width: 14%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>{{ 'workflow_index.workflow'|trans }}</th>
+                            <th>{{ 'workflow_index.source_system'|trans }}</th>
+                            <th>{{ 'workflow_index.target_system'|trans }}</th>
+                            <th>{{ 'workflow_index.execution_count'|trans }}</th>
+                            <th>{{ 'workflow_index.error_count'|trans }}</th>
+                            <th>{{ 'workflow_index.last_execution'|trans }}</th>
+                            <th>{{ 'workflow_index.last_error'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for workflow in workflowPage.items %}
+                            <tr class="clickable-row" data-row-href="{{ path('fluxx_workflow_show', {'code': workflow.code}) }}" tabindex="0" role="link">
+                                <td data-label="{{ 'workflow_index.workflow'|trans }}">
+                                    <a href="{{ path('fluxx_workflow_show', {'code': workflow.code}) }}" class="workflow-link">
+                                        <div class="workflow-name">{{ workflow.name }}</div>
+                                    </a>
+                                    <div class="item-code">{{ workflow.code }}</div>
+                                </td>
+                                <td data-label="{{ 'workflow_index.source_system'|trans }}">
+                                    <span class="system-chip system-chip-source">{{ workflow.sourceSystem }}</span>
+                                </td>
+                                <td data-label="{{ 'workflow_index.target_system'|trans }}">
+                                    <span class="system-chip system-chip-target">{{ workflow.targetSystem }}</span>
+                                </td>
+                                <td data-label="{{ 'workflow_index.execution_count'|trans }}">
+                                    <span class="execution-count">{{ workflow.executionCount }}</span>
+                                </td>
+                                <td data-label="{{ 'workflow_index.error_count'|trans }}">
+                                    <span class="error-count">{{ workflow.errorCount }}</span>
+                                </td>
+                                <td data-label="{{ 'workflow_index.last_execution'|trans }}">
+                                    {% if workflow.lastExecutionAt %}
+                                        <span class="metric-value">{{ workflow.lastExecutionAt|date('Y-m-d H:i') }}</span>
+                                    {% else %}
+                                        <span class="metric-empty">{{ 'workflow_index.never'|trans }}</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="{{ 'workflow_index.last_error'|trans }}">
+                                    {% if workflow.lastErrorAt %}
+                                        <span class="metric-value metric-error">{{ workflow.lastErrorAt|date('Y-m-d H:i') }}</span>
+                                    {% else %}
+                                        <span class="metric-empty">{{ 'workflow_index.no_error'|trans }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            {% if workflowPage.totalPages > 1 %}
+                <nav class="pagination" aria-label="{{ 'pagination.label'|trans }}">
+                    <a
+                        href="{{ path('fluxx_workflow_index', {'page': workflowPage.previousPage, 'q': searchQuery}) }}"
+                        class="pagination-link{{ not workflowPage.hasPreviousPage ? ' is-disabled' : '' }}"
+                        {{ not workflowPage.hasPreviousPage ? 'aria-disabled="true"' : '' }}
+                    >
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                        <span class="button-label">{{ 'pagination.previous'|trans }}</span>
+                    </a>
+
+                    <div class="pagination-pages">
+                        {% for pageNumber in workflowPage.pages %}
+                            <a
+                                href="{{ path('fluxx_workflow_index', {'page': pageNumber, 'q': searchQuery}) }}"
+                                class="pagination-link{{ pageNumber == workflowPage.currentPage ? ' is-active' : '' }}"
+                            >
+                                {{ pageNumber }}
+                            </a>
+                        {% endfor %}
+                    </div>
+
+                    <a
+                        href="{{ path('fluxx_workflow_index', {'page': workflowPage.nextPage, 'q': searchQuery}) }}"
+                        class="pagination-link{{ not workflowPage.hasNextPage ? ' is-disabled' : '' }}"
+                        {{ not workflowPage.hasNextPage ? 'aria-disabled="true"' : '' }}
+                    >
+                        <span class="button-label">{{ 'pagination.next'|trans }}</span>
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
+                    </a>
+                </nav>
+            {% endif %}
+        {% endif %}
+    </main>
+</body>
+</html>

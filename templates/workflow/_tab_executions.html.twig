@@ -1,0 +1,273 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<div class="section-heading">
+    <div>
+        <h2 class="section-title">{{ 'workflow_show.executions_title'|trans }}</h2>
+    </div>
+    <div class="count">
+        {{ 'workflow_show.execution_count_page'|trans({
+            '%from%': workflow.executionPage.firstItemNumber,
+            '%to%': workflow.executionPage.lastItemNumber,
+            '%total%': workflow.executionPage.totalItems
+        }) }}
+    </div>
+</div>
+
+<form
+    method="get"
+    action="{{ path('fluxx_workflow_tab_show', {'code': workflow.code, 'tab': 'executions'}) }}"
+    class="run-filter-form"
+    data-tab-form="executions"
+>
+    <div class="run-filter-grid run-filter-grid-executions">
+        <label class="run-filter-field">
+            <span class="run-filter-label">{{ 'workflow_show.execution_filter_search_label'|trans }}</span>
+            <input
+                type="search"
+                name="q"
+                value="{{ executionFilters.searchQuery }}"
+                class="search-input"
+                placeholder="{{ 'workflow_show.execution_search_placeholder'|trans }}"
+            >
+        </label>
+        <label class="run-filter-field">
+            <span class="run-filter-label">{{ 'workflow_show.execution_filter_status_label'|trans }}</span>
+            <select name="status" class="search-input">
+                <option value="">{{ 'workflow_show.execution_filter_status_all'|trans }}</option>
+                {% for status in ['pending', 'relaunched', 'retrying', 'running', 'completed', 'failed', 'partially_failed'] %}
+                    <option value="{{ status }}"{{ executionFilters.status == status ? ' selected' : '' }}>
+                        {{ ('workflow_status.' ~ status)|trans }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="run-filter-field">
+            <span class="run-filter-label">{{ 'workflow_show.execution_filter_errors_label'|trans }}</span>
+            <select name="errors" class="search-input">
+                <option value="all"{{ executionFilters.errorPresence == 'all' ? ' selected' : '' }}>{{ 'workflow_show.execution_filter_errors_all'|trans }}</option>
+                <option value="with"{{ executionFilters.errorPresence == 'with' ? ' selected' : '' }}>{{ 'workflow_show.execution_filter_errors_with'|trans }}</option>
+                <option value="without"{{ executionFilters.errorPresence == 'without' ? ' selected' : '' }}>{{ 'workflow_show.execution_filter_errors_without'|trans }}</option>
+            </select>
+        </label>
+        <label class="run-filter-field">
+            <span class="run-filter-label">{{ 'workflow_show.execution_filter_from_label'|trans }}</span>
+            <input type="date" name="from" value="{{ executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : '' }}" class="search-input">
+        </label>
+        <label class="run-filter-field">
+            <span class="run-filter-label">{{ 'workflow_show.execution_filter_to_label'|trans }}</span>
+            <input type="date" name="to" value="{{ executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : '' }}" class="search-input">
+        </label>
+        <input type="hidden" name="range" value="{{ workflow.statistics.selectedRange }}">
+    </div>
+    <div class="run-filter-actions">
+        <button type="submit" class="secondary-button">
+            <span class="button-icon" aria-hidden="true">{{ icons.icon('search') }}</span>
+            <span class="button-label">{{ 'workflow_show.execution_apply_filters'|trans }}</span>
+        </button>
+        {% if executionFilters.hasActiveFilters %}
+            <a
+                href="{{ path('fluxx_workflow_tab_show', {'code': workflow.code, 'tab': 'executions', 'range': workflow.statistics.selectedRange}) }}"
+                data-tab-nav="executions"
+                class="secondary-button"
+            >
+                <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                <span class="button-label">{{ 'workflow_show.execution_reset_filters'|trans }}</span>
+            </a>
+        {% endif %}
+    </div>
+</form>
+
+{% if workflow.executionPage.items is empty %}
+    <section class="empty">
+        {{ 'workflow_show.executions_empty'|trans }}
+    </section>
+{% else %}
+    <section class="workflow-list">
+        <table class="workflow-table-compact">
+            <colgroup>
+                <col style="width: 11%">
+                <col style="width: 7%">
+                <col style="width: 8%">
+                <col style="width: 59%">
+                <col style="width: 15%">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>{{ 'workflow_show.run'|trans }}</th>
+                    <th>{{ 'workflow_show.trigger'|trans }}</th>
+                    <th>{{ 'workflow_show.status'|trans }}</th>
+                    <th>{{ 'workflow_show.step_statuses'|trans }}</th>
+                    <th>{{ 'workflow_show.dates'|trans }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for execution in workflow.executionPage.items %}
+                    <tr>
+                        <td data-label="{{ 'workflow_show.run'|trans }}" class="execution-cell-run">
+                            <div class="run-id">{{ execution.runId }}</div>
+                        </td>
+                        <td data-label="{{ 'workflow_show.trigger'|trans }}" class="execution-cell-trigger">
+                            <span class="system-chip">{{ execution.trigger }}</span>
+                        </td>
+                        <td data-label="{{ 'workflow_show.status'|trans }}" class="execution-cell-status">
+                            <span class="status-badge status-badge-{{ execution.status|replace({'_': '-'}) }}">
+                                {{ ('workflow_status.' ~ execution.status)|trans }}
+                            </span>
+                        </td>
+                        <td data-label="{{ 'workflow_show.step_statuses'|trans }}">
+                            <div class="execution-step-flow-scroll">
+                                <div class="execution-step-flow" style="--workflow-graph-columns: {{ workflow.graphColumnCount }}; --workflow-graph-rows: {{ workflow.graphRowCount }};">
+                                    <svg class="execution-step-flow-lines" viewBox="{{ workflow.graphViewBox }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                                        <defs>
+                                            <marker id="execution-step-flow-arrow-{{ execution.runId }}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
+                                                <path d="M 0 0 L 10 5 L 0 10 z"></path>
+                                            </marker>
+                                        </defs>
+                                        {% for edge in workflow.graphEdges %}
+                                            <path d="{{ edge.path }}" marker-end="url(#execution-step-flow-arrow-{{ execution.runId }})"></path>
+                                        {% endfor %}
+                                    </svg>
+                                    {% for row in workflow.stepRows %}
+                                        <div class="execution-step-flow-column execution-step-flow-column-{{ row.layout }}">
+                                            {% if row.isBranchSplit or row.isMerge %}
+                                                <div class="execution-step-flow-connector" style="grid-column: {{ row.connectorColumnStart }} / span {{ row.connectorColumnSpan }};"></div>
+                                            {% endif %}
+                                            {% for node in row.nodes %}
+                                                {% set stepDefinition = node.step %}
+                                                {% set step = execution.stepMap[stepDefinition.code] %}
+                                                <a href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': workflow.code, 'runId': execution.runId, 'stepCode': step.code}) }}" class="step-status-link{{ row.connectsToMergeNext ? ' has-merge-next' : '' }}" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};">
+                                                    <div class="step-status-cell execution-step-card step-tone-{{ step.typeTone }} step-tone-surface"{% if step.typeToneStyle %} style="{{ step.typeToneStyle }}"{% endif %}>
+                                                        {% if step.status == 'completed' %}
+                                                            <span class="step-status-dot step-status-dot-completed" aria-label="{{ ('workflow_status.' ~ step.status)|trans }}"></span>
+                                                        {% elseif step.status == 'failed' %}
+                                                            <span class="step-status-dot step-status-dot-failed" aria-label="{{ ('workflow_status.' ~ step.status)|trans }}"></span>
+                                                        {% else %}
+                                                            <span class="step-status-capsule step-status-capsule-{{ step.status|replace({'_': '-'}) }}" title="{{ ('workflow_status.' ~ step.status)|trans }}">
+                                                                {{ ('workflow_status.' ~ step.status)|trans }}
+                                                            </span>
+                                                        {% endif %}
+                                                        <div class="step-definition-type">
+                                                            <span class="step-tone-pill" title="{{ step.typeLabel }}">{{ step.typeLabel }}</span>
+                                                        </div>
+                                                        <div class="execution-step-name" title="{{ step.name }}">{{ step.name }}</div>
+                                                        <div class="execution-step-meta">
+                                                            {% if step.deduplicationStatus == 'deduplicated' %}
+                                                                <span class="execution-step-meta-item metric-value" title="{{ 'workflow_show.step_deduplicated'|trans({'%runId%': step.deduplicatedFromRunId}) }}">
+                                                                    {{ 'workflow_show.step_deduplicated'|trans({'%runId%': step.deduplicatedFromRunId}) }}
+                                                                </span>
+                                                            {% elseif step.deduplicationStatus == 'applied' %}
+                                                                <span class="execution-step-meta-item metric-value" title="{{ 'workflow_show.step_idempotent'|trans }}">
+                                                                    {{ 'workflow_show.step_idempotent'|trans }}
+                                                                </span>
+                                                            {% endif %}
+                                                            <span class="execution-step-meta-item">
+                                                                {{ 'workflow_show.step_counts_compact'|trans({
+                                                                    '%success%': step.successCount,
+                                                                    '%errors%': step.errorCount
+                                                                }) }}
+                                                            </span>
+                                                            <span class="execution-step-meta-item">
+                                                                {% if step.durationMs is not null and step.memoryPeakBytes is not null %}
+                                                                    {{ 'workflow_show.step_runtime_compact'|trans({
+                                                                        '%duration%': step.durationMs,
+                                                                        '%memory%': ((step.memoryPeakBytes / 1048576)|round(1, 'common'))
+                                                                    }) }}
+                                                                {% elseif step.durationMs is not null %}
+                                                                    {{ step.durationMs }} ms
+                                                                {% elseif step.memoryPeakBytes is not null %}
+                                                                    {{ ((step.memoryPeakBytes / 1048576)|round(1, 'common')) }} MB
+                                                                {% else %}
+                                                                    {{ step.processedCount }} rec
+                                                                {% endif %}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </td>
+                        <td data-label="{{ 'workflow_show.dates'|trans }}" class="execution-cell-dates">
+                            <div class="execution-dates">
+                                <div class="execution-dates-item">
+                                    <span class="execution-dates-label">{{ 'workflow_show.created_at'|trans }}</span>
+                                    <span class="metric-value">{{ execution.createdAt|date('d/m H:i') }}</span>
+                                </div>
+                                <div class="execution-dates-item">
+                                    <span class="execution-dates-label">{{ 'workflow_show.started_at'|trans }}</span>
+                                    {% if execution.startedAt %}
+                                        <span class="metric-value">{{ execution.startedAt|date('d/m H:i') }}</span>
+                                    {% else %}
+                                        <span class="metric-empty">{{ 'workflow_show.not_started'|trans }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="execution-dates-item">
+                                    <span class="execution-dates-label">{{ 'workflow_show.finished_at'|trans }}</span>
+                                    {% if execution.finishedAt %}
+                                        <span class="metric-value">{{ execution.finishedAt|date('d/m H:i') }}</span>
+                                    {% else %}
+                                        <span class="metric-empty">{{ 'workflow_show.not_finished'|trans }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    {% if workflow.executionPage.totalPages > 1 %}
+        <nav class="pagination" aria-label="{{ 'pagination.label'|trans }}">
+            <a href="{{ path('fluxx_workflow_tab_show', {
+                'code': workflow.code,
+                'tab': 'executions',
+                'page': workflow.executionPage.previousPage,
+                'range': workflow.statistics.selectedRange,
+                'q': executionFilters.searchQuery,
+                'status': executionFilters.status,
+                'errors': executionFilters.errorPresence,
+                'from': executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : null,
+                'to': executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : null
+            }) }}" data-tab-nav="executions" class="pagination-link{{ not workflow.executionPage.hasPreviousPage ? ' is-disabled' : '' }}" {{ not workflow.executionPage.hasPreviousPage ? 'aria-disabled="true"' : '' }}>
+                <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                <span class="button-label">{{ 'pagination.previous'|trans }}</span>
+            </a>
+
+            <div class="pagination-pages">
+                {% for pageNumber in workflow.executionPage.pages %}
+                    <a href="{{ path('fluxx_workflow_tab_show', {
+                        'code': workflow.code,
+                        'tab': 'executions',
+                        'page': pageNumber,
+                        'range': workflow.statistics.selectedRange,
+                        'q': executionFilters.searchQuery,
+                        'status': executionFilters.status,
+                        'errors': executionFilters.errorPresence,
+                        'from': executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : null,
+                        'to': executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : null
+                    }) }}" data-tab-nav="executions" class="pagination-link{{ pageNumber == workflow.executionPage.currentPage ? ' is-active' : '' }}">
+                        {{ pageNumber }}
+                    </a>
+                {% endfor %}
+            </div>
+
+            <a href="{{ path('fluxx_workflow_tab_show', {
+                'code': workflow.code,
+                'tab': 'executions',
+                'page': workflow.executionPage.nextPage,
+                'range': workflow.statistics.selectedRange,
+                'q': executionFilters.searchQuery,
+                'status': executionFilters.status,
+                'errors': executionFilters.errorPresence,
+                'from': executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : null,
+                'to': executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : null
+            }) }}" data-tab-nav="executions" class="pagination-link{{ not workflow.executionPage.hasNextPage ? ' is-disabled' : '' }}" {{ not workflow.executionPage.hasNextPage ? 'aria-disabled="true"' : '' }}>
+                <span class="button-label">{{ 'pagination.next'|trans }}</span>
+                <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
+            </a>
+        </nav>
+    {% endif %}
+{% endif %}

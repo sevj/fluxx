@@ -1,0 +1,58 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'login.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main class="page page-login">
+        <section class="login-shell">
+            <div class="login-panel">
+                <h1 class="title">{{ 'login.heading'|trans }}</h1>
+                <p class="subtitle">{{ 'login.subtitle'|trans }}</p>
+
+                {% if error %}
+                    <div class="login-error">{{ 'login.error'|trans }}</div>
+                {% endif %}
+
+                <form method="post" class="login-form">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <label class="login-field">
+                        <span class="login-label">{{ 'login.email'|trans }}</span>
+                        <input
+                            type="email"
+                            name="_username"
+                            value="{{ last_username }}"
+                            autocomplete="username"
+                            required
+                            autofocus
+                        >
+                    </label>
+
+                    <label class="login-field">
+                        <span class="login-label">{{ 'login.password'|trans }}</span>
+                        <input
+                            type="password"
+                            name="_password"
+                            autocomplete="current-password"
+                            required
+                        >
+                    </label>
+
+                    <button type="submit" class="primary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('log-in') }}</span>
+                        <span class="button-label">{{ 'login.submit'|trans }}</span>
+                    </button>
+                </form>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

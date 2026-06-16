@@ -1,0 +1,9 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Fluxx\Workflow\Step;
+
+interface LinkerStepInterface extends ExecutableWorkflowStepInterface
+{
+}

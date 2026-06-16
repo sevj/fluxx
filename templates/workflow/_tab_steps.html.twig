@@ -1,0 +1,38 @@
+{% trans_default_domain 'fluxx' %}
+<div class="section-heading">
+    <div>
+        <h2 class="section-title">{{ 'workflow_show.steps_group'|trans }}</h2>
+    </div>
+</div>
+
+<div class="workflow-step-flow-scroll">
+    <div class="workflow-step-flow" style="--workflow-graph-columns: {{ workflow.graphColumnCount }}; --workflow-graph-rows: {{ workflow.graphRowCount }};">
+        <svg class="workflow-step-flow-lines" viewBox="{{ workflow.graphViewBox }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            <defs>
+                <marker id="workflow-step-flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z"></path>
+                </marker>
+            </defs>
+            {% for edge in workflow.graphEdges %}
+                <path d="{{ edge.path }}" marker-end="url(#workflow-step-flow-arrow)"></path>
+            {% endfor %}
+        </svg>
+        {% for row in workflow.stepRows %}
+            <div class="workflow-step-flow-row workflow-step-flow-row-{{ row.layout }}">
+                {% if row.isBranchSplit or row.isMerge %}
+                    <div class="workflow-step-flow-connector" style="grid-column: {{ row.connectorColumnStart }} / span {{ row.connectorColumnSpan }};"></div>
+                {% endif %}
+                {% for node in row.nodes %}
+                    {% set step = node.step %}
+                    <article class="step-definition-card step-definition-card-compact workflow-step-flow-card{{ row.connectsToMergeNext ? ' has-merge-next' : '' }} step-tone-{{ step.typeTone }} step-tone-surface" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}">
+                        <div class="step-definition-type">
+                            <span class="step-tone-pill" title="{{ step.typeLabel }}">{{ step.typeLabel }}</span>
+                        </div>
+                        <div class="step-definition-name step-tone-text" title="{{ step.name }}">{{ step.name }}</div>
+                        <div class="item-code" title="{{ step.code }}">{{ step.code }}</div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+</div>
