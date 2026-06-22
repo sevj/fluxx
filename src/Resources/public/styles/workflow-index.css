@@ -1692,6 +1692,7 @@ tbody tr:hover {
     align-items: center;
     column-gap: 0;
     row-gap: 0;
+    width: max-content;
     min-width: max-content;
     padding: 0;
 }
@@ -1879,6 +1880,7 @@ tbody tr:hover {
     grid-template-rows: repeat(var(--workflow-graph-rows, 1), 82px);
     column-gap: 0;
     row-gap: 0;
+    width: max-content;
     padding: 0;
 }
 

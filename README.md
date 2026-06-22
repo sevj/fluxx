@@ -113,6 +113,7 @@ Examples:
 
 ```bash
 php bin/console fluxx:workflow:run contacts --trigger=manual --batch-id=nightly-20260616
+php bin/console fluxx:workflow:run contacts --parameter offset=100 --parameter limit=25 --parameter filters='{"status":"active"}'
 php bin/console fluxx:run:list --workflow=contacts --status=failed --errors=with --page=1 --limit=20
 php bin/console fluxx:run:retry 7af0d8c3 --reason="Retry after API incident"
 php bin/console fluxx:step:retry 7af0d8c3 write_contacts --reason="Replay write step only"
