@@ -56,7 +56,9 @@ final readonly class WorkflowStepInput
         $records = [];
 
         foreach ($this->payloads as $payload) {
-            array_push($records, ...$payload->records());
+            foreach (array_values($payload->records()) as $record) {
+                $records[] = $record;
+            }
         }
 
         return $records;
@@ -70,7 +72,25 @@ final readonly class WorkflowStepInput
         $records = [];
 
         foreach ($this->payloadsFrom($stepCode) as $payload) {
-            array_push($records, ...$payload->records());
+            foreach (array_values($payload->records()) as $record) {
+                $records[] = $record;
+            }
+        }
+
+        return $records;
+    }
+
+    /**
+     * Preserve one array per upstream step source.
+     *
+     * @return array<string, array<int|string, mixed>>
+     */
+    public function groupedRecordsBySource(): array
+    {
+        $records = [];
+
+        foreach ($this->payloads as $payload) {
+            $records[$payload->sourceStepCode()] = $payload->records();
         }
 
         return $records;
