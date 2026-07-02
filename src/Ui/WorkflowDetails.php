@@ -343,6 +343,21 @@ final readonly class WorkflowDetails
     ): WorkflowGraphNodeView {
         $path = $branchPaths[$step->code()] ?? [];
 
+        if (count($step->dependsOn()) > 1 && $lanePaths !== []) {
+            $coveredRows = $this->resolveDependencyCoveredRows($step, $branchPaths, $lanePaths);
+
+            if ($coveredRows !== []) {
+                $anchorRow = (int) round(array_sum($coveredRows) / count($coveredRows));
+
+                return new WorkflowGraphNodeView(
+                    step: $step,
+                    rowStart: max(1, min($anchorRow, count($lanePaths))),
+                    columnStart: $step->level() + 1,
+                    rowSpan: 1,
+                );
+            }
+        }
+
         if ($path === [] || $lanePaths === []) {
             return new WorkflowGraphNodeView(
                 step: $step,
@@ -370,6 +385,35 @@ final readonly class WorkflowDetails
             columnStart: $step->level() + 1,
             rowSpan: count($coveredRows),
         );
+    }
+
+    /**
+     * @param array<string, list<int>> $branchPaths
+     * @param list<list<int>> $lanePaths
+     * @return list<int>
+     */
+    private function resolveDependencyCoveredRows(
+        WorkflowStepDefinitionView $step,
+        array $branchPaths,
+        array $lanePaths,
+    ): array {
+        $coveredRows = [];
+
+        foreach ($step->dependsOn() as $dependencyCode) {
+            $dependencyPath = $branchPaths[$dependencyCode] ?? null;
+
+            if ($dependencyPath === null) {
+                continue;
+            }
+
+            foreach ($lanePaths as $index => $lanePath) {
+                if ($this->isPathPrefix($dependencyPath, $lanePath)) {
+                    $coveredRows[$index + 1] = $index + 1;
+                }
+            }
+        }
+
+        return array_values($coveredRows);
     }
 
     /**

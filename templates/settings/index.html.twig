@@ -1,0 +1,100 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'settings.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <div class="page-stack">
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <section class="section-card">
+                        <div class="status-badge status-badge-{{ type == 'error' ? 'failed' : 'completed' }}">{{ message }}</div>
+                    </section>
+                {% endfor %}
+            {% endfor %}
+
+            <header class="header">
+                <div>
+                    <h1 class="title">{{ 'settings.heading'|trans }}</h1>
+                    <p class="subtitle">{{ 'settings.subtitle'|trans }}</p>
+                </div>
+            </header>
+
+            <section class="section-card settings-card">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'settings.daily_recap_title'|trans }}</h2>
+                        <p class="section-subtitle subtitle">{{ 'settings.daily_recap_description'|trans }}</p>
+                    </div>
+                </div>
+
+                <form method="post" class="operation-form settings-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.settings.daily_recap') }}">
+
+                    <div class="settings-grid">
+                        <section class="definition-block settings-toggle-card">
+                            <label class="operation-confirm settings-switch">
+                                <input type="checkbox" name="enabled" value="1" {{ dailyRecapSettings.enabled ? 'checked' : '' }}>
+                                <span>
+                                    <span class="settings-switch-title">{{ 'settings.daily_recap_enabled'|trans }}</span>
+                                    <span class="settings-help">{{ 'settings.daily_recap_enabled_help'|trans }}</span>
+                                </span>
+                            </label>
+                        </section>
+
+                        <section class="definition-block settings-toggle-card">
+                            <label class="operation-confirm settings-switch">
+                                <input type="checkbox" name="send_empty_report" value="1" {{ dailyRecapSettings.sendEmptyReport ? 'checked' : '' }}>
+                                <span>
+                                    <span class="settings-switch-title">{{ 'settings.send_empty_report'|trans }}</span>
+                                    <span class="settings-help">{{ 'settings.send_empty_report_help'|trans }}</span>
+                                </span>
+                            </label>
+                        </section>
+                    </div>
+
+                    <div class="settings-fieldset">
+                        <label class="operation-field settings-field settings-field-wide">
+                            <span class="definition-label">{{ 'settings.recipients'|trans }}</span>
+                            <textarea name="recipients" rows="5" class="operation-textarea settings-textarea" placeholder="{{ 'settings.recipients_placeholder'|trans }}">{{ dailyRecapSettings.recipients|join("\n") }}</textarea>
+                            <span class="settings-help">{{ 'settings.recipients_help'|trans }}</span>
+                        </label>
+
+                        <label class="operation-field settings-field">
+                            <span class="definition-label">{{ 'settings.sender'|trans }}</span>
+                            <input type="email" name="sender" value="{{ dailyRecapSettings.sender }}" class="search-input settings-input">
+                        </label>
+
+                        <label class="operation-field settings-field">
+                            <span class="definition-label">{{ 'settings.subject_prefix'|trans }}</span>
+                            <input type="text" name="subject_prefix" value="{{ dailyRecapSettings.subjectPrefix }}" class="search-input settings-input">
+                        </label>
+
+                        <label class="operation-field settings-field">
+                            <span class="definition-label">{{ 'settings.timezone'|trans }}</span>
+                            <input type="text" name="timezone" value="{{ dailyRecapSettings.timezone }}" class="search-input settings-input">
+                        </label>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button type="submit" class="primary-button">
+                            <span class="button-icon" aria-hidden="true">{{ icons.icon('save') }}</span>
+                            <span class="button-label">{{ 'settings.save'|trans }}</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

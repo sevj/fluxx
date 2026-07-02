@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0; padding:0; background:#0b1118; color:#edf3fb; font-family:Arial, Helvetica, sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b1118; padding:28px 12px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:860px; background:#121923; border:1px solid #34455e; border-radius:12px; overflow:hidden; box-shadow:0 18px 36px rgba(3,7,18,0.34);">
+                    <tr>
+                        <td style="height:5px; background:linear-gradient(90deg,#93c5fd,#c4b5fd,#86efac);"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:28px 30px 18px;">
+                            <div style="display:inline-block; padding:6px 10px; border-radius:999px; background:rgba(59,130,246,0.16); color:#d8ecff; border:1px solid rgba(125,211,252,0.28); font-size:12px; font-weight:700; text-transform:uppercase;">Fluxx</div>
+                            <h1 style="margin:14px 0 8px; color:#edf3fb; font-size:28px; line-height:1.15;">Daily workflow recap</h1>
+                            <p style="margin:0; color:#9bacc2; font-size:14px;">{{ recap.from|date('Y-m-d H:i') }} → {{ recap.to|date('Y-m-d H:i') }}</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0 30px 24px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td style="width:25%; padding:8px;">
+                                        <div style="padding:16px; border:1px solid #263244; border-radius:10px; background:#18212d;">
+                                            <div style="color:#9bacc2; font-size:12px; font-weight:700; text-transform:uppercase;">Runs</div>
+                                            <div style="margin-top:6px; color:#edf3fb; font-size:24px; font-weight:800;">{{ recap.totalRuns }}</div>
+                                        </div>
+                                    </td>
+                                    <td style="width:25%; padding:8px;">
+                                        <div style="padding:16px; border:1px solid #263244; border-radius:10px; background:#18212d;">
+                                            <div style="color:#9bacc2; font-size:12px; font-weight:700; text-transform:uppercase;">Processed</div>
+                                            <div style="margin-top:6px; color:#edf3fb; font-size:24px; font-weight:800;">{{ recap.processedCount }}</div>
+                                        </div>
+                                    </td>
+                                    <td style="width:25%; padding:8px;">
+                                        <div style="padding:16px; border:1px solid #263244; border-radius:10px; background:rgba(74,222,128,0.14);">
+                                            <div style="color:#86efac; font-size:12px; font-weight:700; text-transform:uppercase;">Success</div>
+                                            <div style="margin-top:6px; color:#86efac; font-size:24px; font-weight:800;">{{ recap.successCount }}</div>
+                                        </div>
+                                    </td>
+                                    <td style="width:25%; padding:8px;">
+                                        <div style="padding:16px; border:1px solid #263244; border-radius:10px; background:rgba(248,113,113,0.16);">
+                                            <div style="color:#fca5a5; font-size:12px; font-weight:700; text-transform:uppercase;">Errors</div>
+                                            <div style="margin-top:6px; color:#fca5a5; font-size:24px; font-weight:800;">{{ recap.errorCount }}</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h2 style="margin:24px 0 10px; color:#edf3fb; font-size:18px;">Status counts</h2>
+                            <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse; border:1px solid #263244; border-radius:10px; overflow:hidden;">
+                                <thead>
+                                    <tr style="background:#202b3a;">
+                                        <th align="left" style="padding:10px 12px; color:#9bacc2; font-size:12px; text-transform:uppercase;">Status</th>
+                                        <th align="right" style="padding:10px 12px; color:#9bacc2; font-size:12px; text-transform:uppercase;">Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for status, count in recap.statusCounts %}
+                                    <tr>
+                                        <td style="padding:10px 12px; border-top:1px solid #263244;"><span style="display:inline-block; padding:4px 8px; border-radius:999px; background:rgba(59,130,246,0.16); color:#d8ecff; border:1px solid rgba(125,211,252,0.28); font-size:12px; font-weight:700;">{{ status }}</span></td>
+                                        <td align="right" style="padding:10px 12px; border-top:1px solid #263244; color:#edf3fb; font-weight:700;">{{ count }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="2" style="padding:12px; border-top:1px solid #263244; color:#9bacc2;">No workflow run.</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+
+                            <h2 style="margin:24px 0 10px; color:#edf3fb; font-size:18px;">Workflows</h2>
+                            <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse; border:1px solid #263244; border-radius:10px; overflow:hidden;">
+                                <thead>
+                                    <tr style="background:#202b3a;">
+                                        <th align="left" style="padding:10px 12px; color:#9bacc2; font-size:12px; text-transform:uppercase;">Workflow</th>
+                                        <th align="right" style="padding:10px 12px; color:#9bacc2; font-size:12px; text-transform:uppercase;">Total</th>
+                                        <th align="right" style="padding:10px 12px; color:#9bacc2; font-size:12px; text-transform:uppercase;">Errors</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for workflow, stats in recap.workflowCounts %}
+                                    <tr>
+                                        <td style="padding:10px 12px; border-top:1px solid #263244; color:#edf3fb; font-weight:700;">{{ workflow }}</td>
+                                        <td align="right" style="padding:10px 12px; border-top:1px solid #263244; color:#edf3fb;">{{ stats.total }}</td>
+                                        <td align="right" style="padding:10px 12px; border-top:1px solid #263244; color:#fca5a5; font-weight:700;">{{ stats.errors }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="3" style="padding:12px; border-top:1px solid #263244; color:#9bacc2;">No workflow run.</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+
+                            <h2 style="margin:24px 0 10px; color:#edf3fb; font-size:18px;">Errors</h2>
+                            {% for run in recap.erroredRuns %}
+                                <div style="margin-bottom:8px; padding:12px; border:1px solid rgba(248,113,113,0.28); border-radius:10px; background:rgba(248,113,113,0.16); color:#fca5a5;">
+                                    <strong>{{ run.workflow }}</strong> · {{ run.status }} · {{ run.runId }}<br>
+                                    <span style="font-size:13px;">{{ run.createdAt|date('Y-m-d H:i') }} · {{ run.error ?: '-' }}</span>
+                                    {% for step in run.steps %}
+                                        <div style="margin-top:10px; padding:10px; border:1px solid rgba(248,113,113,0.22); border-radius:8px; background:rgba(11,17,24,0.32); color:#edf3fb;">
+                                            <strong>{{ step.code }}</strong> · {{ step.type }} · {{ step.status }}<br>
+                                            <span style="color:#9bacc2; font-size:12px;">
+                                                processed {{ step.processed }} · success {{ step.success }} · errors {{ step.errors }} · retries {{ step.retries }} · duration {{ step.durationMs is null ? '-' : step.durationMs ~ ' ms' }} · memory {{ step.memoryPeakBytes is null ? '-' : (step.memoryPeakBytes / 1024 / 1024)|round(2) ~ ' MB' }}
+                                            </span><br>
+                                            <span style="color:#9bacc2; font-size:12px;">
+                                                {{ step.startedAt ? step.startedAt|date('Y-m-d H:i:s') : '-' }} → {{ step.finishedAt ? step.finishedAt|date('Y-m-d H:i:s') : '-' }}
+                                            </span><br>
+                                            <span style="color:#fca5a5; font-size:13px;">{{ step.error ?: '-' }}</span>
+                                            {% if step.errorDetails is not empty %}
+                                                <ul style="margin:8px 0 0; padding-left:18px; color:#fca5a5; font-size:12px;">
+                                                    {% for detail in step.errorDetails %}
+                                                        <li>{{ detail }}</li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <div style="margin-top:10px; color:#9bacc2; font-size:12px;">No failed step stored for this run.</div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div style="padding:12px; border:1px solid #263244; border-radius:10px; background:#18212d; color:#9bacc2;">No failed run.</div>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

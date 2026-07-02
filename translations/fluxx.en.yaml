@@ -1,6 +1,7 @@
 navigation:
     label: Fluxx navigation
     users: Users
+    settings: Settings
     workflows: Workflows
     runtime: Runtime
     health: Health
@@ -366,6 +367,24 @@ troubleshooting:
     fail_count: Fails
     failed_at: Failed at
     error: Error
+
+settings:
+    title: Settings
+    heading: Settings
+    subtitle: Configure Fluxx operational options.
+    daily_recap_title: Daily workflow recap
+    daily_recap_description: Configure the recipients and envelope used by the scheduled workflow execution recap.
+    daily_recap_enabled: Send the daily workflow recap email
+    daily_recap_enabled_help: The command will skip sending unless this option is enabled, except in dry-run mode.
+    recipients: Recipients
+    recipients_placeholder: One email per line, or separated by comma/semicolon
+    recipients_help: These recipients are used by fluxx:workflows:daily-recap unless the command receives --recipient.
+    sender: Sender
+    subject_prefix: Subject prefix
+    timezone: Timezone
+    send_empty_report: Send the email even when there is no workflow run
+    send_empty_report_help: Keep enabled for a real daily recap signal even on quiet days.
+    save: Save settings
 
 pagination:
     label: Workflow pagination

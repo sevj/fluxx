@@ -131,6 +131,11 @@ abstract class AbstractHubspotClient
                 $p->setInputs($data);
                 $created = $this->client->crm()->lineItems()->batchApi()->create($p);
                 break;
+            case 'product':
+                $p = new HubspotCRM\Products\Model\BatchInputSimplePublicObjectBatchInputForCreate();
+                $p->setInputs($data);
+                $created = $this->client->crm()->products()->batchApi()->create($p);
+                break;
             default:
                 throw new \RuntimeException(sprintf('createBatch: type "%s" not supported.', $type));
         }
@@ -320,6 +325,10 @@ abstract class AbstractHubspotClient
             case 'line_item':
                 $target = new HubspotCRM\LineItems\Model\PublicObjectSearchRequest($array);
                 $objects = $this->client->crm()->lineItems()->searchApi()->doSearch($target);
+                break;
+            case 'product':
+                $target = new HubspotCRM\Products\Model\PublicObjectSearchRequest($array);
+                $objects = $this->client->crm()->products()->searchApi()->doSearch($target);
                 break;
             default:
                 throw new \RuntimeException(sprintf('search: type "%s" not supported.', $type));

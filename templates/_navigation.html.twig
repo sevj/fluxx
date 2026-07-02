@@ -41,6 +41,12 @@
             >
                 {{ 'navigation.users'|trans }}
             </a>
+            <a
+                href="{{ path('fluxx_settings_index') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') starts with 'fluxx_settings_' ? ' is-active' : '' }}"
+            >
+                {{ 'navigation.settings'|trans }}
+            </a>
         </nav>
     </div>
 

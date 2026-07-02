@@ -1,0 +1,41 @@
+Daily workflow recap
+Period: {{ recap.from|date('Y-m-d H:i') }} -> {{ recap.to|date('Y-m-d H:i') }}
+
+Summary
+- Total runs: {{ recap.totalRuns }}
+- Processed records: {{ recap.processedCount }}
+- Successful records: {{ recap.successCount }}
+- Errored records: {{ recap.errorCount }}
+- Average step duration: {{ recap.averageDurationMs is null ? '-' : recap.averageDurationMs ~ ' ms' }}
+- Max step duration: {{ recap.maxDurationMs is null ? '-' : recap.maxDurationMs ~ ' ms' }}
+
+Status counts
+{% for status, count in recap.statusCounts %}
+- {{ status }}: {{ count }}
+{% else %}
+- No workflow run.
+{% endfor %}
+
+Workflows
+{% for workflow, stats in recap.workflowCounts %}
+- {{ workflow }}: {{ stats.total }} total, {{ stats.errors }} errors
+{% else %}
+- No workflow run.
+{% endfor %}
+
+Errors
+{% for run in recap.erroredRuns %}
+- {{ run.createdAt|date('Y-m-d H:i') }} | {{ run.workflow }} | {{ run.status }} | {{ run.runId }} | {{ run.error ?: '-' }}
+{% for step in run.steps %}
+  - Step {{ step.code }} ({{ step.type }}) | {{ step.status }} | processed={{ step.processed }} success={{ step.success }} errors={{ step.errors }} retries={{ step.retries }} duration={{ step.durationMs is null ? '-' : step.durationMs ~ ' ms' }} memory={{ step.memoryPeakBytes is null ? '-' : (step.memoryPeakBytes / 1024 / 1024)|round(2) ~ ' MB' }}
+    Time: {{ step.startedAt ? step.startedAt|date('Y-m-d H:i:s') : '-' }} -> {{ step.finishedAt ? step.finishedAt|date('Y-m-d H:i:s') : '-' }}
+    Error: {{ step.error ?: '-' }}
+{% for detail in step.errorDetails %}
+    {{ detail }}
+{% endfor %}
+{% else %}
+  - No failed step stored for this run.
+{% endfor %}
+{% else %}
+- No failed run.
+{% endfor %}
