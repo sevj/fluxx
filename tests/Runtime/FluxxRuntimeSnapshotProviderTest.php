@@ -133,6 +133,29 @@ final class FluxxRuntimeSnapshotProviderTest extends TestCase
         self::assertNull($row['processingDurationMs']);
     }
 
+    #[Test]
+    public function it_marks_a_redis_consumer_without_fresh_worker_heartbeat_as_offline_even_if_redis_looks_recent(): void
+    {
+        $provider = $this->createProvider();
+
+        $row = $this->buildWorkerRow(
+            $provider,
+            [
+                'name' => 'connector-sipperec-ghost-messenger-fluxx_11',
+                'state' => 'active',
+                'pendingCount' => 0,
+                'idleMs' => 1000,
+                'lastSeenAt' => '2026-07-22T14:20:44+00:00',
+            ],
+            null,
+            new DateTimeImmutable('2026-07-22 14:20:45'),
+        );
+
+        self::assertSame('offline', $row['state']);
+        self::assertNull($row['currentMessageClass']);
+        self::assertNull($row['processingDurationMs']);
+    }
+
     private function createProvider(): FluxxRuntimeSnapshotProvider
     {
         $registry = $this->createMock(ManagerRegistry::class);

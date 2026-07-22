@@ -587,20 +587,19 @@ final readonly class FluxxRuntimeSnapshotProvider
         ?int $workerStateAgeMs,
     ): string {
         $redisState = isset($redisWorker['state']) ? (string) $redisWorker['state'] : null;
-        $redisIdleMs = isset($redisWorker['idleMs']) ? (int) $redisWorker['idleMs'] : null;
         $workerStatus = $workerState?->status();
         $hasFreshHeartbeat = $workerStateAgeMs !== null && $workerStateAgeMs <= self::ORPHAN_WORKER_HEARTBEAT_TTL_MS;
-        $hasFreshRedisActivity = $redisIdleMs !== null && $redisIdleMs <= self::ORPHAN_WORKER_HEARTBEAT_TTL_MS;
+
+        if ($workerStatus === 'stopped') {
+            return 'stopped';
+        }
+
+        if (!$hasFreshHeartbeat) {
+            return 'offline';
+        }
 
         if ($workerStatus === 'processing' && $hasFreshHeartbeat) {
             return 'processing';
-        }
-
-        if (
-            ($workerStatus === 'processing' && !$hasFreshHeartbeat)
-            || ($redisState !== null && !$hasFreshRedisActivity && !$hasFreshHeartbeat)
-        ) {
-            return 'offline';
         }
 
         return $redisState ?? $workerStatus ?? 'idle';

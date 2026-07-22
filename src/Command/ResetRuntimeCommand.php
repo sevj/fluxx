@@ -157,6 +157,7 @@ final class ResetRuntimeCommand extends Command
     {
         $user = isset($parts['user']) ? urldecode((string) $parts['user']) : null;
         $pass = isset($parts['pass']) ? urldecode((string) $parts['pass']) : null;
+        $user = $user === '' ? null : $user;
 
         if ($user === null && $pass === null) {
             return null;
