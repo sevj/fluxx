@@ -6,13 +6,10 @@ namespace Fluxx\Reporting;
 
 use DateTimeImmutable;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
-use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\WorkflowRun;
-use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use function in_array;
-use function max;
 
 final readonly class DailyWorkflowRecapBuilder
 {
@@ -25,16 +22,19 @@ final readonly class DailyWorkflowRecapBuilder
     public function build(DateTimeImmutable $from, DateTimeImmutable $to): DailyWorkflowRecap
     {
         $runs = $this->workflowRunRepository->findCreatedBetween($from, $to);
-        $stepRuns = $this->workflowStepRunRepository->findByWorkflowRunsGrouped($runs);
+        $stepSummary = $this->workflowStepRunRepository->summarizeByWorkflowRuns($runs);
         $statusCounts = [];
         $workflowCounts = [];
         $erroredRuns = [];
-        $processedCount = 0;
-        $successCount = 0;
-        $errorCount = 0;
-        $durationTotal = 0;
-        $durationCount = 0;
-        $maxDurationMs = null;
+        $erroredRunEntities = array_values(array_filter(
+            $runs,
+            static fn (WorkflowRun $run): bool => in_array(
+                $run->status(),
+                [WorkflowRunStatus::Failed, WorkflowRunStatus::PartiallyFailed],
+                true,
+            ),
+        ));
+        $erroredStepsByRunId = $this->workflowStepRunRepository->findErroredStepRowsByWorkflowRunsGrouped($erroredRunEntities);
 
         foreach ($runs as $run) {
             $status = $run->status()->value;
@@ -46,19 +46,7 @@ final readonly class DailyWorkflowRecapBuilder
 
             if (in_array($run->status(), [WorkflowRunStatus::Failed, WorkflowRunStatus::PartiallyFailed], true)) {
                 ++$workflowCounts[$workflow]['errors'];
-                $erroredRuns[] = $this->erroredRun($run, $stepRuns[$run->runId()] ?? []);
-            }
-
-            foreach ($stepRuns[$run->runId()] ?? [] as $stepRun) {
-                $processedCount += $stepRun->processedCount();
-                $successCount += $stepRun->successCount();
-                $errorCount += $stepRun->errorCount();
-
-                if ($stepRun->durationMs() !== null) {
-                    $durationTotal += $stepRun->durationMs();
-                    ++$durationCount;
-                    $maxDurationMs = max($maxDurationMs ?? 0, $stepRun->durationMs());
-                }
+                $erroredRuns[] = $this->erroredRun($run, $erroredStepsByRunId[$run->runId()] ?? []);
             }
         }
 
@@ -68,16 +56,16 @@ final readonly class DailyWorkflowRecapBuilder
             statusCounts: $statusCounts,
             workflowCounts: $workflowCounts,
             erroredRuns: $erroredRuns,
-            processedCount: $processedCount,
-            successCount: $successCount,
-            errorCount: $errorCount,
-            averageDurationMs: $durationCount > 0 ? (int) ($durationTotal / $durationCount) : null,
-            maxDurationMs: $maxDurationMs,
+            processedCount: $stepSummary['processedTotal'],
+            successCount: $stepSummary['successTotal'],
+            errorCount: $stepSummary['errorTotal'],
+            averageDurationMs: $stepSummary['durationCount'] > 0 ? (int) ($stepSummary['durationTotal'] / $stepSummary['durationCount']) : null,
+            maxDurationMs: $stepSummary['maxDurationMs'],
         );
     }
 
     /**
-     * @param list<WorkflowStepRun> $stepRuns
+     * @param list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}> $stepRuns
      * @return array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, error: ?string, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}>}
      */
     private function erroredRun(WorkflowRun $run, array $stepRuns): array
@@ -88,60 +76,7 @@ final readonly class DailyWorkflowRecapBuilder
             'status' => $run->status()->value,
             'createdAt' => $run->createdAt(),
             'error' => $run->errorMessage(),
-            'steps' => array_values(array_map(
-                fn (WorkflowStepRun $stepRun): array => $this->erroredStep($stepRun),
-                array_filter(
-                    $stepRuns,
-                    static fn (WorkflowStepRun $stepRun): bool => in_array(
-                        $stepRun->status(),
-                        [WorkflowStepRunStatus::Failed, WorkflowStepRunStatus::Retrying, WorkflowStepRunStatus::Cancelled],
-                        true,
-                    ),
-                ),
-            )),
+            'steps' => array_values($stepRuns),
         ];
-    }
-
-    /**
-     * @return array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}
-     */
-    private function erroredStep(WorkflowStepRun $stepRun): array
-    {
-        return [
-            'code' => $stepRun->stepName(),
-            'type' => $stepRun->stepType(),
-            'status' => $stepRun->status()->value,
-            'processed' => $stepRun->processedCount(),
-            'success' => $stepRun->successCount(),
-            'errors' => $stepRun->errorCount(),
-            'durationMs' => $stepRun->durationMs(),
-            'memoryPeakBytes' => $stepRun->memoryPeakBytes(),
-            'retries' => $stepRun->retryCount(),
-            'startedAt' => $stepRun->startedAt(),
-            'finishedAt' => $stepRun->finishedAt(),
-            'error' => $stepRun->errorMessage(),
-            'errorDetails' => $this->formatErrorPayload($stepRun->errorPayload()),
-        ];
-    }
-
-    /**
-     * @param array<string, mixed>|null $payload
-     * @return list<string>
-     */
-    private function formatErrorPayload(?array $payload): array
-    {
-        if ($payload === null) {
-            return [];
-        }
-
-        $details = [];
-
-        foreach ($payload as $key => $value) {
-            if (is_scalar($value) || $value === null) {
-                $details[] = sprintf('%s: %s', $key, $value ?? 'null');
-            }
-        }
-
-        return $details;
     }
 }

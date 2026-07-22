@@ -6,14 +6,13 @@ namespace Fluxx\Ui;
 
 use DateInterval;
 use DateTimeImmutable;
-use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Entity\WorkflowRun;
-use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Workflow\WorkflowDefinition;
+use InvalidArgumentException;
 
 final readonly class WorkflowDetails
 {
@@ -624,11 +623,17 @@ final readonly class WorkflowDetails
         $offset = ($page - 1) * $perPage;
 
         $runs = $this->workflowRunRepository->findPaginatedByFilters($executionFilters, $perPage, $offset);
-        $stepRunsByRunId = $this->workflowStepRunRepository->findByWorkflowRunsGrouped($runs);
+        $stepRunMap = $this->workflowStepRunRepository->findLatestByWorkflowRunsAndStepNamesIndexed(
+            $runs,
+            array_map(
+                static fn (\Fluxx\Workflow\WorkflowStepDefinition $step): string => $step->code(),
+                $definition->steps(),
+            ),
+        );
 
         $items = array_map(
-            function (WorkflowRun $run) use ($definition, $stepRunsByRunId): WorkflowExecutionOverview {
-                $steps = $this->buildExecutionSteps($definition, $stepRunsByRunId[$run->runId()] ?? []);
+            function (WorkflowRun $run) use ($definition, $stepRunMap): WorkflowExecutionOverview {
+                $steps = $this->buildExecutionSteps($definition, $run->runId(), $stepRunMap);
 
                 return new WorkflowExecutionOverview(
                     runId: $run->runId(),
@@ -661,33 +666,56 @@ final readonly class WorkflowDetails
     }
 
     /**
-     * @param list<WorkflowStepRun> $stepRuns
+     * @param array<string, array{
+     *     stepType: string,
+     *     status: string,
+     *     processedCount: int,
+     *     successCount: int,
+     *     errorCount: int,
+     *     durationMs: ?int,
+     *     memoryPeakBytes: ?int,
+     *     idempotenceKey: ?string,
+     *     deduplicationStatus: string,
+     *     deduplicatedFromRunId: ?string,
+     *     errorMessage: ?string,
+     *     errorPayload: ?array<string, mixed>
+     * }> $stepRunMap
      * @return list<WorkflowExecutionStepOverview>
      */
-    private function buildExecutionSteps(WorkflowDefinition $definition, array $stepRuns): array
+    private function buildExecutionSteps(WorkflowDefinition $definition, string $runId, array $stepRunMap): array
     {
-        $stepRunMap = [];
-
-        foreach ($stepRuns as $stepRun) {
-            $stepRunMap[$stepRun->stepName()] = $stepRun;
-        }
-
         return array_map(
             fn (\Fluxx\Workflow\WorkflowStepDefinition $step): WorkflowExecutionStepOverview => $this->buildExecutionStepOverview(
                 $step->type(),
                 $step->code(),
                 $step->name(),
-                $stepRunMap[$step->code()] ?? null,
+                $stepRunMap[$runId . '::' . $step->code()] ?? null,
             ),
             $definition->steps(),
         );
     }
 
+    /**
+     * @param array{
+     *     stepType: string,
+     *     status: string,
+     *     processedCount: int,
+     *     successCount: int,
+     *     errorCount: int,
+     *     durationMs: ?int,
+     *     memoryPeakBytes: ?int,
+     *     idempotenceKey: ?string,
+     *     deduplicationStatus: string,
+     *     deduplicatedFromRunId: ?string,
+     *     errorMessage: ?string,
+     *     errorPayload: ?array<string, mixed>
+     * }|null $stepRun
+     */
     private function buildExecutionStepOverview(
         string $type,
         string $code,
         string $name,
-        ?WorkflowStepRun $stepRun,
+        ?array $stepRun,
     ): WorkflowExecutionStepOverview {
         $stepType = $this->stepTypeRegistry->get($type);
 
@@ -698,15 +726,15 @@ final readonly class WorkflowDetails
             typeToneStyle: $stepType->toneStyle(),
             code: $code,
             name: $name,
-            status: $stepRun?->status()->value ?? 'pending',
-            processedCount: $stepRun?->processedCount() ?? 0,
-            successCount: $stepRun?->successCount() ?? 0,
-            errorCount: $stepRun?->errorCount() ?? 0,
-            durationMs: $stepRun?->durationMs(),
-            memoryPeakBytes: $stepRun?->memoryPeakBytes(),
-            idempotenceKey: $stepRun?->idempotenceKey(),
-            deduplicationStatus: $stepRun?->deduplicationStatus()->value ?? 'none',
-            deduplicatedFromRunId: $stepRun?->deduplicatedFromStepRun()?->workflowRun()->runId(),
+            status: $stepRun['status'] ?? 'pending',
+            processedCount: $stepRun['processedCount'] ?? 0,
+            successCount: $stepRun['successCount'] ?? 0,
+            errorCount: $stepRun['errorCount'] ?? 0,
+            durationMs: $stepRun['durationMs'] ?? null,
+            memoryPeakBytes: $stepRun['memoryPeakBytes'] ?? null,
+            idempotenceKey: $stepRun['idempotenceKey'] ?? null,
+            deduplicationStatus: $stepRun['deduplicationStatus'] ?? 'none',
+            deduplicatedFromRunId: $stepRun['deduplicatedFromRunId'] ?? null,
         );
     }
 
@@ -745,28 +773,19 @@ final readonly class WorkflowDetails
 
         $startAt = $bucketStarts[0];
         $bucketFormat = $range === 'year' ? 'Y-m' : 'Y-m-d';
-        $runs = $this->workflowRunRepository->findCreatedSinceByWorkflowName($definition->code(), $startAt);
-        $bucketStats = [];
+        $bucketStats = $this->workflowRunRepository->aggregateCreatedSinceByWorkflowName(
+            $definition->code(),
+            $startAt,
+            $range === 'year' ? 'month' : 'day',
+        );
+        $runStatistics = $this->workflowRunRepository->summarizeCreatedSinceByWorkflowName($definition->code(), $startAt);
+        $stepStatistics = $this->workflowStepRunRepository->aggregateLatestStepStatisticsByWorkflowNameSince($definition->code(), $startAt);
 
         foreach ($bucketStarts as $bucketStart) {
-            $bucketStats[$bucketStart->format($bucketFormat)] = [
+            $bucketStats[$bucketStart->format($bucketFormat)] ??= [
                 'executionCount' => 0,
                 'errorCount' => 0,
             ];
-        }
-
-        foreach ($runs as $run) {
-            $bucketKey = $run->createdAt()->format($bucketFormat);
-
-            if (!isset($bucketStats[$bucketKey])) {
-                continue;
-            }
-
-            ++$bucketStats[$bucketKey]['executionCount'];
-
-            if (in_array($run->status(), [WorkflowRunStatus::Failed, WorkflowRunStatus::PartiallyFailed], true)) {
-                ++$bucketStats[$bucketKey]['errorCount'];
-            }
         }
 
         $maxValue = 0;
@@ -784,7 +803,6 @@ final readonly class WorkflowDetails
 
         $maxValue = max($maxValue, 1);
         $points = [];
-        $stepRunsByRunId = $this->workflowStepRunRepository->findByWorkflowRunsGrouped($runs);
 
         foreach ($bucketStarts as $index => $bucketStart) {
             $bucketKey = $bucketStart->format($bucketFormat);
@@ -805,8 +823,8 @@ final readonly class WorkflowDetails
             selectedRange: $range,
             ranges: $this->buildStatisticsRanges($range),
             points: $points,
-            metrics: $this->buildAdvancedStatisticsMetrics($runs, $stepRunsByRunId),
-            stepMetrics: $this->buildStepStatistics($definition, $stepRunsByRunId),
+            metrics: $this->buildAdvancedStatisticsMetrics($runStatistics, $stepStatistics),
+            stepMetrics: $this->buildStepStatistics($definition, $stepStatistics['steps']),
             executionTotal: $executionTotal,
             errorTotal: $errorTotal,
             maxValue: $maxValue,
@@ -887,76 +905,58 @@ final readonly class WorkflowDetails
     }
 
     /**
-     * @param list<WorkflowRun> $runs
-     * @param array<string, list<WorkflowStepRun>> $stepRunsByRunId
+     * @param array{
+     *     runCount: int,
+     *     failedCount: int,
+     *     partialFailedCount: int,
+     *     relaunchCount: int,
+     *     durations: list<int>
+     * } $runStatistics
+     * @param array{
+     *     retryRunCount: int,
+     *     processedTotal: int,
+     *     successTotal: int,
+     *     recordErrorTotal: int,
+     *     steps: array<string, array{
+     *         durationTotal: int,
+     *         durationCount: int,
+     *         failureCount: int,
+     *         retryCount: int,
+     *         idempotenceHitCount: int,
+     *         executionCount: int
+     *     }>
+     * } $stepStatistics
      * @return list<WorkflowStatisticsMetricView>
      */
-    private function buildAdvancedStatisticsMetrics(array $runs, array $stepRunsByRunId): array
+    private function buildAdvancedStatisticsMetrics(array $runStatistics, array $stepStatistics): array
     {
-        $durations = [];
-        $failedCount = 0;
-        $partialFailedCount = 0;
-        $retryRunCount = 0;
-        $relaunchCount = 0;
-        $processedTotal = 0;
-        $successTotal = 0;
-        $recordErrorTotal = 0;
-
-        foreach ($runs as $run) {
-            if ($run->startedAt() !== null && $run->finishedAt() !== null) {
-                $durations[] = max(0, ($run->finishedAt()->getTimestamp() - $run->startedAt()->getTimestamp()) * 1000);
-            }
-
-            if ($run->status() === WorkflowRunStatus::Failed) {
-                ++$failedCount;
-            }
-
-            if ($run->status() === WorkflowRunStatus::PartiallyFailed) {
-                ++$partialFailedCount;
-            }
-
-            if ($run->relaunchMetadata() !== null) {
-                ++$relaunchCount;
-            }
-
-            $latestStepRuns = $this->latestStepRunsForStatistics($stepRunsByRunId[$run->runId()] ?? []);
-            $hasRetry = false;
-
-            foreach ($latestStepRuns as $stepRun) {
-                if ($stepRun->retryCount() > 0) {
-                    $hasRetry = true;
-                }
-
-                $processedTotal += $stepRun->processedCount();
-                $successTotal += $stepRun->successCount();
-                $recordErrorTotal += $stepRun->errorCount();
-            }
-
-            if ($hasRetry) {
-                ++$retryRunCount;
-            }
-        }
-
-        $runCount = count($runs);
+        $runCount = $runStatistics['runCount'];
 
         return [
-            new WorkflowStatisticsMetricView('workflow_show.metric_avg_duration', $this->formatDurationMetric($this->average($durations))),
-            new WorkflowStatisticsMetricView('workflow_show.metric_p95_duration', $this->formatDurationMetric($this->percentile95($durations))),
-            new WorkflowStatisticsMetricView('workflow_show.metric_failure_rate', $this->formatPercentageMetric($failedCount, $runCount), $failedCount > 0 ? 'error' : 'default'),
-            new WorkflowStatisticsMetricView('workflow_show.metric_partial_failure_rate', $this->formatPercentageMetric($partialFailedCount, $runCount), $partialFailedCount > 0 ? 'warning' : 'default'),
-            new WorkflowStatisticsMetricView('workflow_show.metric_retry_rate', $this->formatPercentageMetric($retryRunCount, $runCount), $retryRunCount > 0 ? 'warning' : 'default'),
-            new WorkflowStatisticsMetricView('workflow_show.metric_relaunch_rate', $this->formatPercentageMetric($relaunchCount, $runCount)),
-            new WorkflowStatisticsMetricView('workflow_show.metric_processed_total', (string) $processedTotal),
-            new WorkflowStatisticsMetricView('workflow_show.metric_success_total', (string) $successTotal),
-            new WorkflowStatisticsMetricView('workflow_show.metric_record_errors_total', (string) $recordErrorTotal, $recordErrorTotal > 0 ? 'error' : 'default'),
+            new WorkflowStatisticsMetricView('workflow_show.metric_avg_duration', $this->formatDurationMetric($this->average($runStatistics['durations']))),
+            new WorkflowStatisticsMetricView('workflow_show.metric_p95_duration', $this->formatDurationMetric($this->percentile95($runStatistics['durations']))),
+            new WorkflowStatisticsMetricView('workflow_show.metric_failure_rate', $this->formatPercentageMetric($runStatistics['failedCount'], $runCount), $runStatistics['failedCount'] > 0 ? 'error' : 'default'),
+            new WorkflowStatisticsMetricView('workflow_show.metric_partial_failure_rate', $this->formatPercentageMetric($runStatistics['partialFailedCount'], $runCount), $runStatistics['partialFailedCount'] > 0 ? 'warning' : 'default'),
+            new WorkflowStatisticsMetricView('workflow_show.metric_retry_rate', $this->formatPercentageMetric($stepStatistics['retryRunCount'], $runCount), $stepStatistics['retryRunCount'] > 0 ? 'warning' : 'default'),
+            new WorkflowStatisticsMetricView('workflow_show.metric_relaunch_rate', $this->formatPercentageMetric($runStatistics['relaunchCount'], $runCount)),
+            new WorkflowStatisticsMetricView('workflow_show.metric_processed_total', (string) $stepStatistics['processedTotal']),
+            new WorkflowStatisticsMetricView('workflow_show.metric_success_total', (string) $stepStatistics['successTotal']),
+            new WorkflowStatisticsMetricView('workflow_show.metric_record_errors_total', (string) $stepStatistics['recordErrorTotal'], $stepStatistics['recordErrorTotal'] > 0 ? 'error' : 'default'),
         ];
     }
 
     /**
-     * @param array<string, list<WorkflowStepRun>> $stepRunsByRunId
+     * @param array<string, array{
+     *     durationTotal: int,
+     *     durationCount: int,
+     *     failureCount: int,
+     *     retryCount: int,
+     *     idempotenceHitCount: int,
+     *     executionCount: int
+     * }> $stepStatsByCode
      * @return list<WorkflowStepStatisticsView>
      */
-    private function buildStepStatistics(WorkflowDefinition $definition, array $stepRunsByRunId): array
+    private function buildStepStatistics(WorkflowDefinition $definition, array $stepStatsByCode): array
     {
         $stats = [];
 
@@ -972,28 +972,15 @@ final readonly class WorkflowDetails
             ];
         }
 
-        foreach ($stepRunsByRunId as $stepRuns) {
-            foreach ($this->latestStepRunsForStatistics($stepRuns) as $stepRun) {
-                if (!isset($stats[$stepRun->stepName()])) {
-                    continue;
-                }
-
-                $stats[$stepRun->stepName()]['retryCount'] += $stepRun->retryCount();
-                ++$stats[$stepRun->stepName()]['executionCount'];
-
-                if ($stepRun->durationMs() !== null) {
-                    $stats[$stepRun->stepName()]['durationTotal'] += $stepRun->durationMs();
-                    ++$stats[$stepRun->stepName()]['durationCount'];
-                }
-
-                if ($stepRun->status() === \Fluxx\Entity\Enum\WorkflowStepRunStatus::Failed) {
-                    ++$stats[$stepRun->stepName()]['failureCount'];
-                }
-
-                if ($stepRun->deduplicationStatus()->value !== 'none') {
-                    ++$stats[$stepRun->stepName()]['idempotenceHitCount'];
-                }
+        foreach ($stepStatsByCode as $stepCode => $stepStats) {
+            if (!isset($stats[$stepCode])) {
+                continue;
             }
+
+            $stats[$stepCode] = [
+                ...$stats[$stepCode],
+                ...$stepStats,
+            ];
         }
 
         $views = [];
@@ -1014,21 +1001,6 @@ final readonly class WorkflowDetails
         }
 
         return $views;
-    }
-
-    /**
-     * @param list<WorkflowStepRun> $stepRuns
-     * @return array<string, WorkflowStepRun>
-     */
-    private function latestStepRunsForStatistics(array $stepRuns): array
-    {
-        $latest = [];
-
-        foreach ($stepRuns as $stepRun) {
-            $latest[$stepRun->stepName()] = $stepRun;
-        }
-
-        return $latest;
     }
 
     /**

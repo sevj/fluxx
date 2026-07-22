@@ -22,91 +22,65 @@ final readonly class TroubleshootingCatalog
      */
     public function all(string $searchQuery = ''): array
     {
-        $definitions = [];
+        $definitions = $this->definitionsByCode();
+        $workflowCodes = array_keys($definitions);
+        $searchFilters = $this->buildSearchFilters($definitions, $searchQuery);
+        $totalItems = $this->workflowStepRunRepository->countTroubleshootingIssuesByWorkflowNames(
+            $workflowCodes,
+            $searchQuery,
+            $searchFilters['workflowCodes'],
+            $searchFilters['stepCodesByWorkflowCode'],
+        );
 
-        foreach ($this->registry->all() as $workflow) {
-            $definitions[$workflow->definition()->code()] = $workflow->definition();
+        if ($totalItems === 0) {
+            return [];
         }
 
-        $issues = [];
-        $seen = [];
-        $failureCounts = [];
-        $searchQuery = trim($searchQuery);
-        $erroredStepRuns = $this->workflowStepRunRepository->findFailedByWorkflowNames(array_keys($definitions));
-
-        foreach ($erroredStepRuns as $stepRun) {
-            $workflowCode = $stepRun->workflowRun()->workflowName();
-            $dedupKey = sprintf('%s|%s|%s', $workflowCode, $stepRun->workflowRun()->runId(), $stepRun->stepName());
-            $failureCounts[$dedupKey] = ($failureCounts[$dedupKey] ?? 0) + 1;
-        }
-
-        foreach ($erroredStepRuns as $stepRun) {
-            $definition = $definitions[$stepRun->workflowRun()->workflowName()] ?? null;
-
-            if ($definition === null) {
-                continue;
-            }
-
-            $stepCode = $stepRun->stepName();
-            $stepName = $stepCode;
-            $dedupKey = sprintf('%s|%s|%s', $definition->code(), $stepRun->workflowRun()->runId(), $stepCode);
-
-            if (($seen[$dedupKey] ?? false) === true) {
-                continue;
-            }
-
-            $seen[$dedupKey] = true;
-
-            try {
-                $stepName = $definition->step($stepCode)->name();
-            } catch (\InvalidArgumentException) {
-            }
-
-            $issue = new TroubleshootingIssueView(
-                workflowCode: $definition->code(),
-                workflowName: $definition->name(),
-                sourceSystem: $definition->sourceSystem(),
-                targetSystem: $definition->targetSystem(),
-                stepCode: $stepCode,
-                stepName: $stepName,
-                runId: $stepRun->workflowRun()->runId(),
-                failedAt: $stepRun->finishedAt() ?? $stepRun->createdAt(),
-                errorMessage: trim($stepRun->errorMessage() ?? '') !== '' ? (string) $stepRun->errorMessage() : 'No error message stored.',
-                failureCount: $failureCounts[$dedupKey] ?? 1,
-            );
-
-            if ($searchQuery !== '' && !$this->matchesSearch($issue, $searchQuery)) {
-                continue;
-            }
-
-            $issues[] = $issue;
-        }
-
-        usort($issues, static fn (TroubleshootingIssueView $left, TroubleshootingIssueView $right): int => [
-            $right->failedAt()?->getTimestamp() ?? 0,
-            $left->workflowName(),
-            $left->stepName(),
-        ] <=> [
-            $left->failedAt()?->getTimestamp() ?? 0,
-            $right->workflowName(),
-            $right->stepName(),
-        ]);
-
-        return $issues;
+        return $this->buildIssuesFromRows(
+            $this->workflowStepRunRepository->findTroubleshootingIssueRowsByWorkflowNames(
+                $workflowCodes,
+                $totalItems,
+                0,
+                $searchQuery,
+                $searchFilters['workflowCodes'],
+                $searchFilters['stepCodesByWorkflowCode'],
+            ),
+            $definitions,
+        );
     }
 
     public function paginate(int $page = 1, int $perPage = self::DEFAULT_PER_PAGE, string $searchQuery = ''): TroubleshootingCatalogPage
     {
         $page = max($page, 1);
         $perPage = max($perPage, 1);
-        $items = $this->all($searchQuery);
-        $totalItems = count($items);
+        $definitions = $this->definitionsByCode();
+        $workflowCodes = array_keys($definitions);
+        $searchFilters = $this->buildSearchFilters($definitions, $searchQuery);
+        $totalItems = $this->workflowStepRunRepository->countTroubleshootingIssuesByWorkflowNames(
+            $workflowCodes,
+            $searchQuery,
+            $searchFilters['workflowCodes'],
+            $searchFilters['stepCodesByWorkflowCode'],
+        );
         $totalPages = max((int) ceil($totalItems / $perPage), 1);
         $page = min($page, $totalPages);
         $offset = ($page - 1) * $perPage;
+        $items = $totalItems > 0
+            ? $this->buildIssuesFromRows(
+                $this->workflowStepRunRepository->findTroubleshootingIssueRowsByWorkflowNames(
+                    $workflowCodes,
+                    $perPage,
+                    $offset,
+                    $searchQuery,
+                    $searchFilters['workflowCodes'],
+                    $searchFilters['stepCodesByWorkflowCode'],
+                ),
+                $definitions,
+            )
+            : [];
 
         return new TroubleshootingCatalogPage(
-            items: array_values(array_slice($items, $offset, $perPage)),
+            items: $items,
             currentPage: $page,
             perPage: $perPage,
             totalItems: $totalItems,
@@ -114,25 +88,117 @@ final readonly class TroubleshootingCatalog
         );
     }
 
-    private function matchesSearch(TroubleshootingIssueView $issue, string $searchQuery): bool
+    /**
+     * @return array<string, \Fluxx\Workflow\WorkflowDefinition>
+     */
+    private function definitionsByCode(): array
     {
-        $needle = mb_strtolower($searchQuery);
+        $definitions = [];
 
-        foreach ([
-            $issue->workflowName(),
-            $issue->workflowCode(),
-            $issue->sourceSystem(),
-            $issue->targetSystem(),
-            $issue->stepName(),
-            $issue->stepCode(),
-            $issue->runId(),
-            $issue->errorMessage(),
-        ] as $haystack) {
-            if (str_contains(mb_strtolower($haystack), $needle)) {
-                return true;
+        foreach ($this->registry->all() as $workflow) {
+            $definitions[$workflow->definition()->code()] = $workflow->definition();
+        }
+
+        return $definitions;
+    }
+
+    /**
+     * @param array<string, \Fluxx\Workflow\WorkflowDefinition> $definitions
+     * @return array{workflowCodes: list<string>, stepCodesByWorkflowCode: array<string, list<string>>}
+     */
+    private function buildSearchFilters(array $definitions, string $searchQuery): array
+    {
+        $searchQuery = trim($searchQuery);
+
+        if ($searchQuery === '') {
+            return [
+                'workflowCodes' => [],
+                'stepCodesByWorkflowCode' => [],
+            ];
+        }
+
+        $needle = mb_strtolower($searchQuery);
+        $matchedWorkflowCodes = [];
+        $matchedStepCodesByWorkflowCode = [];
+
+        foreach ($definitions as $workflowCode => $definition) {
+            foreach ([
+                $definition->code(),
+                $definition->name(),
+                $definition->sourceSystem(),
+                $definition->targetSystem(),
+            ] as $workflowField) {
+                if (str_contains(mb_strtolower($workflowField), $needle)) {
+                    $matchedWorkflowCodes[] = $workflowCode;
+                    break;
+                }
+            }
+
+            foreach ($definition->steps() as $step) {
+                if (
+                    str_contains(mb_strtolower($step->code()), $needle)
+                    || str_contains(mb_strtolower($step->name()), $needle)
+                ) {
+                    $matchedStepCodesByWorkflowCode[$workflowCode][] = $step->code();
+                }
             }
         }
 
-        return false;
+        return [
+            'workflowCodes' => array_values(array_unique($matchedWorkflowCodes)),
+            'stepCodesByWorkflowCode' => array_map(
+                static fn (array $stepCodes): array => array_values(array_unique($stepCodes)),
+                $matchedStepCodesByWorkflowCode,
+            ),
+        ];
+    }
+
+    /**
+     * @param list<array{
+     *     workflowCode: string,
+     *     sourceSystem: string,
+     *     targetSystem: string,
+     *     runId: string,
+     *     stepCode: string,
+     *     failedAt: ?\DateTimeImmutable,
+     *     errorMessage: string,
+     *     failureCount: int
+     * }> $rows
+     * @param array<string, \Fluxx\Workflow\WorkflowDefinition> $definitions
+     * @return list<TroubleshootingIssueView>
+     */
+    private function buildIssuesFromRows(array $rows, array $definitions): array
+    {
+        $issues = [];
+
+        foreach ($rows as $row) {
+            $definition = $definitions[$row['workflowCode']] ?? null;
+
+            if ($definition === null) {
+                continue;
+            }
+
+            $stepName = $row['stepCode'];
+
+            try {
+                $stepName = $definition->step($row['stepCode'])->name();
+            } catch (\InvalidArgumentException) {
+            }
+
+            $issues[] = new TroubleshootingIssueView(
+                workflowCode: $definition->code(),
+                workflowName: $definition->name(),
+                sourceSystem: $row['sourceSystem'],
+                targetSystem: $row['targetSystem'],
+                stepCode: $row['stepCode'],
+                stepName: $stepName,
+                runId: $row['runId'],
+                failedAt: $row['failedAt'],
+                errorMessage: $row['errorMessage'],
+                failureCount: $row['failureCount'],
+            );
+        }
+
+        return $issues;
     }
 }
