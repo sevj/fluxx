@@ -233,22 +233,28 @@
                 return;
             }
 
-            if (!workers.length) {
+            const visibleWorkers = workers.filter(function (worker) {
+                return worker.state !== 'offline';
+            });
+
+            if (!visibleWorkers.length) {
                 workersTarget.innerHTML = '<tr><td colspan="6" class="runtime-table-empty">' + escapeHtml(labels.noWorkers) + '</td></tr>';
                 return;
             }
 
-            workersTarget.innerHTML = workers.map(function (worker) {
+            workersTarget.innerHTML = visibleWorkers.map(function (worker) {
                 const stateLabelMap = {
                     processing: labels.workerStateProcessing,
                     active: labels.workerStateActive,
                     idle: labels.workerStateIdle,
+                    offline: labels.stateOffline,
                     stopped: labels.workerStateStopped,
                 };
                 const statusClassMap = {
                     processing: 'status-badge-running',
                     active: 'status-badge-running',
                     idle: 'status-badge-pending',
+                    offline: 'status-badge-failed',
                     stopped: 'status-badge-failed',
                 };
                 const statusClass = statusClassMap[worker.state] || 'status-badge-pending';

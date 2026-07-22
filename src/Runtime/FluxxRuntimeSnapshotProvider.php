@@ -85,6 +85,10 @@ final readonly class FluxxRuntimeSnapshotProvider
         $receiver = $this->createFluxxReceiver();
         $redisSnapshot = $this->fetchRedisSnapshot($refreshedAt);
         $workerRows = $this->mergeWorkerRuntimeState($redisSnapshot['workers'], $refreshedAt);
+        $visibleWorkerRows = array_values(array_filter(
+            $workerRows,
+            static fn (array $worker): bool => ($worker['state'] ?? null) !== 'offline',
+        ));
         $envelopes = iterator_to_array($receiver->all(self::MESSAGE_LIMIT), false);
         $messages = $this->buildMessageRows($envelopes, $redisSnapshot['pendingById'], $refreshedAt);
         $activeLocks = $this->buildActiveLockRows();
@@ -95,7 +99,7 @@ final readonly class FluxxRuntimeSnapshotProvider
             'summary' => [
                 'backlogCount' => $receiver->getMessageCount(),
                 'inFlightCount' => $redisSnapshot['pendingCount'],
-                'consumerCount' => count($workerRows),
+                'consumerCount' => count($visibleWorkerRows),
                 'activeLockCount' => count($activeLocks),
                 'visibleMessageCount' => count($messages),
                 'oldestMessageAgeMs' => $redisSnapshot['oldestMessageAgeMs'],
@@ -518,10 +522,15 @@ final readonly class FluxxRuntimeSnapshotProvider
         array &$workflowDefinitions,
         DateTimeImmutable $refreshedAt,
     ): array {
+        $workerStateAgeMs = $workerState !== null
+            ? $this->resolveDateAgeMs($workerState->lastHeartbeatAt(), $refreshedAt)
+            : null;
+        $state = $this->resolveWorkerDisplayState($redisWorker, $workerState, $workerStateAgeMs);
+        $isProcessing = $state === 'processing';
         $workflowDefinition = null;
         $stepDefinition = null;
-        $workflowCode = $workerState?->workflowCode();
-        $stepCode = $workerState?->stepCode();
+        $workflowCode = $isProcessing ? $workerState?->workflowCode() : null;
+        $stepCode = $isProcessing ? $workerState?->stepCode() : null;
 
         if ($workflowCode !== null && $this->registry->has($workflowCode)) {
             $workflowDefinitions[$workflowCode] ??= $this->registry->get($workflowCode)->definition();
@@ -541,32 +550,60 @@ final readonly class FluxxRuntimeSnapshotProvider
 
         return [
             'name' => (string) ($redisWorker['name'] ?? $workerState?->workerName() ?? '-'),
-            'state' => $workerState?->status() === 'processing' ? 'processing' : (string) ($redisWorker['state'] ?? $workerState?->status() ?? 'idle'),
+            'state' => $state,
             'pendingCount' => (int) ($redisWorker['pendingCount'] ?? 0),
             'idleMs' => isset($redisWorker['idleMs'])
                 ? (int) $redisWorker['idleMs']
-                : ($workerState !== null ? $this->resolveDateAgeMs($workerState->lastHeartbeatAt(), $refreshedAt) : null),
+                : $workerStateAgeMs,
             'lastSeenAt' => $workerState?->lastHeartbeatAt()->format(DATE_ATOM) ?? ($redisWorker['lastSeenAt'] ?? null),
             'host' => $workerState?->host(),
             'pid' => $workerState?->pid(),
             'receiverName' => $workerState?->receiverName(),
             'memoryBytes' => $workerState?->memoryBytes(),
-            'currentMessageClass' => $workerState?->currentMessageClass(),
-            'currentTransportMessageId' => $workerState?->currentTransportMessageId(),
+            'currentMessageClass' => $isProcessing ? $workerState?->currentMessageClass() : null,
+            'currentTransportMessageId' => $isProcessing ? $workerState?->currentTransportMessageId() : null,
             'workflowCode' => $workflowCode,
             'workflowName' => $workflowDefinition?->name() ?? $workflowCode,
-            'runId' => $workerState?->runId(),
+            'runId' => $isProcessing ? $workerState?->runId() : null,
             'stepCode' => $stepCode,
             'stepName' => $stepDefinition?->name() ?? $stepCode,
             'stepType' => $stepTypeCode,
             'stepTypeLabel' => $stepType?->label(),
             'stepTypeTone' => $stepType?->toneClass(),
             'stepTypeToneStyle' => $stepType?->toneStyle(),
-            'processingStartedAt' => $workerState?->startedProcessingAt()?->format(DATE_ATOM),
-            'processingDurationMs' => $workerState?->startedProcessingAt() !== null
+            'processingStartedAt' => $isProcessing ? $workerState?->startedProcessingAt()?->format(DATE_ATOM) : null,
+            'processingDurationMs' => $isProcessing && $workerState?->startedProcessingAt() !== null
                 ? $this->resolveDateAgeMs($workerState->startedProcessingAt(), $refreshedAt)
                 : null,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $redisWorker
+     */
+    private function resolveWorkerDisplayState(
+        array $redisWorker,
+        ?RuntimeWorkerState $workerState,
+        ?int $workerStateAgeMs,
+    ): string {
+        $redisState = isset($redisWorker['state']) ? (string) $redisWorker['state'] : null;
+        $redisIdleMs = isset($redisWorker['idleMs']) ? (int) $redisWorker['idleMs'] : null;
+        $workerStatus = $workerState?->status();
+        $hasFreshHeartbeat = $workerStateAgeMs !== null && $workerStateAgeMs <= self::ORPHAN_WORKER_HEARTBEAT_TTL_MS;
+        $hasFreshRedisActivity = $redisIdleMs !== null && $redisIdleMs <= self::ORPHAN_WORKER_HEARTBEAT_TTL_MS;
+
+        if ($workerStatus === 'processing' && $hasFreshHeartbeat) {
+            return 'processing';
+        }
+
+        if (
+            ($workerStatus === 'processing' && !$hasFreshHeartbeat)
+            || ($redisState !== null && !$hasFreshRedisActivity && !$hasFreshHeartbeat)
+        ) {
+            return 'offline';
+        }
+
+        return $redisState ?? $workerStatus ?? 'idle';
     }
 
     private function resolveDateAgeMs(DateTimeImmutable $dateTime, DateTimeImmutable $refreshedAt): int
