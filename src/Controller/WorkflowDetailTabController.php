@@ -24,13 +24,15 @@ final class WorkflowDetailTabController extends AbstractController
 
     public function __invoke(string $code, string $tab, Request $request): Response
     {
+        $template = $this->resolveTemplate($tab);
         $page = max($request->query->getInt('page', 1), 1);
         $range = (string) $request->query->get('range', 'month');
         $executionFilters = $this->buildExecutionFilters($request, $code);
 
         try {
-            $workflow = $this->workflowDetails->forCode(
+            $workflow = $this->workflowDetails->forTab(
                 $code,
+                $tab,
                 $page,
                 statisticsRange: $range,
                 executionFilters: $executionFilters,
@@ -38,13 +40,6 @@ final class WorkflowDetailTabController extends AbstractController
         } catch (InvalidArgumentException $exception) {
             throw $this->createNotFoundException(sprintf('Workflow "%s" was not found.', $code), $exception);
         }
-
-        $template = match ($tab) {
-            'steps' => '@Fluxx/workflow/_tab_steps.html.twig',
-            'executions' => '@Fluxx/workflow/_tab_executions.html.twig',
-            'statistics' => '@Fluxx/workflow/_tab_statistics.html.twig',
-            default => throw $this->createNotFoundException(sprintf('Workflow tab "%s" was not found.', $tab)),
-        };
 
         return $this->render($template, [
             'workflow' => $workflow,
@@ -55,5 +50,15 @@ final class WorkflowDetailTabController extends AbstractController
     private function buildExecutionFilters(Request $request, string $workflowCode): WorkflowRunFilters
     {
         return $this->workflowRunFilterFactory->fromArray($request->query->all(), $workflowCode);
+    }
+
+    private function resolveTemplate(string $tab): string
+    {
+        return match ($tab) {
+            'steps' => '@Fluxx/workflow/_tab_steps.html.twig',
+            'executions' => '@Fluxx/workflow/_tab_executions.html.twig',
+            'statistics' => '@Fluxx/workflow/_tab_statistics.html.twig',
+            default => throw $this->createNotFoundException(sprintf('Workflow tab "%s" was not found.', $tab)),
+        };
     }
 }

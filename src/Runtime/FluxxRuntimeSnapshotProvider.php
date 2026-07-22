@@ -159,6 +159,7 @@ final readonly class FluxxRuntimeSnapshotProvider
     {
         $messageRows = [];
         $runIds = [];
+        $stepCodes = [];
 
         foreach ($envelopes as $envelope) {
             $message = $envelope->getMessage();
@@ -174,6 +175,7 @@ final readonly class FluxxRuntimeSnapshotProvider
             }
 
             $runIds[] = $message->runId();
+            $stepCodes[] = $message->stepCode();
             $messageRows[] = [
                 'id' => $transportId,
                 'runId' => $message->runId(),
@@ -183,7 +185,10 @@ final readonly class FluxxRuntimeSnapshotProvider
         }
 
         $runMap = $this->workflowRunRepository->findByRunIdsIndexed($runIds);
-        $stepRunsByRunId = $this->workflowStepRunRepository->findByWorkflowRunsGrouped(array_values($runMap));
+        $stepRunMap = $this->workflowStepRunRepository->findLatestByWorkflowRunsAndStepNamesIndexed(
+            array_values($runMap),
+            $stepCodes,
+        );
         $definitions = [];
         $rows = [];
 
@@ -206,17 +211,10 @@ final readonly class FluxxRuntimeSnapshotProvider
                 }
             }
 
-            $stepRun = null;
-
-            foreach ($stepRunsByRunId[$messageRow['runId']] ?? [] as $candidate) {
-                if ($candidate->stepName() === $messageRow['stepCode']) {
-                    $stepRun = $candidate;
-                    break;
-                }
-            }
-
-            $typeCode = $stepDefinition?->type() ?? $stepRun?->stepType() ?? 'custom';
+            $stepRun = $stepRunMap[$messageRow['runId'] . '::' . $messageRow['stepCode']] ?? null;
+            $typeCode = $stepDefinition?->type() ?? $stepRun['stepType'] ?? 'custom';
             $stepType = $this->stepTypeRegistry->get($typeCode);
+            $stepErrorPayload = is_array($stepRun['errorPayload'] ?? null) ? $stepRun['errorPayload'] : null;
 
             $rows[] = [
                 'id' => $messageRow['id'],
@@ -238,13 +236,13 @@ final readonly class FluxxRuntimeSnapshotProvider
                 'stepTypeLabel' => $stepType->label(),
                 'stepTypeTone' => $stepType->toneClass(),
                 'stepTypeToneStyle' => $stepType->toneStyle(),
-                'stepStatus' => $stepRun?->status()->value ?? 'pending',
-                'durationMs' => $stepRun?->durationMs(),
-                'memoryPeakBytes' => $stepRun?->memoryPeakBytes(),
-                'errorCategory' => is_string($stepRun?->errorPayload()['category'] ?? $run?->errorPayload()['category'] ?? null)
-                    ? ($stepRun?->errorPayload()['category'] ?? $run?->errorPayload()['category'])
+                'stepStatus' => $stepRun['status'] ?? 'pending',
+                'durationMs' => $stepRun['durationMs'] ?? null,
+                'memoryPeakBytes' => $stepRun['memoryPeakBytes'] ?? null,
+                'errorCategory' => is_string($stepErrorPayload['category'] ?? $run?->errorPayload()['category'] ?? null)
+                    ? ($stepErrorPayload['category'] ?? $run?->errorPayload()['category'])
                     : null,
-                'errorMessage' => $stepRun?->errorMessage() ?? $run?->errorMessage(),
+                'errorMessage' => $stepRun['errorMessage'] ?? $run?->errorMessage(),
             ];
         }
 

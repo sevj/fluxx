@@ -37,28 +37,40 @@ final readonly class WorkflowDetails
     ): WorkflowDetailView
     {
         $definition = $this->registry->get($workflowCode)->definition();
+        $statisticsRange = $this->normalizeStatisticsRange($statisticsRange);
+        $executionFilters ??= new WorkflowRunFilters(workflowCode: $definition->code());
         $steps = $this->buildStepDefinitionViews($definition);
         $graph = $this->buildGraphRows($steps);
+
+        return $this->createWorkflowDetailView(
+            definition: $definition,
+            steps: $steps,
+            graph: $graph,
+            executionPage: $this->buildExecutionPage($definition, $page, $perPage, $executionFilters),
+            statistics: $this->buildStatisticsView($definition, $statisticsRange),
+            withOverviewMetrics: true,
+        );
+    }
+
+    public function forTab(
+        string $workflowCode,
+        string $tab,
+        int $page = 1,
+        int $perPage = self::DEFAULT_PER_PAGE,
+        string $statisticsRange = self::DEFAULT_STATISTICS_RANGE,
+        ?WorkflowRunFilters $executionFilters = null,
+    ): WorkflowDetailView
+    {
+        $definition = $this->registry->get($workflowCode)->definition();
         $statisticsRange = $this->normalizeStatisticsRange($statisticsRange);
         $executionFilters ??= new WorkflowRunFilters(workflowCode: $definition->code());
 
-        return new WorkflowDetailView(
-            code: $definition->code(),
-            name: $definition->name(),
-            sourceSystem: $definition->sourceSystem(),
-            targetSystem: $definition->targetSystem(),
-            graphColumnCount: $graph['columnCount'],
-            graphRowCount: $graph['rowCount'],
-            executionCount: $this->workflowRunRepository->countByWorkflowName($definition->code()),
-            errorCount: $this->workflowRunRepository->countErroredByWorkflowName($definition->code()),
-            lastExecutionAt: $this->workflowRunRepository->findLatestOneByWorkflowName($definition->code())?->createdAt(),
-            lastErrorAt: $this->workflowRunRepository->findLatestErrorAtByWorkflowName($definition->code()),
-            steps: $steps,
-            stepRows: $graph['rows'],
-            graphEdges: $graph['edges'],
-            executionPage: $this->buildExecutionPage($definition, $page, $perPage, $executionFilters),
-            statistics: $this->buildStatisticsView($definition, $statisticsRange),
-        );
+        return match ($tab) {
+            'steps' => $this->buildStepsTabView($definition, $page, $perPage, $statisticsRange),
+            'executions' => $this->buildExecutionsTabView($definition, $page, $perPage, $statisticsRange, $executionFilters),
+            'statistics' => $this->buildStatisticsTabView($definition, $page, $perPage, $statisticsRange),
+            default => throw new InvalidArgumentException(sprintf('Workflow tab "%s" was not found.', $tab)),
+        };
     }
 
     public function overviewForCode(string $workflowCode): WorkflowOverview
@@ -74,6 +86,160 @@ final readonly class WorkflowDetails
             executionCount: $this->workflowRunRepository->countByWorkflowName($definition->code()),
             errorCount: $this->workflowRunRepository->countErroredByWorkflowName($definition->code()),
             lastErrorAt: $this->workflowRunRepository->findLatestErrorAtByWorkflowName($definition->code()),
+        );
+    }
+
+    private function buildStepsTabView(
+        WorkflowDefinition $definition,
+        int $page,
+        int $perPage,
+        string $statisticsRange,
+    ): WorkflowDetailView {
+        $steps = $this->buildStepDefinitionViews($definition);
+        $graph = $this->buildGraphRows($steps);
+
+        return $this->createWorkflowDetailView(
+            definition: $definition,
+            steps: $steps,
+            graph: $graph,
+            executionPage: $this->emptyExecutionPage($page, $perPage),
+            statistics: $this->emptyStatisticsView($statisticsRange),
+        );
+    }
+
+    private function buildExecutionsTabView(
+        WorkflowDefinition $definition,
+        int $page,
+        int $perPage,
+        string $statisticsRange,
+        WorkflowRunFilters $executionFilters,
+    ): WorkflowDetailView {
+        $steps = $this->buildStepDefinitionViews($definition);
+        $graph = $this->buildGraphRows($steps);
+
+        return $this->createWorkflowDetailView(
+            definition: $definition,
+            steps: $steps,
+            graph: $graph,
+            executionPage: $this->buildExecutionPage($definition, $page, $perPage, $executionFilters),
+            statistics: $this->emptyStatisticsView($statisticsRange),
+        );
+    }
+
+    private function buildStatisticsTabView(
+        WorkflowDefinition $definition,
+        int $page,
+        int $perPage,
+        string $statisticsRange,
+    ): WorkflowDetailView {
+        return $this->createWorkflowDetailView(
+            definition: $definition,
+            steps: [],
+            graph: $this->emptyGraph(),
+            executionPage: $this->emptyExecutionPage($page, $perPage),
+            statistics: $this->buildStatisticsView($definition, $statisticsRange),
+        );
+    }
+
+    /**
+     * @param list<WorkflowStepDefinitionView> $steps
+     * @param array{rows: list<WorkflowStepRowView>, edges: list<WorkflowGraphEdgeView>, columnCount: int, rowCount: int} $graph
+     */
+    private function createWorkflowDetailView(
+        WorkflowDefinition $definition,
+        array $steps,
+        array $graph,
+        WorkflowExecutionPage $executionPage,
+        WorkflowStatisticsView $statistics,
+        bool $withOverviewMetrics = false,
+    ): WorkflowDetailView {
+        $overviewMetrics = $withOverviewMetrics
+            ? $this->loadOverviewMetrics($definition)
+            : [
+                'executionCount' => 0,
+                'errorCount' => 0,
+                'lastExecutionAt' => null,
+                'lastErrorAt' => null,
+            ];
+
+        return new WorkflowDetailView(
+            code: $definition->code(),
+            name: $definition->name(),
+            sourceSystem: $definition->sourceSystem(),
+            targetSystem: $definition->targetSystem(),
+            graphColumnCount: $graph['columnCount'],
+            graphRowCount: $graph['rowCount'],
+            executionCount: $overviewMetrics['executionCount'],
+            errorCount: $overviewMetrics['errorCount'],
+            lastExecutionAt: $overviewMetrics['lastExecutionAt'],
+            lastErrorAt: $overviewMetrics['lastErrorAt'],
+            steps: $steps,
+            stepRows: $graph['rows'],
+            graphEdges: $graph['edges'],
+            executionPage: $executionPage,
+            statistics: $statistics,
+        );
+    }
+
+    /**
+     * @return array{
+     *     executionCount: int,
+     *     errorCount: int,
+     *     lastExecutionAt: ?DateTimeImmutable,
+     *     lastErrorAt: ?DateTimeImmutable
+     * }
+     */
+    private function loadOverviewMetrics(WorkflowDefinition $definition): array
+    {
+        return [
+            'executionCount' => $this->workflowRunRepository->countByWorkflowName($definition->code()),
+            'errorCount' => $this->workflowRunRepository->countErroredByWorkflowName($definition->code()),
+            'lastExecutionAt' => $this->workflowRunRepository->findLatestOneByWorkflowName($definition->code())?->createdAt(),
+            'lastErrorAt' => $this->workflowRunRepository->findLatestErrorAtByWorkflowName($definition->code()),
+        ];
+    }
+
+    /**
+     * @return array{rows: list<WorkflowStepRowView>, edges: list<WorkflowGraphEdgeView>, columnCount: int, rowCount: int}
+     */
+    private function emptyGraph(): array
+    {
+        return [
+            'rows' => [],
+            'edges' => [],
+            'columnCount' => 1,
+            'rowCount' => 1,
+        ];
+    }
+
+    private function emptyExecutionPage(int $page, int $perPage): WorkflowExecutionPage
+    {
+        $page = max($page, 1);
+        $perPage = max($perPage, 1);
+
+        return new WorkflowExecutionPage(
+            items: [],
+            currentPage: $page,
+            perPage: $perPage,
+            totalItems: 0,
+            totalPages: $page,
+        );
+    }
+
+    private function emptyStatisticsView(string $statisticsRange): WorkflowStatisticsView
+    {
+        $range = $this->normalizeStatisticsRange($statisticsRange);
+
+        return new WorkflowStatisticsView(
+            selectedRange: $range,
+            ranges: $this->buildStatisticsRanges($range),
+            points: [],
+            metrics: [],
+            stepMetrics: [],
+            executionTotal: 0,
+            errorTotal: 0,
+            maxValue: 1,
+            yAxisTicks: [1, 0],
         );
     }
 
@@ -343,21 +509,6 @@ final readonly class WorkflowDetails
     ): WorkflowGraphNodeView {
         $path = $branchPaths[$step->code()] ?? [];
 
-        if (count($step->dependsOn()) > 1 && $lanePaths !== []) {
-            $coveredRows = $this->resolveDependencyCoveredRows($step, $branchPaths, $lanePaths);
-
-            if ($coveredRows !== []) {
-                $anchorRow = (int) round(array_sum($coveredRows) / count($coveredRows));
-
-                return new WorkflowGraphNodeView(
-                    step: $step,
-                    rowStart: max(1, min($anchorRow, count($lanePaths))),
-                    columnStart: $step->level() + 1,
-                    rowSpan: 1,
-                );
-            }
-        }
-
         if ($path === [] || $lanePaths === []) {
             return new WorkflowGraphNodeView(
                 step: $step,
@@ -385,35 +536,6 @@ final readonly class WorkflowDetails
             columnStart: $step->level() + 1,
             rowSpan: count($coveredRows),
         );
-    }
-
-    /**
-     * @param array<string, list<int>> $branchPaths
-     * @param list<list<int>> $lanePaths
-     * @return list<int>
-     */
-    private function resolveDependencyCoveredRows(
-        WorkflowStepDefinitionView $step,
-        array $branchPaths,
-        array $lanePaths,
-    ): array {
-        $coveredRows = [];
-
-        foreach ($step->dependsOn() as $dependencyCode) {
-            $dependencyPath = $branchPaths[$dependencyCode] ?? null;
-
-            if ($dependencyPath === null) {
-                continue;
-            }
-
-            foreach ($lanePaths as $index => $lanePath) {
-                if ($this->isPathPrefix($dependencyPath, $lanePath)) {
-                    $coveredRows[$index + 1] = $index + 1;
-                }
-            }
-        }
-
-        return array_values($coveredRows);
     }
 
     /**
@@ -681,11 +803,7 @@ final readonly class WorkflowDetails
 
         return new WorkflowStatisticsView(
             selectedRange: $range,
-            ranges: [
-                new WorkflowStatisticsRangeView('week', 'workflow_show.range_week', $range === 'week'),
-                new WorkflowStatisticsRangeView('month', 'workflow_show.range_month', $range === 'month'),
-                new WorkflowStatisticsRangeView('year', 'workflow_show.range_year', $range === 'year'),
-            ],
+            ranges: $this->buildStatisticsRanges($range),
             points: $points,
             metrics: $this->buildAdvancedStatisticsMetrics($runs, $stepRunsByRunId),
             stepMetrics: $this->buildStepStatistics($definition, $stepRunsByRunId),
@@ -694,6 +812,18 @@ final readonly class WorkflowDetails
             maxValue: $maxValue,
             yAxisTicks: $this->buildYAxisTicks($maxValue),
         );
+    }
+
+    /**
+     * @return list<WorkflowStatisticsRangeView>
+     */
+    private function buildStatisticsRanges(string $range): array
+    {
+        return [
+            new WorkflowStatisticsRangeView('week', 'workflow_show.range_week', $range === 'week'),
+            new WorkflowStatisticsRangeView('month', 'workflow_show.range_month', $range === 'month'),
+            new WorkflowStatisticsRangeView('year', 'workflow_show.range_year', $range === 'year'),
+        ];
     }
 
     /**
