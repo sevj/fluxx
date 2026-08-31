@@ -497,6 +497,60 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository
         ];
     }
 
+    /**
+     * @return array{
+     *     retryRunCount: int,
+     *     processedTotal: int,
+     *     successTotal: int,
+     *     recordErrorTotal: int
+     * }
+     */
+    public function aggregateLatestStepStatisticsSinceAll(DateTimeImmutable $startAt): array
+    {
+        $connection = $this->getEntityManager()->getConnection();
+        $latestStepRunsSubquery = $this->latestStepRunsSinceAllSubquery();
+        $summary = $connection->fetchAssociative(
+            sprintf(
+                'SELECT
+                    SUM(workflow_step_run.processed_count) AS processed_total,
+                    SUM(workflow_step_run.success_count) AS success_total,
+                    SUM(workflow_step_run.error_count) AS record_error_total
+                 FROM fluxx_workflow_step_run workflow_step_run
+                 INNER JOIN (%s) latest_step_run ON latest_step_run.latest_id = workflow_step_run.id',
+                $latestStepRunsSubquery,
+            ),
+            [
+                'startAt' => $startAt,
+            ],
+            [
+                'startAt' => Types::DATETIME_IMMUTABLE,
+            ],
+        ) ?: [];
+
+        $retryRunCount = (int) $connection->fetchOne(
+            sprintf(
+                'SELECT COUNT(DISTINCT workflow_step_run.workflow_run_id)
+                 FROM fluxx_workflow_step_run workflow_step_run
+                 INNER JOIN (%s) latest_step_run ON latest_step_run.latest_id = workflow_step_run.id
+                 WHERE workflow_step_run.retry_count > 0',
+                $latestStepRunsSubquery,
+            ),
+            [
+                'startAt' => $startAt,
+            ],
+            [
+                'startAt' => Types::DATETIME_IMMUTABLE,
+            ],
+        );
+
+        return [
+            'retryRunCount' => $retryRunCount,
+            'processedTotal' => (int) ($summary['processed_total'] ?? 0),
+            'successTotal' => (int) ($summary['success_total'] ?? 0),
+            'recordErrorTotal' => (int) ($summary['record_error_total'] ?? 0),
+        ];
+    }
+
     public function findOneByWorkflowNameRunIdAndStepName(string $workflowName, string $runId, string $stepName): ?WorkflowStepRun
     {
         /** @var WorkflowStepRun|null $stepRun */
@@ -715,6 +769,23 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository
                 INNER JOIN fluxx_workflow_run workflow_run ON workflow_run.id = workflow_step_run.workflow_run_id
                 WHERE workflow_run.workflow_name = :workflowName
                   AND workflow_run.created_at >= :startAt
+                GROUP BY workflow_step_run.workflow_run_id, workflow_step_run.step_name
+            ) latest_step_run
+        SQL;
+    }
+
+    private function latestStepRunsSinceAllSubquery(): string
+    {
+        return <<<'SQL'
+            SELECT latest_step_run.latest_id
+            FROM (
+                SELECT
+                    workflow_step_run.workflow_run_id,
+                    workflow_step_run.step_name,
+                    MAX(workflow_step_run.id) AS latest_id
+                FROM fluxx_workflow_step_run workflow_step_run
+                INNER JOIN fluxx_workflow_run workflow_run ON workflow_run.id = workflow_step_run.workflow_run_id
+                WHERE workflow_run.created_at >= :startAt
                 GROUP BY workflow_step_run.workflow_run_id, workflow_step_run.step_name
             ) latest_step_run
         SQL;

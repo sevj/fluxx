@@ -8,8 +8,8 @@
     <title>{{ 'runtime_index.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <script src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: '20260616-js-split'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: '20260616-js-lock-release'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-self-heal-lock'}) }}">
 </head>
 <body>
     <main
@@ -53,6 +53,10 @@
         data-runtime-label-polling="{{ 'runtime_index.polling'|trans }}"
         data-runtime-label-pause-polling="{{ 'runtime_index.pause_polling'|trans }}"
         data-runtime-label-resume-polling="{{ 'runtime_index.resume_polling'|trans }}"
+        data-runtime-lock-release-url="{{ path('fluxx_runtime_lock_release', {'runId': '__RUN_ID__'}) }}"
+        data-runtime-lock-release-token="{{ csrf_token('fluxx.runtime.lock_release') }}"
+        data-runtime-label-release-lock="{{ 'runtime_index.release_lock'|trans }}"
+        data-runtime-label-release-lock-confirm="{{ 'runtime_index.release_lock_confirm'|trans|e('js') }}"
     >
         {% include '@Fluxx/_navigation.html.twig' %}
 
@@ -83,6 +87,53 @@
                 </div>
             </div>
         </header>
+
+        <section class="runtime-self-heal">
+            {% for label_messages in app.flashes(['success', 'error']) %}
+                {% for message in label_messages %}
+                    <div class="status-badge status-badge-{{ label_messages == 'error' ? 'failed' : 'completed' }}">{{ message }}</div>
+                {% endfor %}
+            {% endfor %}
+
+            <div class="runtime-self-heal-actions">
+                <form method="post" action="{{ path('fluxx_runtime_self_heal') }}" class="inline-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.runtime.self_heal.prune_workers') }}">
+                    <input type="hidden" name="action" value="prune_workers">
+                    <input type="hidden" name="_redirect" value="{{ path('fluxx_runtime_index') }}">
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('x') }}</span>
+                        <span class="button-label">{{ 'runtime_index.self_heal.prune_workers'|trans }}</span>
+                    </button>
+                </form>
+                <form method="post" action="{{ path('fluxx_runtime_self_heal') }}" class="inline-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.runtime.self_heal.purge_dead_consumers') }}">
+                    <input type="hidden" name="action" value="purge_dead_consumers">
+                    <input type="hidden" name="_redirect" value="{{ path('fluxx_runtime_index') }}">
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('list') }}</span>
+                        <span class="button-label">{{ 'runtime_index.self_heal.purge_dead_consumers'|trans }}</span>
+                    </button>
+                </form>
+                <form method="post" action="{{ path('fluxx_runtime_self_heal') }}" class="inline-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.runtime.self_heal.reclaim_pending') }}">
+                    <input type="hidden" name="action" value="reclaim_pending">
+                    <input type="hidden" name="_redirect" value="{{ path('fluxx_runtime_index') }}">
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('refresh-cw') }}</span>
+                        <span class="button-label">{{ 'runtime_index.self_heal.reclaim_pending'|trans }}</span>
+                    </button>
+                </form>
+                <form method="post" action="{{ path('fluxx_runtime_self_heal') }}" class="inline-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.runtime.self_heal.release_stale_locks') }}">
+                    <input type="hidden" name="action" value="release_stale_locks">
+                    <input type="hidden" name="_redirect" value="{{ path('fluxx_runtime_index') }}">
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                        <span class="button-label">{{ 'runtime_index.self_heal.release_stale_locks'|trans }}</span>
+                    </button>
+                </form>
+            </div>
+        </section>
 
         <section class="detail-message detail-message-error" data-runtime-error hidden></section>
 
@@ -167,11 +218,12 @@
                             <th>{{ 'runtime_index.lock_scope'|trans }}</th>
                             <th>{{ 'runtime_index.lock_key'|trans }}</th>
                             <th>{{ 'runtime_index.lock_acquired'|trans }}</th>
+                            <th>{{ 'runtime_index.lock_actions'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody data-runtime-locks>
                         <tr>
-                            <td colspan="5" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
+                            <td colspan="6" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
                         </tr>
                     </tbody>
                 </table>

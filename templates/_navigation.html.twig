@@ -18,6 +18,12 @@
                 {{ 'navigation.workflows'|trans }}
             </a>
             <a
+                href="{{ path('fluxx_statistics_index') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_statistics_index' ? ' is-active' : '' }}"
+            >
+                {{ 'navigation.statistics'|trans }}
+            </a>
+            <a
                 href="{{ path('fluxx_runtime_index') }}"
                 class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_runtime_index' ? ' is-active' : '' }}"
             >

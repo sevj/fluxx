@@ -1,0 +1,42 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'statistics_index.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-statistics'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <div class="page-stack">
+            <header class="header">
+                <div>
+                    <h1 class="title">{{ 'statistics_index.heading'|trans }}</h1>
+                    <p class="subtitle">{{ 'statistics_index.subtitle'|trans }}</p>
+                </div>
+            </header>
+
+            <section class="section-card">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'statistics_index.overview_title'|trans }}</h2>
+                        <p class="subtitle section-subtitle">{{ 'statistics_index.overview_subtitle'|trans }}</p>
+                    </div>
+                </div>
+
+                {% include '@Fluxx/_statistics_chart.html.twig' with {
+                    statistics: globalStatistics,
+                    range_route: 'fluxx_statistics_index',
+                    range_params: {}
+                } %}
+            </section>
+        </div>
+    </main>
+</body>
+</html>

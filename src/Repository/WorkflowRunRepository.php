@@ -376,6 +376,116 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
     }
 
     /**
+     * @return array<string, array{executionCount: int, errorCount: int}>
+     */
+    public function aggregateCreatedSinceAll(DateTimeImmutable $startAt, string $bucket): array
+    {
+        $connection = $this->getEntityManager()->getConnection();
+        $bucketExpression = $this->bucketExpression('created_at', $bucket);
+        $rows = $connection->fetchAllAssociative(
+            sprintf(
+                'SELECT %1$s AS bucket_key, COUNT(*) AS execution_count, SUM(CASE WHEN status IN (:errorStatuses) THEN 1 ELSE 0 END) AS error_count
+                 FROM fluxx_workflow_run
+                 WHERE created_at >= :startAt
+                 GROUP BY %1$s',
+                $bucketExpression,
+            ),
+            [
+                'startAt' => $startAt,
+                'errorStatuses' => [
+                    WorkflowRunStatus::Failed->value,
+                    WorkflowRunStatus::PartiallyFailed->value,
+                ],
+            ],
+            [
+                'startAt' => Types::DATETIME_IMMUTABLE,
+                'errorStatuses' => ArrayParameterType::STRING,
+            ],
+        );
+
+        $bucketStats = [];
+
+        foreach ($rows as $row) {
+            $bucketKey = (string) ($row['bucket_key'] ?? '');
+
+            if ($bucketKey === '') {
+                continue;
+            }
+
+            $bucketStats[$bucketKey] = [
+                'executionCount' => (int) ($row['execution_count'] ?? 0),
+                'errorCount' => (int) ($row['error_count'] ?? 0),
+            ];
+        }
+
+        return $bucketStats;
+    }
+
+    /**
+     * @return array{
+     *     runCount: int,
+     *     failedCount: int,
+     *     partialFailedCount: int,
+     *     relaunchCount: int,
+     *     durations: list<int>
+     * }
+     */
+    public function summarizeCreatedSinceAll(DateTimeImmutable $startAt): array
+    {
+        $connection = $this->getEntityManager()->getConnection();
+        $metadataTextExpression = $this->jsonTextExpression('metadata');
+        $summary = $connection->fetchAssociative(
+            sprintf(
+                'SELECT
+                    COUNT(*) AS run_count,
+                    SUM(CASE WHEN status = :failedStatus THEN 1 ELSE 0 END) AS failed_count,
+                    SUM(CASE WHEN status = :partialFailedStatus THEN 1 ELSE 0 END) AS partial_failed_count,
+                    SUM(CASE WHEN %s LIKE :relaunchMarker THEN 1 ELSE 0 END) AS relaunch_count
+                 FROM fluxx_workflow_run
+                 WHERE created_at >= :startAt',
+                $metadataTextExpression,
+            ),
+            [
+                'startAt' => $startAt,
+                'failedStatus' => WorkflowRunStatus::Failed->value,
+                'partialFailedStatus' => WorkflowRunStatus::PartiallyFailed->value,
+                'relaunchMarker' => '%"relaunch":%',
+            ],
+            [
+                'startAt' => Types::DATETIME_IMMUTABLE,
+            ],
+        ) ?: [];
+
+        $durations = array_map(
+            static fn (mixed $durationMs): int => max((int) $durationMs, 0),
+            $connection->fetchFirstColumn(
+                sprintf(
+                    'SELECT %s AS duration_ms
+                     FROM fluxx_workflow_run
+                     WHERE created_at >= :startAt
+                       AND started_at IS NOT NULL
+                       AND finished_at IS NOT NULL',
+                    $this->durationExpression('started_at', 'finished_at'),
+                ),
+                [
+                    'startAt' => $startAt,
+                ],
+                [
+                    'startAt' => Types::DATETIME_IMMUTABLE,
+                ],
+            ),
+        );
+
+        return [
+            'runCount' => (int) ($summary['run_count'] ?? 0),
+            'failedCount' => (int) ($summary['failed_count'] ?? 0),
+            'partialFailedCount' => (int) ($summary['partial_failed_count'] ?? 0),
+            'relaunchCount' => (int) ($summary['relaunch_count'] ?? 0),
+            'durations' => $durations,
+        ];
+    }
+
+    /**
      * @return list<WorkflowRun>
      */
     public function findPaginatedByFilters(WorkflowRunFilters $filters, int $limit, int $offset): array

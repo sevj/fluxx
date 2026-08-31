@@ -2,6 +2,7 @@ navigation:
     label: Fluxx navigation
     users: Users
     workflows: Workflows
+    statistics: Statistics
     runtime: Runtime
     health: Health
     troubleshooting: Troubleshooting
@@ -139,6 +140,28 @@ workflow_show:
     step_retries: Retries
     step_idempotence_hits: Idempotence hits
     step_executions: Executions
+    range_week: Last week
+    range_month: Last month
+    range_year: Last year
+
+statistics_index:
+    title: Global statistics
+    heading: Global statistics
+    subtitle: Aggregated execution statistics across all registered workflows.
+    overview_title: Execution overview
+    overview_subtitle: Volume and errors across all workflows over the selected period.
+    empty: No execution has been recorded in the selected period.
+    executions_total: Executions
+    errors_total: Errors
+    metric_avg_duration: Avg duration
+    metric_p95_duration: P95 duration
+    metric_failure_rate: Failure rate
+    metric_partial_failure_rate: Partial failure rate
+    metric_retry_rate: Retry rate
+    metric_relaunch_rate: Relaunch rate
+    metric_processed_total: Processed records
+    metric_success_total: Succeeded records
+    metric_record_errors_total: Record errors
     range_week: Last week
     range_month: Last month
     range_year: Last year
@@ -310,6 +333,15 @@ runtime_index:
     message_consumer: Consumer
     message_delivery: Delivery
     message_age: Age
+    self_heal:
+        title: Runtime maintenance
+        prune_workers: Prune stale workers
+        purge_dead_consumers: Purge dead consumers
+        reclaim_pending: Reclaim pending
+        release_stale_locks: Release stale locks
+    lock_actions: Actions
+    release_lock: Release
+    release_lock_confirm: 'Release the active lock for this run? Downstream runs blocked by it will be able to proceed.'
 
 system_health:
     title: System health

@@ -42,6 +42,8 @@
             lockScope: runtimeMonitor.dataset.runtimeLabelLockScope || 'Scope',
             lockKey: runtimeMonitor.dataset.runtimeLabelLockKey || 'Lock key',
             lockAcquired: runtimeMonitor.dataset.runtimeLabelLockAcquired || 'Acquired',
+            releaseLock: runtimeMonitor.dataset.runtimeLabelReleaseLock || 'Release lock',
+            releaseLockConfirm: runtimeMonitor.dataset.runtimeLabelReleaseLockConfirm || 'Release the lock owned by this run?',
             pausePolling: runtimeMonitor.dataset.runtimeLabelPausePolling || 'Pause polling',
             resumePolling: runtimeMonitor.dataset.runtimeLabelResumePolling || 'Resume polling',
         };
@@ -184,9 +186,12 @@
             }
 
             if (!locks.length) {
-                locksTarget.innerHTML = '<tr><td colspan="5" class="runtime-table-empty">' + escapeHtml(labels.noLocks) + '</td></tr>';
+                locksTarget.innerHTML = '<tr><td colspan="6" class="runtime-table-empty">' + escapeHtml(labels.noLocks) + '</td></tr>';
                 return;
             }
+
+            const lockReleaseUrlTemplate = runtimeMonitor.dataset.runtimeLockReleaseUrl || '';
+            const lockReleaseToken = runtimeMonitor.dataset.runtimeLockReleaseToken || '';
 
             locksTarget.innerHTML = locks.map(function (lock) {
                 const workflow = (lock.workflowName || lock.workflowCode || '-')
@@ -195,15 +200,25 @@
                     ? '<div class="table-note table-note-compact">' + escapeHtml(lock.status) + '</div>'
                     : '';
                 const scope = escapeHtml(lock.scope || '-');
+                const runId = lock.runId || '';
+                const releaseUrl = lockReleaseUrlTemplate.replace('__RUN_ID__', encodeURIComponent(runId));
+                const releaseAction = runId && lockReleaseUrlTemplate
+                    ? '<form method="post" action="' + escapeHtml(releaseUrl) + '" class="inline-form" onsubmit="return confirm(\'' + labels.releaseLockConfirm + '\');">'
+                        + '<input type="hidden" name="_token" value="' + escapeHtml(lockReleaseToken) + '">'
+                        + '<input type="hidden" name="_redirect" value="' + escapeHtml(window.location.pathname) + '">'
+                        + '<button type="submit" class="danger-button danger-button-compact"><span class="button-label">' + escapeHtml(labels.releaseLock) + '</span></button>'
+                        + '</form>'
+                    : '';
 
                 return '<tr>'
                     + '<td data-label="' + escapeHtml(labels.lockWorkflow) + '">' + workflow + '</td>'
-                    + '<td data-label="' + escapeHtml(labels.lockRun) + '"><span class="run-id">' + escapeHtml(lock.runId || '-') + '</span>' + runStatus + '</td>'
+                    + '<td data-label="' + escapeHtml(labels.lockRun) + '"><span class="run-id">' + escapeHtml(runId || '-') + '</span>' + runStatus + '</td>'
                     + '<td data-label="' + escapeHtml(labels.lockScope) + '"><span class="system-chip">' + scope + '</span></td>'
                     + '<td data-label="' + escapeHtml(labels.lockKey) + '"><span class="item-code">' + escapeHtml(lock.lockKey || '-') + '</span>'
                     + (lock.businessPartitionKey ? '<div class="table-note table-note-compact">' + escapeHtml(lock.businessPartitionKey) + '</div>' : '')
                     + '</td>'
                     + '<td data-label="' + escapeHtml(labels.lockAcquired) + '"><span class="metric-value">' + escapeHtml(formatDateTime(lock.acquiredAt)) + '</span></td>'
+                    + '<td data-label="' + escapeHtml(labels.releaseLock) + '">' + releaseAction + '</td>'
                     + '</tr>';
             }).join('');
         };

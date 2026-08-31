@@ -11,4 +11,9 @@ interface WorkflowExecutionLockStoreInterface
     public function findActiveByLockKey(string $lockKey): ?WorkflowExecutionLock;
 
     public function findActiveByOwnerRunId(string $ownerRunId): ?WorkflowExecutionLock;
+
+    /**
+     * @return list<WorkflowExecutionLock>
+     */
+    public function findActiveOrdered(): array;
 }

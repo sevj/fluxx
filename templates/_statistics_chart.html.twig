@@ -1,0 +1,56 @@
+{% trans_default_domain 'fluxx' %}
+{% if statistics.isEmpty %}
+    <section class="empty">
+        {{ 'statistics_index.empty'|trans }}
+    </section>
+{% else %}
+    <div class="statistics-summary">
+        <div class="statistics-summary-item">
+            <span class="statistics-summary-label">{{ 'statistics_index.executions_total'|trans }}</span>
+            <span class="statistics-summary-value">{{ statistics.executionTotal }}</span>
+        </div>
+        <div class="statistics-summary-item statistics-summary-item-error">
+            <span class="statistics-summary-label">{{ 'statistics_index.errors_total'|trans }}</span>
+            <span class="statistics-summary-value">{{ statistics.errorTotal }}</span>
+        </div>
+    </div>
+
+    <div class="statistics-summary statistics-summary-extended">
+        {% for metric in statistics.metrics %}
+            <div class="statistics-summary-item statistics-summary-item-{{ metric.tone }}">
+                <span class="statistics-summary-label">{{ metric.labelKey|trans }}</span>
+                <span class="statistics-summary-value">{{ metric.value }}</span>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="statistics-chart-section">
+        <div class="statistics-controls">
+            {% for range in statistics.ranges %}
+                <a href="{{ path(range_route, range_params|merge({'range': range.value})) }}" class="statistics-range{{ range.selected ? ' is-active' : '' }}">
+                    {{ range.labelKey|trans }}
+                </a>
+            {% endfor %}
+        </div>
+
+        <div class="statistics-chart">
+            <div class="statistics-y-axis">
+                {% for tick in statistics.yAxisTicks %}
+                    <span>{{ tick }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="statistics-bars">
+                {% for point in statistics.points %}
+                    <div class="statistics-bar-group">
+                        <div class="statistics-bar-stage">
+                            <div class="statistics-bar statistics-bar-executions" style="height: {{ point.executionHeightPercent }}%;" title="{{ point.label }}: {{ point.executionCount }} executions"></div>
+                            <div class="statistics-bar statistics-bar-errors" style="height: {{ point.errorHeightPercent }}%;" title="{{ point.label }}: {{ point.errorCount }} errors"></div>
+                        </div>
+                        <div class="statistics-axis-label">{{ point.axisLabel }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
