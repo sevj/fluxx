@@ -9,7 +9,8 @@
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
     <script src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: '20260616-js-split'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'workflow-groups', v: '20260616-js-groups-v2'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-groups'}) }}">
 </head>
 <body>
     <main class="page">
@@ -59,17 +60,19 @@
             <section class="workflow-list">
                 <table>
                     <colgroup>
-                        <col style="width: 22%">
-                        <col style="width: 14%">
-                        <col style="width: 14%">
-                        <col style="width: 10%">
-                        <col style="width: 10%">
-                        <col style="width: 16%">
-                        <col style="width: 14%">
+                        <col style="width: 20%">
+                        <col style="width: 18%">
+                        <col style="width: 11%">
+                        <col style="width: 11%">
+                        <col style="width: 8%">
+                        <col style="width: 8%">
+                        <col style="width: 13%">
+                        <col style="width: 11%">
                     </colgroup>
                     <thead>
                         <tr>
                             <th>{{ 'workflow_index.workflow'|trans }}</th>
+                            <th>{{ 'workflow_index.code'|trans }}</th>
                             <th>{{ 'workflow_index.source_system'|trans }}</th>
                             <th>{{ 'workflow_index.target_system'|trans }}</th>
                             <th>{{ 'workflow_index.execution_count'|trans }}</th>
@@ -79,41 +82,59 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for workflow in workflowPage.items %}
-                            <tr class="clickable-row" data-row-href="{{ path('fluxx_workflow_show', {'code': workflow.code}) }}" tabindex="0" role="link">
-                                <td data-label="{{ 'workflow_index.workflow'|trans }}">
-                                    <a href="{{ path('fluxx_workflow_show', {'code': workflow.code}) }}" class="workflow-link">
-                                        <div class="workflow-name">{{ workflow.name }}</div>
-                                    </a>
-                                    <div class="item-code">{{ workflow.code }}</div>
-                                </td>
-                                <td data-label="{{ 'workflow_index.source_system'|trans }}">
-                                    <span class="system-chip system-chip-source">{{ workflow.sourceSystem }}</span>
-                                </td>
-                                <td data-label="{{ 'workflow_index.target_system'|trans }}">
-                                    <span class="system-chip system-chip-target">{{ workflow.targetSystem }}</span>
-                                </td>
-                                <td data-label="{{ 'workflow_index.execution_count'|trans }}">
-                                    <span class="execution-count">{{ workflow.executionCount }}</span>
-                                </td>
-                                <td data-label="{{ 'workflow_index.error_count'|trans }}">
-                                    <span class="error-count">{{ workflow.errorCount }}</span>
-                                </td>
-                                <td data-label="{{ 'workflow_index.last_execution'|trans }}">
-                                    {% if workflow.lastExecutionAt %}
-                                        <span class="metric-value">{{ workflow.lastExecutionAt|date('Y-m-d H:i') }}</span>
-                                    {% else %}
-                                        <span class="metric-empty">{{ 'workflow_index.never'|trans }}</span>
-                                    {% endif %}
-                                </td>
-                                <td data-label="{{ 'workflow_index.last_error'|trans }}">
-                                    {% if workflow.lastErrorAt %}
-                                        <span class="metric-value metric-error">{{ workflow.lastErrorAt|date('Y-m-d H:i') }}</span>
-                                    {% else %}
-                                        <span class="metric-empty">{{ 'workflow_index.no_error'|trans }}</span>
-                                    {% endif %}
+                        {% for group in workflowPage.groups %}
+                            <tr class="workflow-group-header is-collapsed" data-toggle="group">
+                                <td colspan="8">
+                                    <button type="button" class="workflow-group-toggle" aria-expanded="false" aria-label="{{ 'workflow_index.toggle_group'|trans({'%category%': group.category ?: 'workflow_index.uncategorized'|trans}) }}">
+                                        <span class="workflow-group-chevron" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
+                                        <span class="workflow-group-title">
+                                            {{ group.category ?: 'workflow_index.uncategorized'|trans }}
+                                        </span>
+                                        <span class="workflow-group-count">{{ group.items|length }}</span>
+                                    </button>
                                 </td>
                             </tr>
+                            {% for workflow in group.items %}
+                                <tr class="clickable-row workflow-group-item" data-row-href="{{ path('fluxx_workflow_show', {'code': workflow.code}) }}" tabindex="0" role="link" hidden>
+                                    <td data-label="{{ 'workflow_index.workflow'|trans }}">
+                                        <a href="{{ path('fluxx_workflow_show', {'code': workflow.code}) }}" class="workflow-link">
+                                            <div class="workflow-name">{{ workflow.name }}</div>
+                                            {% if workflow.description %}
+                                                <div class="workflow-description">{{ workflow.description }}</div>
+                                            {% endif %}
+                                        </a>
+                                    </td>
+                                    <td data-label="{{ 'workflow_index.code'|trans }}">
+                                        <div class="item-code">{{ workflow.code }}</div>
+                                    </td>
+                                    <td data-label="{{ 'workflow_index.source_system'|trans }}">
+                                        <span class="system-chip system-chip-source">{{ workflow.sourceSystem }}</span>
+                                    </td>
+                                    <td data-label="{{ 'workflow_index.target_system'|trans }}">
+                                        <span class="system-chip system-chip-target">{{ workflow.targetSystem }}</span>
+                                    </td>
+                                    <td data-label="{{ 'workflow_index.execution_count'|trans }}">
+                                        <span class="execution-count">{{ workflow.executionCount }}</span>
+                                    </td>
+                                    <td data-label="{{ 'workflow_index.error_count'|trans }}">
+                                        <span class="error-count">{{ workflow.errorCount }}</span>
+                                    </td>
+                                    <td data-label="{{ 'workflow_index.last_execution'|trans }}">
+                                        {% if workflow.lastExecutionAt %}
+                                            <span class="metric-value">{{ workflow.lastExecutionAt|date('Y-m-d H:i') }}</span>
+                                        {% else %}
+                                            <span class="metric-empty">{{ 'workflow_index.never'|trans }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="{{ 'workflow_index.last_error'|trans }}">
+                                        {% if workflow.lastErrorAt %}
+                                            <span class="metric-value metric-error">{{ workflow.lastErrorAt|date('Y-m-d H:i') }}</span>
+                                        {% else %}
+                                            <span class="metric-empty">{{ 'workflow_index.no_error'|trans }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
                         {% endfor %}
                     </tbody>
                 </table>

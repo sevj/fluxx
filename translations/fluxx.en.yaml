@@ -33,10 +33,11 @@ workflow_index:
     empty: No workflow is currently registered in the application.
     empty_search: No workflow matches "%query%".
     search_label: Search workflows
-    search_placeholder: Search by name, code or system
+    search_placeholder: Search by name, code, system, category or description
     search_submit: Search
     search_reset: Reset
     workflow: Workflow
+    code: Code
     source_system: Source
     target_system: Target
     last_execution: Last execution
@@ -45,6 +46,8 @@ workflow_index:
     last_error: Last error
     never: Never
     no_error: No error
+    uncategorized: Uncategorized
+    toggle_group: 'Toggle "%category%" group'
 
 workflow_show:
     title: Workflow details

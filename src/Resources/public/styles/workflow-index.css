@@ -945,15 +945,116 @@ tbody tr:hover {
 }
 
 .item-code {
-    margin-top: 4px;
     color: var(--muted);
     font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
     font-size: 12px;
     line-height: 1.35;
 }
 
+.workflow-list .item-code {
+    word-break: break-all;
+}
+
 .item-code-hero {
     margin-top: 10px;
+}
+
+.workflow-description {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.workflow-description-hero {
+    margin-top: 10px;
+    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 70ch;
+}
+
+.workflow-category-chip {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 10px;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--surface-strong);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.workflow-group-header {
+    cursor: pointer;
+    user-select: none;
+}
+
+.workflow-group-header td {
+    padding: 11px 14px;
+    background: var(--surface-soft);
+    border-top: 2px solid var(--border-strong);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.workflow-group-header:first-child td {
+    border-top: none;
+}
+
+.workflow-group-header:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: -3px;
+}
+
+.workflow-group-header + .clickable-row td {
+    border-top: 1px solid var(--border);
+}
+
+.workflow-group-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.workflow-group-chevron {
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.15s ease;
+    color: var(--muted);
+}
+
+.workflow-group-header:not(.is-collapsed) .workflow-group-chevron {
+    transform: rotate(90deg);
+}
+
+.workflow-group-title {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text);
+}
+
+.workflow-group-count {
+    margin-left: 10px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--surface-strong);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .system-chip {

@@ -85,6 +85,8 @@ final readonly class WorkflowDetails
             executionCount: $this->workflowRunRepository->countByWorkflowName($definition->code()),
             errorCount: $this->workflowRunRepository->countErroredByWorkflowName($definition->code()),
             lastErrorAt: $this->workflowRunRepository->findLatestErrorAtByWorkflowName($definition->code()),
+            description: $definition->description(),
+            category: $definition->category(),
         );
     }
 
@@ -177,6 +179,8 @@ final readonly class WorkflowDetails
             graphEdges: $graph['edges'],
             executionPage: $executionPage,
             statistics: $statistics,
+            description: $definition->description(),
+            category: $definition->category(),
         );
     }
 

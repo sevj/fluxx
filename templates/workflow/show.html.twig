@@ -28,6 +28,12 @@
                 <div>
                     <h1 class="title">{{ workflow.name }}</h1>
                     <div class="item-code item-code-hero">{{ workflow.code }}</div>
+                    {% if workflow.category %}
+                        <div class="workflow-category-chip">{{ workflow.category }}</div>
+                    {% endif %}
+                    {% if workflow.description %}
+                        <p class="workflow-description workflow-description-hero">{{ workflow.description }}</p>
+                    {% endif %}
                 </div>
                 <div class="header-actions">
                     <a href="{{ path('fluxx_workflow_index') }}" class="secondary-button">

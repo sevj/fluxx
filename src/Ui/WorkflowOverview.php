@@ -17,6 +17,8 @@ final readonly class WorkflowOverview
         private int $executionCount,
         private int $errorCount,
         private ?DateTimeImmutable $lastErrorAt,
+        private ?string $description = null,
+        private ?string $category = null,
     ) {
     }
 
@@ -58,5 +60,15 @@ final readonly class WorkflowOverview
     public function lastErrorAt(): ?DateTimeImmutable
     {
         return $this->lastErrorAt;
+    }
+
+    public function description(): ?string
+    {
+        return $this->description;
+    }
+
+    public function category(): ?string
+    {
+        return $this->category;
     }
 }

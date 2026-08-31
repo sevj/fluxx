@@ -17,6 +17,7 @@ final class ScriptAssetController extends AbstractController
         'clickable-rows' => 'clickable-rows.js',
         'workflow-detail' => 'workflow-detail.js',
         'runtime-monitor' => 'runtime-monitor.js',
+        'workflow-groups' => 'workflow-groups.js',
     ];
 
     public function __invoke(string $script): BinaryFileResponse

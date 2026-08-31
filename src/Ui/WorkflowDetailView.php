@@ -29,6 +29,8 @@ final readonly class WorkflowDetailView
         private array $graphEdges,
         private WorkflowExecutionPage $executionPage,
         private WorkflowStatisticsView $statistics,
+        private ?string $description = null,
+        private ?string $category = null,
     ) {
     }
 
@@ -119,5 +121,15 @@ final readonly class WorkflowDetailView
     public function statistics(): WorkflowStatisticsView
     {
         return $this->statistics;
+    }
+
+    public function description(): ?string
+    {
+        return $this->description;
+    }
+
+    public function category(): ?string
+    {
+        return $this->category;
     }
 }

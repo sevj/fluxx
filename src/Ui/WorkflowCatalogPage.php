@@ -26,6 +26,42 @@ final readonly class WorkflowCatalogPage
         return $this->items;
     }
 
+    /**
+     * Workflows grouped by category, preserving the page ordering.
+     *
+     * Named categories are returned first (sorted alphabetically, case-insensitive).
+     * Workflows without a category are gathered into a single trailing group
+     * whose {@see WorkflowCatalogGroup::category()} is null, rendered as
+     * "Uncategorized" by the UI.
+     *
+     * @return list<WorkflowCatalogGroup>
+     */
+    public function groups(): array
+    {
+        $byCategory = [];
+
+        foreach ($this->items as $overview) {
+            $category = $overview->category();
+            $key = $category ?? '';
+            $byCategory[$key][] = $overview;
+        }
+
+        $namedKeys = array_filter(array_keys($byCategory), static fn (string $key): bool => $key !== '');
+        usort($namedKeys, static fn (string $left, string $right): int => mb_strtolower($left) <=> mb_strtolower($right));
+
+        $groups = [];
+
+        foreach ($namedKeys as $key) {
+            $groups[] = new WorkflowCatalogGroup($key, $byCategory[$key]);
+        }
+
+        if (isset($byCategory[''])) {
+            $groups[] = new WorkflowCatalogGroup(null, $byCategory['']);
+        }
+
+        return $groups;
+    }
+
     public function currentPage(): int
     {
         return $this->currentPage;

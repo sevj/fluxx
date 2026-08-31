@@ -26,6 +26,8 @@ final readonly class WorkflowDefinition
         private array $steps,
         private ?WorkflowExecutionLockConfiguration $lock = null,
         private ?WorkflowRetryPolicy $retryPolicy = null,
+        private ?string $description = null,
+        private ?string $category = null,
     ) {
         $stepMap = [];
 
@@ -85,6 +87,16 @@ final readonly class WorkflowDefinition
     public function retryPolicy(): ?WorkflowRetryPolicy
     {
         return $this->retryPolicy;
+    }
+
+    public function description(): ?string
+    {
+        return $this->description;
+    }
+
+    public function category(): ?string
+    {
+        return $this->category;
     }
 
     /**

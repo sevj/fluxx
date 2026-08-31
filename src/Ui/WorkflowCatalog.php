@@ -9,7 +9,7 @@ use Fluxx\Workflow\SynchronizationRegistry;
 
 final readonly class WorkflowCatalog
 {
-    private const DEFAULT_PER_PAGE = 10;
+    private const DEFAULT_PER_PAGE = 50;
 
     public function __construct(
         private SynchronizationRegistry $registry,
@@ -36,6 +36,8 @@ final readonly class WorkflowCatalog
                 $definition->sourceSystem(),
                 $definition->targetSystem(),
                 $statsByWorkflowCode[$definition->code()] ?? null,
+                $definition->description(),
+                $definition->category(),
             );
         }
 
@@ -63,6 +65,8 @@ final readonly class WorkflowCatalog
                 $definition->sourceSystem(),
                 $definition->targetSystem(),
                 $statsByWorkflowCode[$definition->code()] ?? null,
+                $definition->description(),
+                $definition->category(),
             ),
             $pageDefinitions,
         );
@@ -92,6 +96,8 @@ final readonly class WorkflowCatalog
                 $definition->code(),
                 $definition->sourceSystem(),
                 $definition->targetSystem(),
+                $definition->description(),
+                $definition->category(),
                 $searchQuery,
             )) {
                 continue;
@@ -102,7 +108,28 @@ final readonly class WorkflowCatalog
 
         usort(
             $definitions,
-            static fn (\Fluxx\Workflow\WorkflowDefinition $left, \Fluxx\Workflow\WorkflowDefinition $right): int => $left->name() <=> $right->name(),
+            static function (\Fluxx\Workflow\WorkflowDefinition $left, \Fluxx\Workflow\WorkflowDefinition $right): int {
+                $leftCategory = $left->category();
+                $rightCategory = $right->category();
+
+                if ($leftCategory === null && $rightCategory !== null) {
+                    return 1;
+                }
+
+                if ($leftCategory !== null && $rightCategory === null) {
+                    return -1;
+                }
+
+                if ($leftCategory !== null && $rightCategory !== null) {
+                    $categoryCmp = mb_strtolower($leftCategory) <=> mb_strtolower($rightCategory);
+
+                    if ($categoryCmp !== 0) {
+                        return $categoryCmp;
+                    }
+                }
+
+                return $left->name() <=> $right->name();
+            },
         );
 
         return $definitions;
@@ -122,6 +149,8 @@ final readonly class WorkflowCatalog
         string $sourceSystem,
         string $targetSystem,
         ?array $stats,
+        ?string $description = null,
+        ?string $category = null,
     ): WorkflowOverview {
         return new WorkflowOverview(
             code: $code,
@@ -132,6 +161,8 @@ final readonly class WorkflowCatalog
             executionCount: $stats['executionCount'] ?? 0,
             errorCount: $stats['errorCount'] ?? 0,
             lastErrorAt: $stats['lastErrorAt'] ?? null,
+            description: $description,
+            category: $category,
         );
     }
 
@@ -140,12 +171,14 @@ final readonly class WorkflowCatalog
         string $code,
         string $sourceSystem,
         string $targetSystem,
+        ?string $description,
+        ?string $category,
         string $searchQuery,
     ): bool {
         $needle = mb_strtolower($searchQuery);
 
-        foreach ([$name, $code, $sourceSystem, $targetSystem] as $haystack) {
-            if (str_contains(mb_strtolower($haystack), $needle)) {
+        foreach ([$name, $code, $sourceSystem, $targetSystem, $description, $category] as $haystack) {
+            if ($haystack !== null && str_contains(mb_strtolower($haystack), $needle)) {
                 return true;
             }
         }
