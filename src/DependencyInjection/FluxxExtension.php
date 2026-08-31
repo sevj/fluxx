@@ -47,6 +47,25 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
                 ],
             ]);
         }
+
+        if ($container->hasExtension('security')) {
+            $container->prependExtensionConfig('security', [
+                'password_hashers' => [
+                    'Fluxx\\Entity\\User' => 'auto',
+                ],
+                'role_hierarchy' => [
+                    'ROLE_ADMIN' => ['ROLE_FLUXX_USER'],
+                ],
+                'providers' => [
+                    'fluxx_users' => [
+                        'entity' => [
+                            'class' => 'Fluxx\\Entity\\User',
+                            'property' => 'email',
+                        ],
+                    ],
+                ],
+            ]);
+        }
     }
 
     public function load(array $configs, ContainerBuilder $container): void
