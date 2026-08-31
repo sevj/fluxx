@@ -470,6 +470,14 @@ final readonly class FluxxRuntimeSnapshotProvider
 
         foreach ($redisWorkers as $worker) {
             $workerState = isset($worker['name']) ? ($workerStates[$worker['name']] ?? null) : null;
+
+            if ($workerState?->status() === 'stopped') {
+                if (isset($worker['name'])) {
+                    $seenWorkerNames[(string) $worker['name']] = true;
+                }
+                continue;
+            }
+
             $workerRows[] = $this->buildWorkerRow($worker, $workerState, $workflowDefinitions, $refreshedAt);
 
             if (isset($worker['name'])) {
