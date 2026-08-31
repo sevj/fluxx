@@ -1,0 +1,264 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'run_index.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <script src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-runs'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <div class="page-stack">
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <section class="section-card">
+                        <div class="status-badge status-badge-{{ type == 'error' ? 'failed' : 'completed' }}">{{ message }}</div>
+                    </section>
+                {% endfor %}
+            {% endfor %}
+
+            <header class="header">
+                <div>
+                    <h1 class="title"><span class="title-icon" aria-hidden="true">{{ icons.icon('zap') }}</span>{{ 'run_index.heading'|trans }}</h1>
+                </div>
+                <div class="header-tools">
+                    <form method="get" class="search-form">
+                        <label class="search-label" for="run-search">{{ 'run_index.search_label'|trans }}</label>
+                        <input
+                            id="run-search"
+                            type="search"
+                            name="q"
+                            value="{{ executionFilters.searchQuery }}"
+                            class="search-input"
+                            placeholder="{{ 'run_index.search_placeholder'|trans }}"
+                        >
+                        <button type="submit" class="secondary-button">
+                            <span class="button-icon" aria-hidden="true">{{ icons.icon('search') }}</span>
+                            <span class="button-label">{{ 'run_index.search_submit'|trans }}</span>
+                        </button>
+                        {% if executionFilters.hasActiveFilters %}
+                            <a href="{{ path('fluxx_run_index') }}" class="secondary-button">
+                                <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                                <span class="button-label">{{ 'run_index.search_reset'|trans }}</span>
+                            </a>
+                        {% endif %}
+                    </form>
+                    <div class="count">
+                        {{ 'run_index.count'|trans({
+                            '%from%': runPage.firstItemNumber,
+                            '%to%': runPage.lastItemNumber,
+                            '%total%': runPage.totalItems
+                        }) }}
+                    </div>
+                </div>
+            </header>
+
+            <section class="section-card">
+                <form method="get" action="{{ path('fluxx_run_index') }}" class="run-filter-form">
+                    <div class="run-filter-grid run-filter-grid-executions">
+                        <label class="run-filter-field">
+                            <span class="run-filter-label">{{ 'run_index.filter_status_label'|trans }}</span>
+                            <select name="status" class="search-input">
+                                <option value="">{{ 'run_index.filter_status_all'|trans }}</option>
+                                {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'failed', 'partially_failed'] %}
+                                    <option value="{{ status }}"{{ executionFilters.status == status ? ' selected' : '' }}>
+                                        {{ ('workflow_status.' ~ status)|trans }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="run-filter-field">
+                            <span class="run-filter-label">{{ 'run_index.filter_errors_label'|trans }}</span>
+                            <select name="errors" class="search-input">
+                                <option value="all"{{ executionFilters.errorPresence == 'all' ? ' selected' : '' }}>{{ 'run_index.filter_errors_all'|trans }}</option>
+                                <option value="with"{{ executionFilters.errorPresence == 'with' ? ' selected' : '' }}>{{ 'run_index.filter_errors_with'|trans }}</option>
+                                <option value="without"{{ executionFilters.errorPresence == 'without' ? ' selected' : '' }}>{{ 'run_index.filter_errors_without'|trans }}</option>
+                            </select>
+                        </label>
+                        <label class="run-filter-field">
+                            <span class="run-filter-label">{{ 'run_index.filter_from_label'|trans }}</span>
+                            <input type="date" name="from" value="{{ executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : '' }}" class="search-input">
+                        </label>
+                        <label class="run-filter-field">
+                            <span class="run-filter-label">{{ 'run_index.filter_to_label'|trans }}</span>
+                            <input type="date" name="to" value="{{ executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : '' }}" class="search-input">
+                        </label>
+                    </div>
+                    <div class="run-filter-actions">
+                        <button type="submit" class="secondary-button">
+                            <span class="button-icon" aria-hidden="true">{{ icons.icon('search') }}</span>
+                            <span class="button-label">{{ 'run_index.apply_filters'|trans }}</span>
+                        </button>
+                        {% if executionFilters.hasActiveFilters %}
+                            <a href="{{ path('fluxx_run_index') }}" class="secondary-button">
+                                <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                                <span class="button-label">{{ 'run_index.reset_filters'|trans }}</span>
+                            </a>
+                        {% endif %}
+                    </div>
+                </form>
+
+                {% if runPage.items is empty %}
+                    <section class="empty">
+                        {{ executionFilters.hasActiveFilters ? 'run_index.empty_search'|trans : 'run_index.empty'|trans }}
+                    </section>
+                {% else %}
+                    <section class="workflow-list">
+                        <table class="workflow-table-compact">
+                            <colgroup>
+                                <col style="width: 11%">
+                                <col style="width: 13%">
+                                <col style="width: 9%">
+                                <col style="width: 7%">
+                                <col style="width: 8%">
+                                <col style="width: 7%">
+                                <col style="width: 15%">
+                                <col style="width: 11%">
+                                <col style="width: 19%">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>{{ 'run_index.run'|trans }}</th>
+                                    <th>{{ 'run_index.workflow'|trans }}</th>
+                                    <th>{{ 'run_index.category'|trans }}</th>
+                                    <th>{{ 'run_index.trigger'|trans }}</th>
+                                    <th>{{ 'run_index.source_system'|trans }}</th>
+                                    <th>{{ 'run_index.target_system'|trans }}</th>
+                                    <th>{{ 'run_index.status'|trans }}</th>
+                                    <th>{{ 'run_index.dates'|trans }}</th>
+                                    <th>{{ 'run_index.actions'|trans }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for run in runPage.items %}
+                                    <tr class="clickable-row" data-row-href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" tabindex="0" role="link">
+                                        <td data-label="{{ 'run_index.run'|trans }}" class="execution-cell-run">
+                                            <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="run-id">{{ run.runId }}</a>
+                                        </td>
+                                        <td data-label="{{ 'run_index.workflow'|trans }}">
+                                            <a href="{{ path('fluxx_workflow_show', {'code': run.workflowCode}) }}" class="workflow-link">
+                                                <div class="workflow-name">{{ run.workflowName ?: run.workflowCode }}</div>
+                                                <div class="item-code">{{ run.workflowCode }}</div>
+                                            </a>
+                                        </td>
+                                        <td data-label="{{ 'run_index.category'|trans }}">
+                                            {% if run.workflowCategory %}
+                                                <span class="system-chip">{{ run.workflowCategory }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td data-label="{{ 'run_index.trigger'|trans }}" class="execution-cell-trigger">
+                                            <span class="system-chip">{{ run.trigger }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_index.source_system'|trans }}">
+                                            <span class="system-chip system-chip-source">{{ run.sourceSystem }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_index.target_system'|trans }}">
+                                            <span class="system-chip system-chip-target">{{ run.targetSystem }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_index.status'|trans }}" class="execution-cell-status">
+                                            <span class="status-badge status-badge-{{ run.status|replace({'_': '-'}) }}">
+                                                {{ ('workflow_status.' ~ run.status)|trans }}
+                                            </span>
+                                        </td>
+                                        <td data-label="{{ 'run_index.dates'|trans }}" class="execution-cell-dates">
+                                            <div class="execution-dates">
+                                                <div class="execution-dates-item">
+                                                    <span class="execution-dates-label">{{ 'run_index.created_at'|trans }}</span>
+                                                    <span class="metric-value">{{ run.createdAt|date('d/m H:i') }}</span>
+                                                </div>
+                                                <div class="execution-dates-item">
+                                                    <span class="execution-dates-label">{{ 'run_index.finished_at'|trans }}</span>
+                                                    {% if run.finishedAt %}
+                                                        <span class="metric-value">{{ run.finishedAt|date('d/m H:i') }}</span>
+                                                    {% else %}
+                                                        <span class="metric-empty">{{ 'run_index.not_finished'|trans }}</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td data-label="{{ 'run_index.actions'|trans }}" class="execution-cell-actions">
+                                            <div class="execution-actions">
+                                                {% if run.status in ['failed', 'partially_failed', 'cancelled'] %}
+                                                    <form method="post" action="{{ path('fluxx_workflow_run_relaunch', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="execution-action-form">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('fluxx.relaunch.run.' ~ run.runId) }}">
+                                                        <input type="hidden" name="_redirect" value="{{ path('fluxx_run_index') }}">
+                                                        <button type="submit" class="secondary-button">
+                                                            <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                                                            <span class="button-label">{{ 'run_index.retry_run'|trans }}</span>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+
+                                                {% if run.status in ['pending', 'relaunched', 'retrying', 'running'] %}
+                                                    <form method="post" action="{{ path('fluxx_workflow_run_cancel', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="execution-action-form">
+                                                        <input type="hidden" name="_token" value="{{ csrf_token('fluxx.cancel.run.' ~ run.runId) }}">
+                                                        <input type="hidden" name="_redirect" value="{{ path('fluxx_run_index') }}">
+                                                        <button type="submit" class="danger-button" onclick="return confirm('{{ 'run_index.cancel_confirm'|trans|e('js') }}');">
+                                                            <span class="button-icon" aria-hidden="true">{{ icons.icon('x') }}</span>
+                                                            <span class="button-label">{{ 'run_index.cancel_run'|trans }}</span>
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </section>
+
+                    {% if runPage.totalPages > 1 %}
+                        <nav class="pagination" aria-label="{{ 'pagination.label'|trans }}">
+                            <a href="{{ path('fluxx_run_index', {
+                                'page': runPage.previousPage,
+                                'q': executionFilters.searchQuery,
+                                'status': executionFilters.status,
+                                'errors': executionFilters.errorPresence,
+                                'from': executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : null,
+                                'to': executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : null
+                            }) }}" class="pagination-link{{ not runPage.hasPreviousPage ? ' is-disabled' : '' }}" {{ not runPage.hasPreviousPage ? 'aria-disabled="true"' : '' }}>
+                                <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                                <span class="button-label">{{ 'pagination.previous'|trans }}</span>
+                            </a>
+
+                            <div class="pagination-pages">
+                                {% for pageNumber in runPage.pages %}
+                                    <a href="{{ path('fluxx_run_index', {
+                                        'page': pageNumber,
+                                        'q': executionFilters.searchQuery,
+                                        'status': executionFilters.status,
+                                        'errors': executionFilters.errorPresence,
+                                        'from': executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : null,
+                                        'to': executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : null
+                                    }) }}" class="pagination-link{{ pageNumber == runPage.currentPage ? ' is-active' : '' }}">
+                                        {{ pageNumber }}
+                                    </a>
+                                {% endfor %}
+                            </div>
+
+                            <a href="{{ path('fluxx_run_index', {
+                                'page': runPage.nextPage,
+                                'q': executionFilters.searchQuery,
+                                'status': executionFilters.status,
+                                'errors': executionFilters.errorPresence,
+                                'from': executionFilters.dateFrom ? executionFilters.dateFrom|date('Y-m-d') : null,
+                                'to': executionFilters.dateTo ? executionFilters.dateTo|date('Y-m-d') : null
+                            }) }}" class="pagination-link{{ not runPage.hasNextPage ? ' is-disabled' : '' }}" {{ not runPage.hasNextPage ? 'aria-disabled="true"' : '' }}>
+                                <span class="button-label">{{ 'pagination.next'|trans }}</span>
+                                <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
+                            </a>
+                        </nav>
+                    {% endif %}
+                {% endif %}
+            </section>
+        </div>
+    </main>
+</body>
+</html>

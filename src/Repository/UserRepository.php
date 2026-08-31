@@ -23,6 +23,16 @@ final class UserRepository extends ServiceEntityRepository
         return $this->findOneBy(['email' => mb_strtolower($email)]);
     }
 
+    public function countAdmins(): int
+    {
+        return (int) $this->createQueryBuilder('user')
+            ->select('COUNT(user.id)')
+            ->andWhere('user.roles LIKE :role')
+            ->setParameter('role', '%"' . 'ROLE_ADMIN' . '"%')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /**
      * @return list<User>
      */

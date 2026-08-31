@@ -15,38 +15,54 @@
                 href="{{ path('fluxx_workflow_index') }}"
                 class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_workflow_index' ? ' is-active' : '' }}"
             >
+                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('workflow') }}</span>
                 {{ 'navigation.workflows'|trans }}
+            </a>
+            <a
+                href="{{ path('fluxx_run_index') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_run_index' ? ' is-active' : '' }}"
+            >
+                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('zap') }}</span>
+                {{ 'navigation.runs'|trans }}
             </a>
             <a
                 href="{{ path('fluxx_statistics_index') }}"
                 class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_statistics_index' ? ' is-active' : '' }}"
             >
+                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('bar-chart-3') }}</span>
                 {{ 'navigation.statistics'|trans }}
-            </a>
-            <a
-                href="{{ path('fluxx_runtime_index') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_runtime_index' ? ' is-active' : '' }}"
-            >
-                {{ 'navigation.runtime'|trans }}
-            </a>
-            <a
-                href="{{ path('fluxx_system_health') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_system_health' ? ' is-active' : '' }}"
-            >
-                {{ 'navigation.health'|trans }}
             </a>
             <a
                 href="{{ path('fluxx_troubleshooting_index') }}"
                 class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_troubleshooting_index' ? ' is-active' : '' }}"
             >
+                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('alert-triangle') }}</span>
                 {{ 'navigation.troubleshooting'|trans }}
             </a>
-            <a
-                href="{{ path('fluxx_user_index') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_user_index' ? ' is-active' : '' }}"
-            >
-                {{ 'navigation.users'|trans }}
-            </a>
+            {% if is_granted('ROLE_ADMIN') %}
+                <span class="fluxx-nav-separator" aria-hidden="true"></span>
+                <a
+                    href="{{ path('fluxx_runtime_index') }}"
+                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_runtime_index' ? ' is-active' : '' }}"
+                >
+                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('server') }}</span>
+                    {{ 'navigation.runtime'|trans }}
+                </a>
+                <a
+                    href="{{ path('fluxx_system_health') }}"
+                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_system_health' ? ' is-active' : '' }}"
+                >
+                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('heart-pulse') }}</span>
+                    {{ 'navigation.health'|trans }}
+                </a>
+                <a
+                    href="{{ path('fluxx_user_index') }}"
+                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_user_index' ? ' is-active' : '' }}"
+                >
+                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('users') }}</span>
+                    {{ 'navigation.users'|trans }}
+                </a>
+            {% endif %}
         </nav>
     </div>
 

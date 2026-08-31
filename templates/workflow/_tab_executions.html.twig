@@ -116,7 +116,7 @@
                 {% for execution in workflow.executionPage.items %}
                     <tr>
                         <td data-label="{{ 'workflow_show.run'|trans }}" class="execution-cell-run">
-                            <div class="run-id">{{ execution.runId }}</div>
+                            <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': workflow.code, 'runId': execution.runId}) }}" class="run-id">{{ execution.runId }}</a>
                         </td>
                         <td data-label="{{ 'workflow_show.trigger'|trans }}" class="execution-cell-trigger">
                             <span class="system-chip">{{ execution.trigger }}</span>

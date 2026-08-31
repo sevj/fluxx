@@ -3,6 +3,7 @@ navigation:
     users: Users
     workflows: Workflows
     statistics: Statistics
+    runs: Runs
     runtime: Runtime
     health: Health
     troubleshooting: Troubleshooting
@@ -166,6 +167,86 @@ statistics_index:
     range_month: Last month
     range_year: Last year
 
+run_index:
+    title: All runs
+    heading: All runs
+    search_label: Search runs
+    search_placeholder: Search by run id, workflow, system, trigger or error
+    search_submit: Search
+    search_reset: Reset
+    count: Showing %from%-%to% of %total% runs
+    empty: No run has been recorded yet.
+    empty_search: No run matches the current filters.
+    filter_status_label: Status
+    filter_status_all: All statuses
+    filter_errors_label: Errors
+    filter_errors_all: All runs
+    filter_errors_with: With errors
+    filter_errors_without: Without errors
+    filter_from_label: From
+    filter_to_label: To
+    apply_filters: Apply filters
+    reset_filters: Reset
+    run: Run
+    workflow: Workflow
+    category: Category
+    trigger: Trigger
+    source_system: Source
+    target_system: Target
+    status: Status
+    dates: Dates
+    actions: Actions
+    created_at: Created
+    finished_at: Finished
+    not_finished: Not finished
+    retry_run: Retry run
+    cancel_run: Cancel run
+    cancel_confirm: Cancel this run?
+
+run_show:
+    title: Run detail
+    heading: Run detail
+    back: Back to workflow
+    relaunch_run: Relaunch run
+    cancel_run: Cancel run
+    cancel_confirm: Cancel this run?
+    overview_title: Overview
+    workflow_group: Workflow
+    execution_group: Execution
+    summary_group: Summary
+    workflow: Workflow
+    run: Run
+    status: Status
+    trigger: Trigger
+    source_system: Source
+    target_system: Target
+    batch_id: Batch
+    relaunch: Relaunch
+    relaunch_value: Relaunch of %runId% (%mode%)
+    lock_scope: Lock scope
+    lock_key: Lock key
+    created_at: Created
+    started_at: Started
+    finished_at: Finished
+    not_started: Not started
+    not_finished: Not finished
+    not_available: N/A
+    step_count: Steps
+    processed_total: Processed records
+    success_total: Succeeded records
+    error_total: Errored records
+    steps_title: Steps
+    steps_subtitle: Per-step outcome for this run. Click a step to inspect its payload and manual retry options.
+    steps_empty: No step has been recorded for this run.
+    position: #
+    step: Step
+    step_type: Type
+    step_status: Status
+    processed: Processed
+    errors: Errors
+    duration: Duration
+    memory: Memory
+
 workflow_status:
     pending: Pending
     relaunched: Relaunched
@@ -276,6 +357,40 @@ user_index:
     enabled: Enabled
     disabled: Disabled
     none: None
+    add: Add user
+    edit: Edit
+    enable: Enable
+    disable: Disable
+    delete: Delete
+    delete_confirm: Delete this user account?
+    actions: Actions
+
+user_form:
+    create_title: New user
+    edit_title: Edit user
+    create_heading: New user
+    edit_heading: Edit user
+    back: Back to users
+    email: Email
+    email_locked: The email cannot be changed after creation.
+    display_name: Display name
+    roles: Roles
+    roles_hint: ROLE_USER is always granted and cannot be removed.
+    enabled: Account enabled
+    password: Password
+    new_password_optional: New password
+    password_keep_placeholder: Leave blank to keep the current password
+    password_hint: At least 8 characters.
+    create_submit: Create user
+    edit_submit: Save changes
+    cancel: Cancel
+    delete_submit: Delete account
+    delete_confirm: Delete this user account?
+    created: User created.
+    updated: User updated.
+    flash_enabled: User enabled.
+    flash_disabled: User disabled.
+    deleted: User deleted.
 
 runtime_index:
     title: Runtime

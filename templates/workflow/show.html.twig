@@ -26,7 +26,7 @@
 
             <header class="header">
                 <div>
-                    <h1 class="title">{{ workflow.name }}</h1>
+                    <h1 class="title"><span class="title-icon" aria-hidden="true">{{ icons.icon('workflow') }}</span>{{ workflow.name }}</h1>
                     <div class="item-code item-code-hero">{{ workflow.code }}</div>
                     {% if workflow.category %}
                         <div class="workflow-category-chip">{{ workflow.category }}</div>
@@ -35,7 +35,7 @@
                         <p class="workflow-description workflow-description-hero">{{ workflow.description }}</p>
                     {% endif %}
                 </div>
-                <div class="header-actions">
+                <div class="header-tools">
                     <a href="{{ path('fluxx_workflow_index') }}" class="secondary-button">
                         <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
                         <span class="button-label">{{ 'workflow_show.back'|trans }}</span>

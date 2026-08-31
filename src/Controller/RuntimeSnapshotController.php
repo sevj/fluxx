@@ -8,8 +8,10 @@ use Fluxx\Runtime\FluxxRuntimeSnapshotProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/fluxx/runtime/snapshot', name: 'fluxx_runtime_snapshot', methods: ['GET'])]
+#[IsGranted('ROLE_ADMIN')]
 final class RuntimeSnapshotController extends AbstractController
 {
     public function __construct(

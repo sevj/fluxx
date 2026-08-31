@@ -28,7 +28,7 @@
                     <h1 class="title">{{ stepRun.stepName }}</h1>
                     <div class="item-code item-code-hero">{{ stepRun.stepCode }}</div>
                 </div>
-                <div class="header-actions">
+                <div class="header-tools">
                     {% if stepRun.workflowStatus in ['pending', 'relaunched', 'retrying', 'running'] %}
                         <form method="post" action="{{ path('fluxx_workflow_run_cancel', {'workflowCode': stepRun.workflowCode, 'runId': stepRun.runId}) }}" class="inline-action-form">
                             <input type="hidden" name="_token" value="{{ csrf_token('fluxx.cancel.run.' ~ stepRun.runId) }}">
@@ -272,7 +272,7 @@
                         <span>{{ 'step_run_show.confirm_relaunch'|trans }}</span>
                     </label>
 
-                    <div class="header-actions">
+                    <div class="header-tools">
                         <button type="submit" class="secondary-button">
                             <span class="button-icon" aria-hidden="true">{{ icons.icon('refresh-cw') }}</span>
                             <span class="button-label">{{ 'step_run_show.retry_step'|trans }}</span>

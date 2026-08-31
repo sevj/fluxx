@@ -1,0 +1,161 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ mode == 'create' ? 'user_form.create_title'|trans : 'user_form.edit_title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-users'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <header class="header">
+            <div>
+                <h1 class="title">
+                    <span class="title-icon" aria-hidden="true">{{ icons.icon('user-plus') }}</span>
+                    {{ mode == 'create' ? 'user_form.create_heading'|trans : 'user_form.edit_heading'|trans }}
+                </h1>
+            </div>
+            <div class="header-tools">
+                <a href="{{ path('fluxx_user_index') }}" class="secondary-button">
+                    <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                    <span class="button-label">{{ 'user_form.back'|trans }}</span>
+                </a>
+            </div>
+        </header>
+
+        <section class="section-card">
+            {% if error %}
+                <div class="form-error">{{ error }}</div>
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ mode == 'create' ? path('fluxx_user_create') : path('fluxx_user_edit', {'id': user.id}) }}"
+                class="user-form"
+            >
+                <input
+                    type="hidden"
+                    name="_csrf_token"
+                    value="{{ csrf_token(mode == 'create' ? 'fluxx.user.create' : 'fluxx.user.update.' ~ user.id) }}"
+                >
+
+                <label class="user-form-field">
+                    <span class="run-filter-label">{{ 'user_form.email'|trans }}</span>
+                    {% if mode == 'create' %}
+                        <input
+                            type="email"
+                            name="email"
+                            value="{{ email }}"
+                            class="search-input"
+                            autocomplete="username"
+                            required
+                            autofocus
+                        >
+                    {% else %}
+                        <input
+                            type="email"
+                            value="{{ user.email }}"
+                            class="search-input"
+                            disabled
+                        >
+                        <span class="user-form-hint">{{ 'user_form.email_locked'|trans }}</span>
+                    {% endif %}
+                </label>
+
+                <label class="user-form-field">
+                    <span class="run-filter-label">{{ 'user_form.display_name'|trans }}</span>
+                    <input
+                        type="text"
+                        name="display_name"
+                        value="{{ displayName }}"
+                        class="search-input"
+                        autocomplete="name"
+                    >
+                </label>
+
+                <fieldset class="user-form-field">
+                    <legend class="run-filter-label">{{ 'user_form.roles'|trans }}</legend>
+                    <ul class="choice-list">
+                        {% for role in assignableRoles %}
+                            <li>
+                                <label class="choice-option">
+                                    <input
+                                        type="checkbox"
+                                        name="roles[]"
+                                        value="{{ role }}"
+                                        {{ role in selectedRoles ? 'checked' : '' }}
+                                    >
+                                    <span class="role-list">{{ role }}</span>
+                                </label>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <span class="user-form-hint">{{ 'user_form.roles_hint'|trans }}</span>
+                </fieldset>
+
+                <label class="user-form-field user-form-field-inline">
+                    <input
+                        type="checkbox"
+                        name="enabled"
+                        value="1"
+                        {{ enabled ? 'checked' : '' }}
+                    >
+                    <span class="run-filter-label">{{ 'user_form.enabled'|trans }}</span>
+                </label>
+
+                <label class="user-form-field">
+                    <span class="run-filter-label">
+                        {{ passwordOptional ? 'user_form.new_password_optional'|trans : 'user_form.password'|trans }}
+                    </span>
+                    <input
+                        type="password"
+                        name="plain_password"
+                        class="search-input"
+                        {{ passwordOptional ? '' : 'required' }}
+                        autocomplete="new-password"
+                        placeholder="{{ passwordOptional ? 'user_form.password_keep_placeholder'|trans : '' }}"
+                    >
+                    <span class="user-form-hint">{{ 'user_form.password_hint'|trans }}</span>
+                </label>
+
+                <div class="user-form-actions">
+                    <button type="submit" class="primary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('save') }}</span>
+                        <span class="button-label">{{ mode == 'create' ? 'user_form.create_submit'|trans : 'user_form.edit_submit'|trans }}</span>
+                    </button>
+                    <a href="{{ path('fluxx_user_index') }}" class="secondary-button">
+                        <span class="button-label">{{ 'user_form.cancel'|trans }}</span>
+                    </a>
+                </div>
+            </form>
+
+            {% if mode == 'edit' %}
+                <hr class="user-form-divider">
+
+                <form
+                    method="post"
+                    action="{{ path('fluxx_user_delete', {'id': user.id}) }}"
+                    class="inline-form user-form-danger"
+                    onsubmit="return confirm('{{ 'user_form.delete_confirm'|trans|e('js') }}');"
+                >
+                    <input
+                        type="hidden"
+                        name="_csrf_token"
+                        value="{{ csrf_token('fluxx.user.delete.' ~ user.id) }}"
+                    >
+                    <button type="submit" class="danger-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('trash-2') }}</span>
+                        <span class="button-label">{{ 'user_form.delete_submit'|trans }}</span>
+                    </button>
+                </form>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

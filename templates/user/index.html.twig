@@ -8,17 +8,27 @@
     <title>{{ 'user_index.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-users'}) }}">
 </head>
 <body>
     <main class="page">
         {% include '@Fluxx/_navigation.html.twig' %}
 
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="status-badge status-badge-{{ label == 'error' ? 'failed' : 'completed' }}">{{ message|trans }}</div>
+            {% endfor %}
+        {% endfor %}
+
         <header class="header">
             <div>
-                <h1 class="title">{{ 'user_index.heading'|trans }}</h1>
+                <h1 class="title"><span class="title-icon" aria-hidden="true">{{ icons.icon('users') }}</span>{{ 'user_index.heading'|trans }}</h1>
             </div>
             <div class="header-tools">
+                <a href="{{ path('fluxx_user_create') }}" class="primary-button">
+                    <span class="button-icon" aria-hidden="true">{{ icons.icon('user-plus') }}</span>
+                    <span class="button-label">{{ 'user_index.add'|trans }}</span>
+                </a>
                 <form method="get" class="search-form">
                     <label class="search-label" for="user-search">{{ 'user_index.search_label'|trans }}</label>
                     <input
@@ -58,11 +68,12 @@
             <section class="workflow-list">
                 <table>
                     <colgroup>
-                        <col style="width: 34%">
-                        <col style="width: 18%">
-                        <col style="width: 22%">
+                        <col style="width: 26%">
+                        <col style="width: 16%">
+                        <col style="width: 20%">
+                        <col style="width: 11%">
+                        <col style="width: 140px">
                         <col style="width: 14%">
-                        <col style="width: 12%">
                     </colgroup>
                     <thead>
                         <tr>
@@ -71,6 +82,7 @@
                             <th>{{ 'user_index.roles'|trans }}</th>
                             <th>{{ 'user_index.status'|trans }}</th>
                             <th>{{ 'user_index.created_at'|trans }}</th>
+                            <th>{{ 'user_index.actions'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -79,7 +91,7 @@
                                 <td data-label="{{ 'user_index.email'|trans }}">{{ user.email }}</td>
                                 <td data-label="{{ 'user_index.display_name'|trans }}">{{ user.displayName ?: 'user_index.none'|trans }}</td>
                                 <td data-label="{{ 'user_index.roles'|trans }}">
-                                    <span class="role-list">{{ user.roles|join(', ') }}</span>
+                                    <span class="role-list">{{ user.roles|filter(r => r != 'ROLE_USER')|join(', ') }}</span>
                                 </td>
                                 <td data-label="{{ 'user_index.status'|trans }}">
                                     <span class="status-chip{{ user.enabled ? ' is-enabled' : ' is-disabled' }}">
@@ -88,6 +100,25 @@
                                 </td>
                                 <td data-label="{{ 'user_index.created_at'|trans }}">
                                     <span class="metric-value">{{ user.createdAt|date('Y-m-d H:i') }}</span>
+                                </td>
+                                <td data-label="{{ 'user_index.actions'|trans }}" class="execution-cell-actions">
+                                    <div class="execution-actions execution-actions-compact">
+                                        <a href="{{ path('fluxx_user_edit', {'id': user.id}) }}" class="secondary-button" title="{{ 'user_index.edit'|trans }}" aria-label="{{ 'user_index.edit'|trans }}">
+                                            <span class="button-icon" aria-hidden="true">{{ icons.icon('pencil') }}</span>
+                                        </a>
+                                        <form method="post" action="{{ path('fluxx_user_toggle', {'id': user.id}) }}" class="inline-action-form">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('fluxx.user.toggle.' ~ user.id ~ ':' ~ (user.enabled ? 'disable' : 'enable')) }}">
+                                            <button type="submit" class="secondary-button" title="{{ user.enabled ? 'user_index.disable'|trans : 'user_index.enable'|trans }}" aria-label="{{ user.enabled ? 'user_index.disable'|trans : 'user_index.enable'|trans }}">
+                                                <span class="button-icon" aria-hidden="true">{{ icons.icon('power') }}</span>
+                                            </button>
+                                        </form>
+                                        <form method="post" action="{{ path('fluxx_user_delete', {'id': user.id}) }}" class="inline-action-form" onsubmit="return confirm('{{ 'user_index.delete_confirm'|trans|e('js') }}');">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('fluxx.user.delete.' ~ user.id) }}">
+                                            <button type="submit" class="danger-button danger-button-compact" title="{{ 'user_index.delete'|trans }}" aria-label="{{ 'user_index.delete'|trans }}">
+                                                <span class="button-icon" aria-hidden="true">{{ icons.icon('trash-2') }}</span>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}

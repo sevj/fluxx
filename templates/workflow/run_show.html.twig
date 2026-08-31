@@ -1,0 +1,279 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ run.runId }} - {{ 'run_show.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-run-show'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <div class="page-stack">
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <section class="section-card">
+                        <div class="status-badge status-badge-{{ type == 'error' ? 'failed' : 'completed' }}">{{ message }}</div>
+                    </section>
+                {% endfor %}
+            {% endfor %}
+
+            <header class="header">
+                <div>
+                    <h1 class="title"><span class="title-icon" aria-hidden="true">{{ icons.icon('zap') }}</span>{{ 'run_show.heading'|trans }}</h1>
+                    <div class="item-code item-code-hero">{{ run.runId }}</div>
+                </div>
+                <div class="header-tools">
+                    {% if run.status in ['failed', 'partially_failed', 'cancelled'] %}
+                        <form method="post" action="{{ path('fluxx_workflow_run_relaunch', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="inline-action-form">
+                            <input type="hidden" name="_token" value="{{ csrf_token('fluxx.relaunch.run.' ~ run.runId) }}">
+                            <input type="hidden" name="_redirect" value="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}">
+                            <button type="submit" class="secondary-button">
+                                <span class="button-icon" aria-hidden="true">{{ icons.icon('rotate-ccw') }}</span>
+                                <span class="button-label">{{ 'run_show.relaunch_run'|trans }}</span>
+                            </button>
+                        </form>
+                    {% endif %}
+                    {% if run.status in ['pending', 'relaunched', 'retrying', 'running'] %}
+                        <form method="post" action="{{ path('fluxx_workflow_run_cancel', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="inline-action-form">
+                            <input type="hidden" name="_token" value="{{ csrf_token('fluxx.cancel.run.' ~ run.runId) }}">
+                            <input type="hidden" name="_redirect" value="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}">
+                            <button type="submit" class="danger-button" onclick="return confirm('{{ 'run_show.cancel_confirm'|trans|e('js') }}');">
+                                <span class="button-icon" aria-hidden="true">{{ icons.icon('x') }}</span>
+                                <span class="button-label">{{ 'run_show.cancel_run'|trans }}</span>
+                            </button>
+                        </form>
+                    {% endif %}
+                    <a href="{{ path('fluxx_workflow_show', {'code': run.workflowCode}) }}" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
+                        <span class="button-label">{{ 'run_show.back'|trans }}</span>
+                    </a>
+                </div>
+            </header>
+
+            <section class="section-card">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'run_show.overview_title'|trans }}</h2>
+                    </div>
+                </div>
+
+                <div class="workflow-definition-groups">
+                    <section class="definition-block definition-block-compact">
+                        <div class="definition-label">{{ 'run_show.workflow_group'|trans }}</div>
+                        <div class="definition-inline-list">
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.workflow'|trans }}</span>
+                                <a href="{{ path('fluxx_workflow_show', {'code': run.workflowCode}) }}" class="workflow-link">
+                                    <span class="definition-inline-value">{{ run.workflowName }}</span>
+                                    <span class="item-code">{{ run.workflowCode }}</span>
+                                </a>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.run'|trans }}</span>
+                                <span class="run-id">{{ run.runId }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.status'|trans }}</span>
+                                <span class="status-badge status-badge-{{ run.status|replace({'_': '-'}) }}">
+                                    {{ ('workflow_status.' ~ run.status)|trans }}
+                                </span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.trigger'|trans }}</span>
+                                <span class="system-chip">{{ run.trigger }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.source_system'|trans }}</span>
+                                <span class="system-chip system-chip-source">{{ run.sourceSystem }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.target_system'|trans }}</span>
+                                <span class="system-chip system-chip-target">{{ run.targetSystem }}</span>
+                            </div>
+                            {% if run.batchId %}
+                                <div class="definition-inline-item">
+                                    <span class="definition-inline-key">{{ 'run_show.batch_id'|trans }}</span>
+                                    <span class="item-code">{{ run.batchId }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </section>
+
+                    <section class="definition-block definition-block-compact">
+                        <div class="definition-label">{{ 'run_show.execution_group'|trans }}</div>
+                        <div class="definition-inline-list">
+                            {% if run.originalRunId %}
+                                <div class="definition-inline-item">
+                                    <span class="definition-inline-key">{{ 'run_show.relaunch'|trans }}</span>
+                                    <span class="definition-inline-value">
+                                        {{ 'run_show.relaunch_value'|trans({
+                                            '%runId%': run.originalRunId,
+                                            '%mode%': ('workflow_relaunch_mode.' ~ run.relaunchMode)|trans
+                                        }) }}
+                                    </span>
+                                </div>
+                            {% endif %}
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.lock_scope'|trans }}</span>
+                                {% if run.lockScope %}
+                                    <span class="definition-inline-value">{{ ('workflow_lock_scope.' ~ run.lockScope)|trans }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.lock_key'|trans }}</span>
+                                {% if run.lockKey %}
+                                    <span class="item-code">{{ run.lockKey }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'run_show.not_available'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.created_at'|trans }}</span>
+                                <span class="definition-inline-value">{{ run.createdAt|date('Y-m-d H:i') }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.started_at'|trans }}</span>
+                                {% if run.startedAt %}
+                                    <span class="definition-inline-value">{{ run.startedAt|date('Y-m-d H:i') }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'run_show.not_started'|trans }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.finished_at'|trans }}</span>
+                                {% if run.finishedAt %}
+                                    <span class="definition-inline-value">{{ run.finishedAt|date('Y-m-d H:i') }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'run_show.not_finished'|trans }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="definition-block definition-block-compact">
+                        <div class="definition-label">{{ 'run_show.summary_group'|trans }}</div>
+                        <div class="definition-inline-list">
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.step_count'|trans }}</span>
+                                <span class="definition-inline-value">{{ run.stepCount }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.processed_total'|trans }}</span>
+                                <span class="definition-inline-value">{{ run.processedTotal }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.success_total'|trans }}</span>
+                                <span class="definition-inline-value">{{ run.successTotal }}</span>
+                            </div>
+                            <div class="definition-inline-item">
+                                <span class="definition-inline-key">{{ 'run_show.error_total'|trans }}</span>
+                                <span class="definition-inline-value{% if run.errorTotal > 0 %} metric-error{% endif %}">{{ run.errorTotal }}</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                {% if run.errorMessage %}
+                    <div class="detail-message detail-message-error">
+                        {% if run.errorCategory %}
+                            <strong>{{ ('workflow_error_category.' ~ run.errorCategory)|trans }}</strong>
+                            <br>
+                        {% endif %}
+                        {{ run.errorMessage }}
+                    </div>
+                {% endif %}
+            </section>
+
+            <section class="section-card">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'run_show.steps_title'|trans }}</h2>
+                        <p class="subtitle section-subtitle">{{ 'run_show.steps_subtitle'|trans }}</p>
+                    </div>
+                </div>
+
+                {% if run.steps is empty %}
+                    <section class="empty">{{ 'run_show.steps_empty'|trans }}</section>
+                {% else %}
+                    <section class="workflow-list">
+                        <table class="workflow-table-compact">
+                            <colgroup>
+                                <col style="width: 6%">
+                                <col style="width: 20%">
+                                <col style="width: 14%">
+                                <col style="width: 10%">
+                                <col style="width: 10%">
+                                <col style="width: 10%">
+                                <col style="width: 12%">
+                                <col style="width: 12%">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>{{ 'run_show.position'|trans }}</th>
+                                    <th>{{ 'run_show.step'|trans }}</th>
+                                    <th>{{ 'run_show.step_type'|trans }}</th>
+                                    <th>{{ 'run_show.step_status'|trans }}</th>
+                                    <th>{{ 'run_show.processed'|trans }}</th>
+                                    <th>{{ 'run_show.errors'|trans }}</th>
+                                    <th>{{ 'run_show.duration'|trans }}</th>
+                                    <th>{{ 'run_show.memory'|trans }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for step in run.steps %}
+                                    <tr class="clickable-row" data-row-href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) }}" tabindex="0" role="link">
+                                        <td data-label="{{ 'run_show.position'|trans }}">
+                                            <span class="definition-inline-value">{{ loop.index }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_show.step'|trans }}">
+                                            <a href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) }}" class="workflow-link">
+                                                <div class="workflow-name">{{ step.name }}</div>
+                                                <div class="item-code">{{ step.code }}</div>
+                                            </a>
+                                        </td>
+                                        <td data-label="{{ 'run_show.step_type'|trans }}">
+                                            <span class="step-tone-pill step-tone-{{ step.typeTone }} step-tone-text{% if step.typeToneStyle %}" style="{{ step.typeToneStyle }}{% endif %}">{{ step.typeLabel }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_show.step_status'|trans }}">
+                                            <span class="step-status-dot step-status-dot-{{ step.status|replace({'_': '-'}) }}" aria-hidden="true"></span>
+                                            <span>{{ ('workflow_status.' ~ step.status)|trans }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_show.processed'|trans }}">
+                                            <span class="definition-inline-value">{{ step.processedCount }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_show.errors'|trans }}">
+                                            <span class="definition-inline-value{% if step.errorCount > 0 %} metric-error{% endif %}">{{ step.errorCount }}</span>
+                                        </td>
+                                        <td data-label="{{ 'run_show.duration'|trans }}">
+                                            {% if step.durationMs is not null %}
+                                                <span class="definition-inline-value">{{ step.durationMs }} ms</span>
+                                            {% else %}
+                                                <span class="metric-empty">{{ 'run_show.not_available'|trans }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td data-label="{{ 'run_show.memory'|trans }}">
+                                            {% if step.memoryPeakBytes is not null %}
+                                                <span class="definition-inline-value">{{ (step.memoryPeakBytes / 1048576)|number_format(2, '.', ' ') }} MB</span>
+                                            {% else %}
+                                                <span class="metric-empty">{{ 'run_show.not_available'|trans }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </section>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+</body>
+</html>
