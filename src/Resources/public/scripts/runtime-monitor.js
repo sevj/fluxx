@@ -234,7 +234,7 @@
             }
 
             const visibleWorkers = workers.filter(function (worker) {
-                return worker.state !== 'offline';
+                return worker.state !== 'offline' && worker.state !== 'stopped';
             });
 
             if (!visibleWorkers.length) {

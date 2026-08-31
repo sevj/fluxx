@@ -87,7 +87,7 @@ final readonly class FluxxRuntimeSnapshotProvider
         $workerRows = $this->mergeWorkerRuntimeState($redisSnapshot['workers'], $refreshedAt);
         $visibleWorkerRows = array_values(array_filter(
             $workerRows,
-            static fn (array $worker): bool => ($worker['state'] ?? null) !== 'offline',
+            static fn (array $worker): bool => !in_array($worker['state'] ?? null, ['offline', 'stopped'], true),
         ));
         $envelopes = iterator_to_array($receiver->all(self::MESSAGE_LIMIT), false);
         $messages = $this->buildMessageRows($envelopes, $redisSnapshot['pendingById'], $refreshedAt);
