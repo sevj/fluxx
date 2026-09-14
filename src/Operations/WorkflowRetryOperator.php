@@ -19,6 +19,7 @@ class WorkflowRetryOperator
         string $trigger = 'cli',
         ?string $reason = null,
         ?string $operatorUser = null,
+        bool $force = false,
     ): string {
         return $this->workflowRelaunchService->relaunch(
             originalRunId: $runId,
@@ -26,6 +27,7 @@ class WorkflowRetryOperator
             trigger: $trigger,
             reason: $reason,
             operatorUser: $operatorUser,
+            force: $force,
         );
     }
 
@@ -35,6 +37,7 @@ class WorkflowRetryOperator
         string $trigger = 'cli',
         ?string $reason = null,
         ?string $operatorUser = null,
+        bool $force = false,
     ): string {
         return $this->workflowRelaunchService->relaunch(
             originalRunId: $runId,
@@ -43,6 +46,7 @@ class WorkflowRetryOperator
             trigger: $trigger,
             reason: $reason,
             operatorUser: $operatorUser,
+            force: $force,
         );
     }
 }

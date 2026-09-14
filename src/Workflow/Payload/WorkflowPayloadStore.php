@@ -89,7 +89,7 @@ final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterfa
             throw new \RuntimeException('Unable to decode workflow payload.');
         }
 
-        $json = gzdecode($decoded);
+        $json = @gzdecode($decoded);
 
         if ($json === false) {
             throw new \RuntimeException('Unable to decompress workflow payload.');

@@ -7,6 +7,7 @@ namespace Fluxx\Operations;
 use Doctrine\DBAL\Connection;
 use Fluxx\Runtime\FluxxRedisTransportConnectionFactory;
 use Redis;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Removes dead Redis consumer-group entries from the fluxx transport.
@@ -23,11 +24,11 @@ use Redis;
  */
 final readonly class DeadConsumerPurger
 {
-    private const DEFAULT_TRANSPORT = 'fluxx';
-
     public function __construct(
         private FluxxRedisTransportConnectionFactory $connectionFactory,
         private Connection $connection,
+        #[Autowire('%fluxx.runtime.transport_name%')]
+        private string $defaultTransport,
     ) {
     }
 
@@ -36,7 +37,7 @@ final readonly class DeadConsumerPurger
      */
     public function purge(int $minIdleSeconds = 60, ?string $transportName = null): array
     {
-        $transport = $transportName ?? self::DEFAULT_TRANSPORT;
+        $transport = $transportName ?? $this->defaultTransport;
         $config = $this->connectionFactory->config();
         $redis = $this->connectionFactory->create();
 

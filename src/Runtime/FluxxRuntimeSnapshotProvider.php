@@ -39,6 +39,8 @@ final readonly class FluxxRuntimeSnapshotProvider
         private WorkflowStepRunRepository $workflowStepRunRepository,
         private SynchronizationRegistry $registry,
         private StepTypeRegistry $stepTypeRegistry,
+        #[Autowire('%fluxx.runtime.transport_name%')]
+        private string $transportName = 'fluxx',
     ) {
     }
 
@@ -66,7 +68,7 @@ final readonly class FluxxRuntimeSnapshotProvider
                 'oldestPendingAgeMs' => null,
                 ],
                 'queue' => [
-                    'name' => 'fluxx',
+                    'name' => $this->transportName,
                     'stream' => null,
                     'group' => null,
                 ],
@@ -106,7 +108,7 @@ final readonly class FluxxRuntimeSnapshotProvider
                 'oldestPendingAgeMs' => $redisSnapshot['oldestPendingAgeMs'],
             ],
             'queue' => [
-                'name' => 'fluxx',
+                'name' => $this->transportName,
                 'stream' => $redisSnapshot['stream'],
                 'group' => $redisSnapshot['group'],
             ],
@@ -463,7 +465,7 @@ final readonly class FluxxRuntimeSnapshotProvider
      */
     private function mergeWorkerRuntimeState(array $redisWorkers, DateTimeImmutable $refreshedAt): array
     {
-        $workerStates = $this->runtimeWorkerStateRepository->findIndexedByTransportName('fluxx');
+        $workerStates = $this->runtimeWorkerStateRepository->findIndexedByTransportName($this->transportName);
         $workflowDefinitions = [];
         $workerRows = [];
         $seenWorkerNames = [];

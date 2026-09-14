@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Fluxx\Workflow\Relaunch;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
-use Fluxx\Repository\WorkflowPayloadRepository;
-use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
-use Fluxx\Workflow\Lock\WorkflowExecutionLockManager;
+use Fluxx\Repository\WorkflowPayloadLookupInterface;
+use Fluxx\Repository\WorkflowRunLookupInterface;
+use Fluxx\Repository\WorkflowStepRunLookupInterface;
+use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
-use Fluxx\Workflow\Payload\WorkflowPayloadStore;
+use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
 use Fluxx\Workflow\SynchronizationRegistry;
 use RuntimeException;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -25,11 +26,11 @@ final readonly class WorkflowRelaunchService
         private SynchronizationRegistry $registry,
         private EntityManagerInterface $entityManager,
         private MessageBusInterface $messageBus,
-        private WorkflowRunRepository $workflowRunRepository,
-        private WorkflowStepRunRepository $workflowStepRunRepository,
-        private WorkflowPayloadRepository $workflowPayloadRepository,
-        private WorkflowPayloadStore $workflowPayloadStore,
-        private WorkflowExecutionLockManager $workflowExecutionLockManager,
+        private WorkflowRunLookupInterface $workflowRunRepository,
+        private WorkflowStepRunLookupInterface $workflowStepRunRepository,
+        private WorkflowPayloadLookupInterface $workflowPayloadRepository,
+        private WorkflowPayloadStoreInterface $workflowPayloadStore,
+        private WorkflowExecutionLockManagerInterface $workflowExecutionLockManager,
         private WorkflowRelaunchPlanner $workflowRelaunchPlanner,
     ) {
     }
@@ -41,11 +42,21 @@ final readonly class WorkflowRelaunchService
         string $trigger = 'manual',
         ?string $reason = null,
         ?string $operatorUser = null,
+        bool $force = false,
     ): string {
         $originalRun = $this->workflowRunRepository->findOneByRunId($originalRunId);
 
         if ($originalRun === null) {
             throw new RuntimeException(sprintf('Workflow run "%s" was not found.', $originalRunId));
+        }
+
+        if (!$force && !in_array($originalRun->status(), [
+            WorkflowRunStatus::Completed,
+            WorkflowRunStatus::Failed,
+            WorkflowRunStatus::PartiallyFailed,
+            WorkflowRunStatus::Cancelled,
+        ], true)) {
+            throw RunStillActiveException::fromStatus($originalRun->runId(), $originalRun->status());
         }
 
         $workflow = $this->registry->get($originalRun->workflowName());

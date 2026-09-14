@@ -76,11 +76,14 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
         $config = $this->processConfiguration($configuration, $configs);
 
         $container->setParameter('fluxx.security.enabled', $config['security']['enabled']);
+        $container->setParameter('fluxx.runtime.transport_name', $config['runtime']['transport_name']);
         $container->setParameter('fluxx.runtime.defaults.stale_lock_timeout_seconds', $config['runtime']['defaults']['stale_lock_timeout_seconds']);
         $container->setParameter('fluxx.runtime.defaults.worker_heartbeat_timeout_seconds', $config['runtime']['defaults']['worker_heartbeat_timeout_seconds']);
         $container->setParameter('fluxx.runtime.defaults.health_warning_threshold_seconds', $config['runtime']['defaults']['health_warning_threshold_seconds']);
         $container->setParameter('fluxx.runtime.defaults.health_critical_threshold_seconds', $config['runtime']['defaults']['health_critical_threshold_seconds']);
         $container->setParameter('fluxx.runtime.defaults.max_global_retries', $config['runtime']['defaults']['max_global_retries']);
+        $container->setParameter('fluxx.error_classification.enabled', $config['error_classification']['enabled']);
+        $container->setParameter('fluxx.error_classification.business_exception_classes', $config['error_classification']['business_exception_classes']);
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');

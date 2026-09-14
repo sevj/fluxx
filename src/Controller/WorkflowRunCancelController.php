@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Controller;
 
+use Fluxx\Http\InternalRedirectTarget;
 use Fluxx\Workflow\Cancellation\WorkflowCancellationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -47,9 +48,9 @@ final class WorkflowRunCancelController extends AbstractController
             $this->addFlash('error', $exception->getMessage());
         }
 
-        $redirect = $request->request->get('_redirect');
+        $redirect = InternalRedirectTarget::extract($request);
 
-        if (is_string($redirect) && str_starts_with($redirect, '/')) {
+        if ($redirect !== null) {
             return $this->redirect($redirect);
         }
 

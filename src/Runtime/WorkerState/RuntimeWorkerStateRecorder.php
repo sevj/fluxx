@@ -22,6 +22,8 @@ final readonly class RuntimeWorkerStateRecorder
         private EntityManagerInterface $entityManager,
         private RuntimeWorkerStateRepository $workerStateRepository,
         private WorkflowRunRepository $workflowRunRepository,
+        #[Autowire('%fluxx.runtime.transport_name%')]
+        private string $transportName,
     ) {
     }
 
@@ -128,7 +130,7 @@ final readonly class RuntimeWorkerStateRecorder
 
     private function resolveTransportName(string $receiverName): string
     {
-        return $receiverName !== '' ? $receiverName : 'fluxx';
+        return $receiverName !== '' ? $receiverName : $this->transportName;
     }
 
     private function resolveHost(): string

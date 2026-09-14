@@ -9,8 +9,10 @@ use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Repository\FluxxSettingLookupInterface;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
+use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Tests\Fixture\InMemoryStepRunLookup;
 use Fluxx\Tests\Fixture\StubIdempotentStep;
 use Fluxx\Workflow\Context\WorkflowContext;
@@ -55,6 +57,7 @@ final class FluxxRuntimeTest extends TestCase
     private MessageBusInterface&MockObject $messageBus;
     private EntityManagerInterface&MockObject $entityManager;
 
+    private int $maxGlobalRetries = 10;
     private FluxxRuntime $runtime;
 
     protected function setUp(): void
@@ -105,7 +108,17 @@ final class FluxxRuntimeTest extends TestCase
     private function buildRuntime(SynchronizationRegistry $registry): FluxxRuntime
     {
         $cancellationSynchronizer = new WorkflowCancellationSynchronizer($this->workflowRunRepository);
-        $retryScheduler = new WorkflowRetryScheduler($this->messageBus);
+        $settingsLookup = $this->createMock(FluxxSettingLookupInterface::class);
+        $settingsLookup->method('findValue')->willReturn(null);
+        $runtimeSettingsManager = new RuntimeSettingsManager(
+            $settingsLookup,
+            1800,
+            120,
+            60,
+            300,
+            $this->maxGlobalRetries,
+        );
+        $retryScheduler = new WorkflowRetryScheduler($this->messageBus, $runtimeSettingsManager);
         $idempotenceResolver = new WorkflowIdempotenceResolver(
             $this->stepRunLookup,
             $this->workflowPayloadRepository,

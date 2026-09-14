@@ -10,6 +10,15 @@ use Throwable;
 final class WorkflowErrorPayloadFactory
 {
     /**
+     * @param list<class-string> $businessExceptionClasses
+     */
+    public function __construct(
+        private bool $autoBusinessClassification = true,
+        private array $businessExceptionClasses = ['InvalidArgumentException', 'LogicException', 'DomainException', 'OutOfBoundsException'],
+    ) {
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function fromThrowable(Throwable $throwable): array
@@ -22,6 +31,8 @@ final class WorkflowErrorPayloadFactory
             $category = $throwable->workflowErrorCategory();
             $errorCode = $throwable->workflowErrorCode();
             $context = $throwable->workflowErrorContext();
+        } elseif ($this->autoBusinessClassification && $this->isBusinessThrowable($throwable)) {
+            $category = WorkflowErrorCategory::Business;
         }
 
         return [
@@ -32,5 +43,16 @@ final class WorkflowErrorPayloadFactory
             'context' => $context,
             'occurred_at' => (new DateTimeImmutable())->format(DATE_ATOM),
         ];
+    }
+
+    private function isBusinessThrowable(Throwable $throwable): bool
+    {
+        foreach ($this->businessExceptionClasses as $class) {
+            if (is_a($throwable, $class, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

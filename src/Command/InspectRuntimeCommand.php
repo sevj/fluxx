@@ -62,7 +62,7 @@ final class InspectRuntimeCommand extends Command
             ['Active locks' => (string) ($summary['activeLockCount'] ?? 0)],
             ['Visible messages' => (string) ($summary['visibleMessageCount'] ?? 0)],
             ['Oldest pending (ms)' => $summary['oldestPendingAgeMs'] !== null ? (string) $summary['oldestPendingAgeMs'] : '-'],
-            ['Transport' => (string) ($queue['name'] ?? 'fluxx')],
+            ['Transport' => (string) ($queue['name'] ?? '-')],
             ['Stream' => (string) ($queue['stream'] ?? '-')],
             ['Group' => (string) ($queue['group'] ?? '-')],
         );

@@ -19,7 +19,7 @@ final class RetryWorkflowStepCommandTest extends TestCase
         $operator = $this->createMock(WorkflowRetryOperator::class);
         $operator->expects(self::once())
             ->method('retryStep')
-            ->with('run-1', 'write_contacts', 'cli', 'Retry step', null)
+            ->with('run-1', 'write_contacts', 'cli', 'Retry step', null, false)
             ->willReturn('run-2');
 
         $tester = new CommandTester(new RetryWorkflowStepCommand($operator));

@@ -34,6 +34,11 @@ services:
 
     Fluxx\Repository\FluxxSettingLookupInterface: '@Fluxx\Repository\FluxxSettingRepository'
 
+    Fluxx\Workflow\Error\WorkflowErrorPayloadFactory:
+        arguments:
+            $autoBusinessClassification: '%fluxx.error_classification.enabled%'
+            $businessExceptionClasses: '%fluxx.error_classification.business_exception_classes%'
+
     Fluxx\Workflow\FluxxEngineInterface: '@Fluxx\Workflow\FluxxEngine'
 
     Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface: '@Fluxx\Workflow\Lock\WorkflowExecutionLockManager'

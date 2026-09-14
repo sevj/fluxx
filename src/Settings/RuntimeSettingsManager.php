@@ -32,7 +32,7 @@ final readonly class RuntimeSettingsManager
             workerHeartbeatTimeoutSeconds: $this->resolveInt($value, 'worker_heartbeat_timeout_seconds', $this->defaultWorkerHeartbeatTimeoutSeconds),
             healthWarningThresholdSeconds: $this->resolveInt($value, 'health_warning_threshold_seconds', $this->defaultHealthWarningThresholdSeconds),
             healthCriticalThresholdSeconds: $this->resolveInt($value, 'health_critical_threshold_seconds', $this->defaultHealthCriticalThresholdSeconds),
-            maxGlobalRetries: $this->resolveInt($value, 'max_global_retries', $this->defaultMaxGlobalRetries),
+            maxGlobalRetries: $this->resolveInt($value, 'max_global_retries', $this->defaultMaxGlobalRetries, 0),
         );
     }
 
@@ -61,11 +61,11 @@ final readonly class RuntimeSettingsManager
     /**
      * @param array<string, mixed> $value
      */
-    private function resolveInt(array $value, string $key, int $default): int
+    private function resolveInt(array $value, string $key, int $default, int $min = 1): int
     {
         $raw = $value[$key] ?? null;
 
-        if (!is_int($raw) || $raw < 1) {
+        if (!is_int($raw) || $raw < $min) {
             return $default;
         }
 

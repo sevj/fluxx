@@ -7,6 +7,7 @@ namespace Fluxx\Workflow\Runtime;
 use DateTimeImmutable;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Workflow\Error\WorkflowErrorCategory;
 use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
@@ -18,6 +19,7 @@ final readonly class WorkflowRetryScheduler
 {
     public function __construct(
         private MessageBusInterface $messageBus,
+        private RuntimeSettingsManager $runtimeSettingsManager,
     ) {
     }
 
@@ -48,7 +50,10 @@ final readonly class WorkflowRetryScheduler
             return false;
         }
 
-        if ($stepRun->retryCount() >= $retryPolicy->maxRetries()) {
+        $globalMaxRetries = $this->runtimeSettingsManager->get()->maxGlobalRetries;
+        $effectiveMaxRetries = min($retryPolicy->maxRetries(), max(0, $globalMaxRetries));
+
+        if ($stepRun->retryCount() >= $effectiveMaxRetries) {
             return false;
         }
 
@@ -75,6 +80,8 @@ final readonly class WorkflowRetryScheduler
         $metadata['retry'] = [
             'count' => $stepRun->retryCount(),
             'max_retries' => $retryPolicy->maxRetries(),
+            'global_max_retries' => $globalMaxRetries,
+            'effective_max_retries' => $effectiveMaxRetries,
             'delay_seconds' => $retryPolicy->delaySeconds(),
             'backoff_strategy' => $retryPolicy->backoffStrategy()->value,
             'last_retry_at' => $retryScheduledAt->format(DATE_ATOM),

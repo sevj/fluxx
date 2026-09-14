@@ -232,6 +232,15 @@ run_index:
     retry_run: Retry run
     cancel_run: Cancel run
     cancel_confirm: Cancel this run?
+    loading: Loading runs
+    waiting: Waiting for first refresh
+    state_live: Live
+    state_error: Error
+    state_offline: Offline
+    pause_polling: Pause polling
+    resume_polling: Resume polling
+    polling: Refreshing
+    refresh_failed: Run list refresh failed
 
 run_show:
     title: Run detail

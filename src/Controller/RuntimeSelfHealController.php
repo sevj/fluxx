@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Controller;
 
+use Fluxx\Http\InternalRedirectTarget;
 use Fluxx\Operations\DeadConsumerPurger;
 use Fluxx\Operations\PendingMessageReclaimer;
 use Fluxx\Operations\StaleLockReleaser;
@@ -49,9 +50,9 @@ final class RuntimeSelfHealController extends AbstractController
             $this->addFlash('error', $exception->getMessage());
         }
 
-        $redirect = $request->request->get('_redirect');
+        $redirect = InternalRedirectTarget::extract($request);
 
-        if (is_string($redirect) && str_starts_with($redirect, '/')) {
+        if ($redirect !== null) {
             return $this->redirect($redirect);
         }
 

@@ -6,6 +6,7 @@ namespace Fluxx\Operations;
 
 use Doctrine\DBAL\Connection;
 use RuntimeException;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * Prunes {@see \Fluxx\Entity\RuntimeWorkerState} rows that no longer represent
@@ -19,10 +20,10 @@ use RuntimeException;
  */
 final readonly class StaleWorkerPruner
 {
-    private const DEFAULT_TRANSPORT = 'fluxx';
-
     public function __construct(
         private Connection $connection,
+        #[Autowire('%fluxx.runtime.transport_name%')]
+        private string $defaultTransport,
     ) {
     }
 
@@ -34,7 +35,7 @@ final readonly class StaleWorkerPruner
         int $staleHeartbeatSeconds = 120,
         ?string $transportName = null,
     ): array {
-        $transport = $transportName ?? self::DEFAULT_TRANSPORT;
+        $transport = $transportName ?? $this->defaultTransport;
 
         if ($staleHeartbeatSeconds < 1) {
             throw new RuntimeException('The stale heartbeat threshold must be greater than zero.');

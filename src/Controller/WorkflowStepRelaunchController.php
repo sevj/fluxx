@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Fluxx\Controller;
 
+use Fluxx\Http\InternalRedirectTarget;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockConflict;
+use Fluxx\Workflow\Relaunch\RunStillActiveException;
 use Fluxx\Workflow\Relaunch\WorkflowRelaunchMode;
 use Fluxx\Workflow\Relaunch\WorkflowRelaunchService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -49,13 +51,15 @@ final class WorkflowStepRelaunchController extends AbstractController
                 $exception->activeRunId(),
                 $exception->lockKey(),
             ));
+        } catch (RunStillActiveException $exception) {
+            $this->addFlash('error', sprintf('%s Use the CLI with --force when the original worker is definitely stuck.', $exception->getMessage()));
         } catch (\Throwable $exception) {
             $this->addFlash('error', $exception->getMessage());
         }
 
-        $redirect = $request->request->get('_redirect');
+        $redirect = InternalRedirectTarget::extract($request);
 
-        if (is_string($redirect) && str_starts_with($redirect, '/')) {
+        if ($redirect !== null) {
             return $this->redirect($redirect);
         }
 

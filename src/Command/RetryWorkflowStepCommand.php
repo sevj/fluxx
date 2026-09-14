@@ -6,6 +6,7 @@ namespace Fluxx\Command;
 
 use Fluxx\Operations\WorkflowRetryOperator;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockConflict;
+use Fluxx\Workflow\Relaunch\RunStillActiveException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -30,7 +31,8 @@ final class RetryWorkflowStepCommand extends Command
             ->addArgument('step-code', InputArgument::REQUIRED, 'Restart step code.')
             ->addOption('reason', null, InputOption::VALUE_REQUIRED, 'Optional operator reason.')
             ->addOption('operator', null, InputOption::VALUE_REQUIRED, 'Optional operator user identifier.')
-            ->addOption('trigger', null, InputOption::VALUE_REQUIRED, 'Retry trigger source.', 'cli');
+            ->addOption('trigger', null, InputOption::VALUE_REQUIRED, 'Retry trigger source.', 'cli')
+            ->addOption('force', null, InputOption::VALUE_NONE, 'Retry even if the original run is still in progress (use only when the original worker is definitely stuck).');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -46,6 +48,7 @@ final class RetryWorkflowStepCommand extends Command
                 trigger: (string) $input->getOption('trigger'),
                 reason: is_string($reason) && $reason !== '' ? $reason : null,
                 operatorUser: is_string($operator) && $operator !== '' ? $operator : null,
+                force: (bool) $input->getOption('force'),
             );
         } catch (WorkflowExecutionLockConflict $exception) {
             $io->error(sprintf(
@@ -54,6 +57,10 @@ final class RetryWorkflowStepCommand extends Command
                 $exception->activeRunId(),
                 $exception->lockKey(),
             ));
+
+            return Command::FAILURE;
+        } catch (RunStillActiveException $exception) {
+            $io->error(sprintf('%s Add --force to override when the original worker is definitely stuck.', $exception->getMessage()));
 
             return Command::FAILURE;
         } catch (\Throwable $exception) {

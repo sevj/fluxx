@@ -68,6 +68,10 @@ final readonly class FluxxRuntime
             return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
         }
 
+        if ($existingStepRun?->status() === WorkflowStepRunStatus::Running) {
+            return [];
+        }
+
         if (!$this->dependenciesAreSatisfied($workflowRun, $stepDefinition)) {
             return [];
         }
