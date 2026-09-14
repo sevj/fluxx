@@ -47,6 +47,10 @@ final readonly class StepRunDetailView
         private ?string $errorMessage,
         private ?string $errorCategory,
         private ?string $errorCode,
+        private ?string $errorClass,
+        /** @var array<string, mixed>|null */
+        private ?array $errorContext,
+        private ?DateTimeImmutable $errorOccurredAt,
         private ?string $idempotenceKey,
         private string $deduplicationStatus,
         private ?string $deduplicatedFromRunId,
@@ -90,6 +94,13 @@ final readonly class StepRunDetailView
     public function errorMessage(): ?string { return $this->errorMessage; }
     public function errorCategory(): ?string { return $this->errorCategory; }
     public function errorCode(): ?string { return $this->errorCode; }
+    public function errorClass(): ?string { return $this->errorClass; }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function errorContext(): ?array { return $this->errorContext; }
+    public function errorOccurredAt(): ?DateTimeImmutable { return $this->errorOccurredAt; }
     public function idempotenceKey(): ?string { return $this->idempotenceKey; }
     public function deduplicationStatus(): string { return $this->deduplicationStatus; }
     public function deduplicatedFromRunId(): ?string { return $this->deduplicatedFromRunId; }

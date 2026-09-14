@@ -207,6 +207,8 @@ run_index:
     count: Showing %from%-%to% of %total% runs
     empty: No run has been recorded yet.
     empty_search: No run matches the current filters.
+    filter_workflow_label: Workflow
+    filter_workflow_all: All workflows
     filter_status_label: Status
     filter_status_all: All statuses
     filter_errors_label: Errors
@@ -225,10 +227,14 @@ run_index:
     target_system: Target
     status: Status
     dates: Dates
+    error: Error
     actions: Actions
     created_at: Created
+    started_at: Started
+    not_started: Not started
     finished_at: Finished
     not_finished: Not finished
+    locked: 'Locked: %key%'
     retry_run: Retry run
     cancel_run: Cancel run
     cancel_confirm: Cancel this run?
@@ -262,6 +268,15 @@ run_show:
     batch_id: Batch
     relaunch: Relaunch
     relaunch_value: Relaunch of %runId% (%mode%)
+    restart_step: Restart step
+    relaunch_trigger: Relaunch trigger
+    relaunch_reason: Relaunch reason
+    relaunch_operator: Relaunched by
+    cancellation_group: Cancellation
+    cancel_trigger: Cancel trigger
+    cancel_reason: Cancel reason
+    cancel_operator: Cancelled by
+    cancelled_at: Cancelled at
     lock_scope: Lock scope
     lock_key: Lock key
     created_at: Created
@@ -368,6 +383,13 @@ step_run_show:
     output_payloads: Output payloads
     input_payloads_empty: No input payload is available for this step run.
     output_payloads_empty: No output payload is available for this step run.
+    payload_raw_size: Raw size
+    payload_stored_size: Stored size
+    payload_compression_ratio: Compression ratio
+    payload_content_hash: Content hash
+    payload_created_at: Created
+    payload_metadata: Metadata
+    payload_content: Content
     payload_sequence: 'Sequence %sequence%'
     payload_records: '%count% records'
     retry_step: Retry from step

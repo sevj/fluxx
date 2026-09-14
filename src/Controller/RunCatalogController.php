@@ -31,6 +31,7 @@ final class RunCatalogController extends AbstractController
         return $this->render('@Fluxx/runs/index.html.twig', [
             'runPage' => $this->runCatalog->paginate($page, 20, $filters),
             'executionFilters' => $filters,
+            'workflowChoices' => $this->runCatalog->availableWorkflows(),
         ]);
     }
 }

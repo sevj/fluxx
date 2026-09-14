@@ -8,7 +8,7 @@
     <title>{{ stepRun.stepName }} - {{ 'step_run_show.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616'}) }}">
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260914-step-run-show'}) }}">
 </head>
 <body>
     <main class="page">
@@ -238,14 +238,24 @@
 
                 {% if stepRun.errorMessage %}
                     <div class="detail-message detail-message-error">
-                        {% if stepRun.errorCategory %}
-                            <strong>{{ ('workflow_error_category.' ~ stepRun.errorCategory)|trans }}</strong>
-                            {% if stepRun.errorCode %}
-                                ({{ stepRun.errorCode }})
+                        <div class="detail-message-head">
+                            {% if stepRun.errorCategory %}
+                                <span class="status-badge status-badge-{{ stepRun.errorCategory == 'technical' ? 'warning' : 'failed' }}">{{ ('workflow_error_category.' ~ stepRun.errorCategory)|trans }}</span>
                             {% endif %}
-                            <br>
+                            {% if stepRun.errorCode %}
+                                <span class="item-code">{{ stepRun.errorCode }}</span>
+                            {% endif %}
+                            {% if stepRun.errorClass %}
+                                <span class="item-code">{{ stepRun.errorClass }}</span>
+                            {% endif %}
+                            {% if stepRun.errorOccurredAt %}
+                                <span class="metric-value">{{ stepRun.errorOccurredAt|date('Y-m-d H:i:s') }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="detail-message-body">{{ stepRun.errorMessage }}</div>
+                        {% if stepRun.errorContext is not empty %}
+                            <pre class="code-block code-block-compact">{{ stepRun.errorContext|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
                         {% endif %}
-                        {{ stepRun.errorMessage }}
                     </div>
                 {% endif %}
             </section>
@@ -322,8 +332,42 @@
                                             <span class="payload-chip">{{ 'step_run_show.payload_records'|trans({'%count%': payload.recordCount}) }}</span>
                                             <span class="payload-chip">{{ payload.format }}</span>
                                             <span class="payload-chip">{{ payload.compression }}</span>
+                                            <span class="payload-chip">{{ payload.storageMode }}</span>
                                         </div>
-                                        <pre class="code-block">{{ payload.snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                        <dl class="payload-details">
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_raw_size'|trans }}</dt>
+                                                <dd>{{ '%.2f MB'|format(payload.rawSize / 1048576) }}</dd>
+                                            </div>
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_stored_size'|trans }}</dt>
+                                                <dd>{{ '%.2f MB'|format(payload.storedSize / 1048576) }}</dd>
+                                            </div>
+                                            {% if payload.rawSize > 0 %}
+                                                <div class="payload-detail-item">
+                                                    <dt>{{ 'step_run_show.payload_compression_ratio'|trans }}</dt>
+                                                    <dd>{{ '%d%%'|format((1 - (payload.storedSize / payload.rawSize)) * 100) }}</dd>
+                                                </div>
+                                            {% endif %}
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_content_hash'|trans }}</dt>
+                                                <dd><code class="item-code">{{ payload.contentHash|slice(0, 12) }}…</code></dd>
+                                            </div>
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_created_at'|trans }}</dt>
+                                                <dd>{{ payload.createdAt|date('Y-m-d H:i') }}</dd>
+                                            </div>
+                                            {% if payload.metadata is not empty %}
+                                                <div class="payload-detail-item payload-detail-item-wide">
+                                                    <dt>{{ 'step_run_show.payload_metadata'|trans }}</dt>
+                                                    <dd><pre class="code-block code-block-compact">{{ payload.metadata|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></dd>
+                                                </div>
+                                            {% endif %}
+                                        </dl>
+                                        <div class="payload-content">
+                                            <div class="payload-content-label">{{ 'step_run_show.payload_content'|trans }}</div>
+                                            <pre class="code-block">{{ payload.snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                        </div>
                                     </article>
                                 {% endfor %}
                             </div>
@@ -347,8 +391,42 @@
                                             <span class="payload-chip">{{ 'step_run_show.payload_records'|trans({'%count%': payload.recordCount}) }}</span>
                                             <span class="payload-chip">{{ payload.format }}</span>
                                             <span class="payload-chip">{{ payload.compression }}</span>
+                                            <span class="payload-chip">{{ payload.storageMode }}</span>
                                         </div>
-                                        <pre class="code-block">{{ payload.snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                        <dl class="payload-details">
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_raw_size'|trans }}</dt>
+                                                <dd>{{ '%.2f MB'|format(payload.rawSize / 1048576) }}</dd>
+                                            </div>
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_stored_size'|trans }}</dt>
+                                                <dd>{{ '%.2f MB'|format(payload.storedSize / 1048576) }}</dd>
+                                            </div>
+                                            {% if payload.rawSize > 0 %}
+                                                <div class="payload-detail-item">
+                                                    <dt>{{ 'step_run_show.payload_compression_ratio'|trans }}</dt>
+                                                    <dd>{{ '%d%%'|format((1 - (payload.storedSize / payload.rawSize)) * 100) }}</dd>
+                                                </div>
+                                            {% endif %}
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_content_hash'|trans }}</dt>
+                                                <dd><code class="item-code">{{ payload.contentHash|slice(0, 12) }}…</code></dd>
+                                            </div>
+                                            <div class="payload-detail-item">
+                                                <dt>{{ 'step_run_show.payload_created_at'|trans }}</dt>
+                                                <dd>{{ payload.createdAt|date('Y-m-d H:i') }}</dd>
+                                            </div>
+                                            {% if payload.metadata is not empty %}
+                                                <div class="payload-detail-item payload-detail-item-wide">
+                                                    <dt>{{ 'step_run_show.payload_metadata'|trans }}</dt>
+                                                    <dd><pre class="code-block code-block-compact">{{ payload.metadata|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></dd>
+                                                </div>
+                                            {% endif %}
+                                        </dl>
+                                        <div class="payload-content">
+                                            <div class="payload-content-label">{{ 'step_run_show.payload_content'|trans }}</div>
+                                            <pre class="code-block">{{ payload.snapshot|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                                        </div>
                                     </article>
                                 {% endfor %}
                             </div>

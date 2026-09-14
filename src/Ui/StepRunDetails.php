@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Ui;
 
+use DateTimeImmutable;
 use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Repository\WorkflowPayloadRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
@@ -82,8 +83,11 @@ final readonly class StepRunDetails
             startedAt: $stepRun->startedAt(),
             finishedAt: $stepRun->finishedAt(),
             errorMessage: $stepRun->errorMessage(),
-            errorCategory: is_string($stepRun->errorPayload()['category'] ?? null) ? $stepRun->errorPayload()['category'] : null,
-            errorCode: is_string($stepRun->errorPayload()['code'] ?? null) ? $stepRun->errorPayload()['code'] : null,
+            errorCategory: self::readString($stepRun->errorPayload(), 'category'),
+            errorCode: self::readString($stepRun->errorPayload(), 'code'),
+            errorClass: self::readString($stepRun->errorPayload(), 'class'),
+            errorContext: self::readArray($stepRun->errorPayload(), 'context'),
+            errorOccurredAt: self::readDate($stepRun->errorPayload(), 'occurred_at'),
             idempotenceKey: $stepRun->idempotenceKey(),
             deduplicationStatus: $stepRun->deduplicationStatus()->value,
             deduplicatedFromRunId: $stepRun->deduplicatedFromStepRun()?->workflowRun()->runId(),
@@ -117,6 +121,52 @@ final readonly class StepRunDetails
         }
 
         throw new InvalidArgumentException(sprintf('Step "%s" is not registered for workflow "%s".', $stepCode, $workflowCode));
+    }
+
+    /**
+     * @param array<string, mixed>|null $payload
+     */
+    private static function readString(?array $payload, string $key): ?string
+    {
+        $value = $payload[$key] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function readArray(?array $payload, string $key): ?array
+    {
+        if (!is_array($payload)) {
+            return null;
+        }
+
+        $value = $payload[$key] ?? null;
+
+        if (!is_array($value) || $value === []) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed>|null $payload
+     */
+    private static function readDate(?array $payload, string $key): ?DateTimeImmutable
+    {
+        $value = $payload[$key] ?? null;
+
+        if (!is_string($value)) {
+            return null;
+        }
+
+        try {
+            return new DateTimeImmutable($value);
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**

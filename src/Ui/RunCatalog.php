@@ -7,6 +7,7 @@ namespace Fluxx\Ui;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Workflow\SynchronizationRegistry;
+use Fluxx\Workflow\WorkflowInterface;
 
 final readonly class RunCatalog
 {
@@ -40,6 +41,24 @@ final readonly class RunCatalog
             totalItems: $totalItems,
             totalPages: $totalPages,
         );
+    }
+
+    /**
+     * @return list<WorkflowChoiceView>
+     */
+    public function availableWorkflows(): array
+    {
+        $choices = array_map(
+            static fn (WorkflowInterface $workflow): WorkflowChoiceView => new WorkflowChoiceView(
+                $workflow->definition()->code(),
+                $workflow->definition()->name(),
+            ),
+            $this->registry->all(),
+        );
+
+        usort($choices, static fn (WorkflowChoiceView $a, WorkflowChoiceView $b): int => strcmp($a->name(), $b->name()));
+
+        return $choices;
     }
 
     private function createRowView(WorkflowRun $run): RunRowView

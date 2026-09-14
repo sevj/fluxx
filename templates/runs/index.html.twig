@@ -10,7 +10,7 @@
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
     <script defer src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: '20260616-js-split'}) }}"></script>
     <script defer src="{{ path('fluxx_script_asset', {'script': 'run-catalog', v: '20260616-run-poll'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-runs'}) }}">
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260914-runs'}) }}">
 </head>
 <body>
     <main class="page">
@@ -64,6 +64,17 @@
             <section class="section-card">
                 <form method="get" action="{{ path('fluxx_run_index') }}" class="run-filter-form">
                     <div class="run-filter-grid run-filter-grid-executions">
+                        <label class="run-filter-field">
+                            <span class="run-filter-label">{{ 'run_index.filter_workflow_label'|trans }}</span>
+                            <select name="workflow" class="search-input">
+                                <option value="">{{ 'run_index.filter_workflow_all'|trans }}</option>
+                                {% for choice in workflowChoices %}
+                                    <option value="{{ choice.code }}"{{ executionFilters.workflowCode == choice.code ? ' selected' : '' }}>
+                                        {{ choice.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
                         <label class="run-filter-field">
                             <span class="run-filter-label">{{ 'run_index.filter_status_label'|trans }}</span>
                             <select name="status" class="search-input">

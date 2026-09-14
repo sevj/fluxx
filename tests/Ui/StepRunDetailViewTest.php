@@ -48,6 +48,9 @@ final class StepRunDetailViewTest extends TestCase
             errorMessage: null,
             errorCategory: null,
             errorCode: null,
+            errorClass: null,
+            errorContext: null,
+            errorOccurredAt: null,
             idempotenceKey: 'detail-key',
             deduplicationStatus: 'deduplicated',
             deduplicatedFromRunId: 'run-0',
@@ -69,5 +72,9 @@ final class StepRunDetailViewTest extends TestCase
         self::assertSame('deduplicated', $view->deduplicationStatus());
         self::assertSame('run-0', $view->deduplicatedFromRunId());
         self::assertSame('write_contacts', $view->deduplicatedFromStepCode());
+        self::assertNull($view->errorCode());
+        self::assertNull($view->errorClass());
+        self::assertNull($view->errorContext());
+        self::assertNull($view->errorOccurredAt());
     }
 }

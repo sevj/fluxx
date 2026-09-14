@@ -8,7 +8,7 @@
     <title>{{ run.runId }} - {{ 'run_show.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-run-show'}) }}">
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260914-run-show'}) }}">
 </head>
 <body>
     <main class="page">
@@ -112,12 +112,34 @@
                                 <div class="definition-inline-item">
                                     <span class="definition-inline-key">{{ 'run_show.relaunch'|trans }}</span>
                                     <span class="definition-inline-value">
-                                        {{ 'run_show.relaunch_value'|trans({
-                                            '%runId%': run.originalRunId,
-                                            '%mode%': ('workflow_relaunch_mode.' ~ run.relaunchMode)|trans
-                                        }) }}
+                                        <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.originalRunId}) }}" class="run-id">{{ run.originalRunId }}</a>
+                                        {% if run.relaunchMode %}<span class="item-code">{{ ('workflow_relaunch_mode.' ~ run.relaunchMode)|trans }}</span>{% endif %}
                                     </span>
                                 </div>
+                                {% if run.restartStepCode %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.restart_step'|trans }}</span>
+                                        <span class="definition-inline-value">{{ run.restartStepCode }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if run.relaunchTrigger %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.relaunch_trigger'|trans }}</span>
+                                        <span class="system-chip">{{ run.relaunchTrigger }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if run.relaunchReason %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.relaunch_reason'|trans }}</span>
+                                        <span class="definition-inline-value">{{ run.relaunchReason }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if run.relaunchOperator %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.relaunch_operator'|trans }}</span>
+                                        <span class="definition-inline-value">{{ run.relaunchOperator }}</span>
+                                    </div>
+                                {% endif %}
                             {% endif %}
                             <div class="definition-inline-item">
                                 <span class="definition-inline-key">{{ 'run_show.lock_scope'|trans }}</span>
@@ -156,6 +178,35 @@
                                 {% endif %}
                             </div>
                         </div>
+                        {% if run.cancelReason or run.cancelOperator or run.cancelTrigger or run.cancelledAt %}
+                            <div class="definition-inline-list definition-inline-list-divider">
+                                <div class="definition-label">{{ 'run_show.cancellation_group'|trans }}</div>
+                                {% if run.cancelTrigger %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.cancel_trigger'|trans }}</span>
+                                        <span class="system-chip">{{ run.cancelTrigger }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if run.cancelReason %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.cancel_reason'|trans }}</span>
+                                        <span class="definition-inline-value">{{ run.cancelReason }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if run.cancelOperator %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.cancel_operator'|trans }}</span>
+                                        <span class="definition-inline-value">{{ run.cancelOperator }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if run.cancelledAt %}
+                                    <div class="definition-inline-item">
+                                        <span class="definition-inline-key">{{ 'run_show.cancelled_at'|trans }}</span>
+                                        <span class="definition-inline-value">{{ run.cancelledAt|date('Y-m-d H:i') }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     </section>
 
                     <section class="definition-block definition-block-compact">
@@ -183,11 +234,24 @@
 
                 {% if run.errorMessage %}
                     <div class="detail-message detail-message-error">
-                        {% if run.errorCategory %}
-                            <strong>{{ ('workflow_error_category.' ~ run.errorCategory)|trans }}</strong>
-                            <br>
+                        <div class="detail-message-head">
+                            {% if run.errorCategory %}
+                                <span class="status-badge status-badge-{{ run.errorCategory == 'technical' ? 'warning' : 'failed' }}">{{ ('workflow_error_category.' ~ run.errorCategory)|trans }}</span>
+                            {% endif %}
+                            {% if run.errorCode %}
+                                <span class="item-code">{{ run.errorCode }}</span>
+                            {% endif %}
+                            {% if run.errorClass %}
+                                <span class="item-code">{{ run.errorClass }}</span>
+                            {% endif %}
+                            {% if run.errorOccurredAt %}
+                                <span class="metric-value">{{ run.errorOccurredAt|date('Y-m-d H:i:s') }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="detail-message-body">{{ run.errorMessage }}</div>
+                        {% if run.errorContext is not empty %}
+                            <pre class="code-block code-block-compact">{{ run.errorContext|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
                         {% endif %}
-                        {{ run.errorMessage }}
                     </div>
                 {% endif %}
             </section>
