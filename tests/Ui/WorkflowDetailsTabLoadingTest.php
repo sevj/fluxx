@@ -19,6 +19,8 @@ use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowStepDefinition;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Constraint\IsType;
+use PHPUnit\Framework\NativeType;
 use PHPUnit\Framework\TestCase;
 
 final class WorkflowDetailsTabLoadingTest extends TestCase
@@ -79,7 +81,7 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
             ->with(
                 self::stringContains('COUNT(*) AS run_count'),
                 self::callback(static fn (array $params): bool => $params['workflowName'] === 'fixture_workflow' && $params['relaunchMarker'] === '%"relaunch":%'),
-                self::isType('array'),
+                new IsType(NativeType::Array),
             )
             ->willReturn([
                 'run_count' => 0,
@@ -92,7 +94,7 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
             ->with(
                 self::stringContains('TIMESTAMPDIFF(MICROSECOND, started_at, finished_at) DIV 1000'),
                 self::callback(static fn (array $params): bool => $params['workflowName'] === 'fixture_workflow'),
-                self::isType('array'),
+                new IsType(NativeType::Array),
             )
             ->willReturn([]);
         $connection->expects(self::once())
@@ -100,7 +102,7 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
             ->with(
                 self::stringContains('COUNT(DISTINCT workflow_step_run.workflow_run_id)'),
                 self::callback(static fn (array $params): bool => $params['workflowName'] === 'fixture_workflow'),
-                self::isType('array'),
+                new IsType(NativeType::Array),
             )
             ->willReturn(0);
 

@@ -10,16 +10,13 @@ use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
-use Fluxx\Repository\WorkflowPayloadRepository;
-use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
-use Fluxx\Workflow\Context\WorkflowContext;
+use Fluxx\Repository\WorkflowPayloadLookupInterface;
+use Fluxx\Repository\WorkflowRunLookupInterface;
+use Fluxx\Repository\WorkflowStepRunLookupInterface;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
-use Fluxx\Workflow\Lock\WorkflowExecutionLockManager;
-use Fluxx\Workflow\Payload\WorkflowPayloadStore;
-use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
-use Fluxx\Workflow\Step\IdempotentWorkflowStepInterface;
+use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
+use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowStepDefinition;
@@ -33,14 +30,17 @@ final readonly class FluxxRuntime
     public function __construct(
         private SynchronizationRegistry $registry,
         private EntityManagerInterface $entityManager,
-        private WorkflowRunRepository $workflowRunRepository,
-        private WorkflowStepRunRepository $workflowStepRunRepository,
-        private WorkflowPayloadRepository $workflowPayloadRepository,
-        private WorkflowPayloadStore $workflowPayloadStore,
+        private WorkflowRunLookupInterface $workflowRunRepository,
+        private WorkflowStepRunLookupInterface $workflowStepRunRepository,
+        private WorkflowPayloadLookupInterface $workflowPayloadRepository,
+        private WorkflowPayloadStoreInterface $workflowPayloadStore,
         private WorkflowContextFactory $workflowContextFactory,
-        private WorkflowExecutionLockManager $workflowExecutionLockManager,
+        private WorkflowExecutionLockManagerInterface $workflowExecutionLockManager,
         private WorkflowErrorPayloadFactory $workflowErrorPayloadFactory,
         private WorkflowRunCompletionDecider $workflowRunCompletionDecider,
+        private WorkflowCancellationSynchronizer $cancellationSynchronizer,
+        private WorkflowRetryScheduler $retryScheduler,
+        private WorkflowIdempotenceResolver $idempotenceResolver,
     ) {
     }
 
@@ -76,19 +76,27 @@ final readonly class FluxxRuntime
         $context = $this->workflowContextFactory->createFromRun($workflowRun, $definition);
         $workflowRun->markRunning();
         $input = $this->buildStepInput($workflowRun, $stepCode);
+
         $stepRun = $this->prepareStepRun(
             workflowRun: $workflowRun,
             stepDefinition: $stepDefinition,
             position: $definition->positionOf($stepCode),
             existingStepRun: $existingStepRun,
         );
+
         $stepStartedAt = hrtime(true);
         if (function_exists('memory_reset_peak_usage')) {
             memory_reset_peak_usage();
         }
 
+        $this->entityManager->beginTransaction();
+
         try {
-            if ($this->tryCompleteFromIdempotenceHit($workflowRun, $definition, $stepDefinition, $stepRun, $context, $input, $stepStartedAt)) {
+            if ($this->idempotenceResolver->tryCompleteFromHit($workflowRun, $stepDefinition, $stepRun, $context, $input, $stepStartedAt)) {
+                $this->finalizeWorkflowRunState($workflowRun, $definition);
+                $this->entityManager->flush();
+                $this->entityManager->commit();
+
                 return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
             }
 
@@ -98,7 +106,7 @@ final readonly class FluxxRuntime
             );
 
             $stepRun->replaceMetadata($result->metadata());
-            $this->applyIdempotenceKey($stepDefinition, $stepRun, $context, $input);
+            $this->idempotenceResolver->applyKey($stepDefinition, $stepRun, $context, $input);
 
             foreach ($definition->downstreamSteps($stepCode) as $downstreamStep) {
                 $output = $result->outputFor($downstreamStep->code());
@@ -126,25 +134,54 @@ final readonly class FluxxRuntime
                 memoryPeakBytes: $this->measurePeakMemoryBytes(),
             );
 
-            if ($this->synchronizeCancelledRunIfNeeded($workflowRun)) {
+            if ($this->cancellationSynchronizer->synchronizeIfNeeded($workflowRun)) {
                 $this->entityManager->flush();
+                $this->entityManager->commit();
 
                 return [];
             }
 
             $this->finalizeWorkflowRunState($workflowRun, $definition);
-
             $this->entityManager->flush();
+            $this->entityManager->commit();
 
             return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
         } catch (Throwable $throwable) {
-            $errorPayload = $this->workflowErrorPayloadFactory->fromThrowable($throwable);
-            $retryPolicy = $this->resolveRetryPolicy($definition, $stepDefinition);
-            $durationMs = $this->computeDurationMs($stepStartedAt);
-            $memoryPeakBytes = $this->measurePeakMemoryBytes();
+            $this->rollbackIfActive();
 
-            if ($this->scheduleRetryIfNeeded($workflowRun, $stepRun, $retryPolicy, $throwable->getMessage(), $errorPayload, $durationMs, $memoryPeakBytes)) {
+            return $this->handleStepError(
+                workflowRun: $workflowRun,
+                definition: $definition,
+                stepDefinition: $stepDefinition,
+                stepRun: $stepRun,
+                throwable: $throwable,
+                stepStartedAt: $stepStartedAt,
+            );
+        }
+    }
+
+    /**
+     * @return list<array{code: string, type: string}>
+     */
+    private function handleStepError(
+        WorkflowRun $workflowRun,
+        WorkflowDefinition $definition,
+        WorkflowStepDefinition $stepDefinition,
+        WorkflowStepRun $stepRun,
+        Throwable $throwable,
+        int $stepStartedAt,
+    ): array {
+        $errorPayload = $this->workflowErrorPayloadFactory->fromThrowable($throwable);
+        $retryPolicy = $this->retryScheduler->resolvePolicy($definition, $stepDefinition);
+        $durationMs = $this->computeDurationMs($stepStartedAt);
+        $memoryPeakBytes = $this->measurePeakMemoryBytes();
+
+        $this->entityManager->beginTransaction();
+
+        try {
+            if ($this->retryScheduler->scheduleIfNeeded($workflowRun, $stepRun, $retryPolicy, $throwable->getMessage(), $errorPayload, $durationMs, $memoryPeakBytes)) {
                 $this->entityManager->flush();
+                $this->entityManager->commit();
 
                 return [];
             }
@@ -158,8 +195,22 @@ final readonly class FluxxRuntime
             );
             $this->finalizeWorkflowRunState($workflowRun, $definition, $throwable->getMessage(), $errorPayload);
             $this->entityManager->flush();
+            $this->entityManager->commit();
 
             throw $throwable;
+        } catch (Throwable $errorHandlingThrowable) {
+            $this->rollbackIfActive();
+
+            throw $errorHandlingThrowable;
+        }
+    }
+
+    private function rollbackIfActive(): void
+    {
+        $connection = $this->entityManager->getConnection();
+
+        if ($connection->isTransactionActive()) {
+            $this->entityManager->rollback();
         }
     }
 
@@ -244,29 +295,6 @@ final readonly class FluxxRuntime
         ));
     }
 
-    private function applyIdempotenceKey(
-        WorkflowStepDefinition $stepDefinition,
-        WorkflowStepRun $stepRun,
-        WorkflowContext $context,
-        WorkflowStepInput $input,
-    ): ?string {
-        $idempotenceKey = $this->resolveIdempotenceKey($stepDefinition, $context, $input);
-
-        if ($idempotenceKey !== null) {
-            $stepRun->markIdempotenceApplied($idempotenceKey);
-
-            $metadata = $stepRun->metadata();
-            $metadata['deduplication'] = [
-                'status' => 'applied',
-                'key' => $idempotenceKey,
-                'strategy' => $stepDefinition->idempotence()?->strategy(),
-            ];
-            $stepRun->replaceMetadata($metadata);
-        }
-
-        return $idempotenceKey;
-    }
-
     /**
      * @return list<array<string, mixed>>
      */
@@ -305,138 +333,6 @@ final readonly class FluxxRuntime
         return max(memory_get_peak_usage(true), memory_get_usage(true));
     }
 
-    private function resolveIdempotenceKey(
-        WorkflowStepDefinition $stepDefinition,
-        WorkflowContext $context,
-        WorkflowStepInput $input,
-    ): ?string {
-        if ($stepDefinition->idempotence() === null) {
-            return null;
-        }
-
-        $handler = $stepDefinition->handler();
-
-        if (!$handler instanceof IdempotentWorkflowStepInterface) {
-            throw new RuntimeException(sprintf(
-                'Step "%s" enables idempotence but its handler does not implement %s.',
-                $stepDefinition->code(),
-                IdempotentWorkflowStepInterface::class,
-            ));
-        }
-
-        $idempotenceKey = $handler->idempotenceKey($context, $input);
-
-        if ($idempotenceKey === null) {
-            return null;
-        }
-
-        $idempotenceKey = trim($idempotenceKey);
-
-        return $idempotenceKey !== '' ? $idempotenceKey : null;
-    }
-
-    private function tryCompleteFromIdempotenceHit(
-        WorkflowRun $workflowRun,
-        WorkflowDefinition $definition,
-        WorkflowStepDefinition $stepDefinition,
-        WorkflowStepRun $stepRun,
-        WorkflowContext $context,
-        WorkflowStepInput $input,
-        int $stepStartedAt,
-    ): bool {
-        $idempotenceKey = $this->resolveIdempotenceKey($stepDefinition, $context, $input);
-
-        if ($idempotenceKey === null) {
-            return false;
-        }
-
-        $deduplicatedFrom = $this->workflowStepRunRepository->findLatestCompletedByWorkflowNameAndStepNameAndIdempotenceKey(
-            $workflowRun->workflowName(),
-            $stepDefinition->code(),
-            $idempotenceKey,
-        );
-
-        if ($deduplicatedFrom === null) {
-            $stepRun->markIdempotenceApplied($idempotenceKey);
-            $stepRun->replaceMetadata([
-                'deduplication' => [
-                    'status' => 'applied',
-                    'key' => $idempotenceKey,
-                    'strategy' => $stepDefinition->idempotence()?->strategy(),
-                ],
-            ]);
-
-            return false;
-        }
-
-        $stepRun->markDeduplicated($idempotenceKey, $deduplicatedFrom);
-        $stepRun->replaceMetadata(array_merge(
-            $deduplicatedFrom->metadata(),
-            [
-                'deduplication' => [
-                    'status' => 'deduplicated',
-                    'source_run_id' => $deduplicatedFrom->workflowRun()->runId(),
-                    'source_step_run_id' => $deduplicatedFrom->id(),
-                    'source_step_code' => $deduplicatedFrom->stepName(),
-                ],
-            ],
-        ));
-
-        $this->cloneDownstreamPayloads(
-            workflowRun: $workflowRun,
-            sourceStepRun: $deduplicatedFrom,
-            targetStepRun: $stepRun,
-        );
-
-        $stepRun->markCompleted(
-            processedCount: $deduplicatedFrom->processedCount(),
-            successCount: $deduplicatedFrom->successCount(),
-            errorCount: $deduplicatedFrom->errorCount(),
-            durationMs: $this->computeDurationMs($stepStartedAt),
-            memoryPeakBytes: $this->measurePeakMemoryBytes(),
-        );
-
-        $this->finalizeWorkflowRunState($workflowRun, $definition);
-
-        $this->entityManager->flush();
-
-        return true;
-    }
-
-    private function cloneDownstreamPayloads(
-        WorkflowRun $workflowRun,
-        WorkflowStepRun $sourceStepRun,
-        WorkflowStepRun $targetStepRun,
-    ): void {
-        foreach ($this->workflowPayloadRepository->findBySourceStepRunOrdered($sourceStepRun) as $payload) {
-            $snapshot = $this->workflowPayloadStore->load($payload);
-            $metadata = $snapshot['metadata'] ?? $payload->metadata();
-
-            if (!is_array($metadata)) {
-                $metadata = $payload->metadata();
-            }
-
-            $metadata['deduplication'] = [
-                'status' => 'reused_payload',
-                'source_run_id' => $sourceStepRun->workflowRun()->runId(),
-                'source_step_run_id' => $sourceStepRun->id(),
-            ];
-
-            $records = $snapshot['records'] ?? [];
-
-            $this->workflowPayloadStore->storeStepInput(
-                workflowRun: $workflowRun,
-                sourceStepRun: $targetStepRun,
-                targetStepType: $payload->targetStepType(),
-                targetStepName: $payload->targetStepName(),
-                records: is_array($records) ? $records : [],
-                recordCount: $payload->recordCount(),
-                sequence: $payload->sequence(),
-                metadata: $metadata,
-            );
-        }
-    }
-
     /**
      * @return list<array{code: string, type: string}>
      */
@@ -445,7 +341,7 @@ final readonly class FluxxRuntime
         WorkflowDefinition $definition,
         string $stepCode,
     ): array {
-        if ($this->synchronizeCancelledRunIfNeeded($workflowRun)) {
+        if ($this->cancellationSynchronizer->synchronizeIfNeeded($workflowRun)) {
             return [];
         }
 
@@ -477,7 +373,7 @@ final readonly class FluxxRuntime
         ?string $errorMessage = null,
         ?array $errorPayload = null,
     ): void {
-        if ($this->synchronizeCancelledRunIfNeeded($workflowRun)) {
+        if ($this->cancellationSynchronizer->synchronizeIfNeeded($workflowRun)) {
             return;
         }
 
@@ -559,93 +455,6 @@ final readonly class FluxxRuntime
             'message' => null,
             'payload' => null,
         ];
-    }
-
-    private function synchronizeCancelledRunIfNeeded(WorkflowRun $workflowRun): bool
-    {
-        $persistedState = $this->workflowRunRepository->findPersistedRunStateByRunId($workflowRun->runId());
-
-        if (($persistedState['status'] ?? null) !== WorkflowRunStatus::Cancelled->value) {
-            return false;
-        }
-
-        $workflowRun->replaceMetadata($persistedState['metadata']);
-        $workflowRun->markCancelled($persistedState['finishedAt']);
-
-        return true;
-    }
-
-    private function resolveRetryPolicy(
-        WorkflowDefinition $definition,
-        WorkflowStepDefinition $stepDefinition,
-    ): ?WorkflowRetryPolicy {
-        return $stepDefinition->retryPolicy() ?? $definition->retryPolicy();
-    }
-
-    /**
-     * @param array<string, mixed>|null $errorPayload
-     */
-    private function scheduleRetryIfNeeded(
-        WorkflowRun $workflowRun,
-        WorkflowStepRun $stepRun,
-        ?WorkflowRetryPolicy $retryPolicy,
-        ?string $errorMessage,
-        ?array $errorPayload,
-        ?int $durationMs,
-        ?int $memoryPeakBytes,
-    ): bool {
-        if ($retryPolicy === null) {
-            return false;
-        }
-
-        if (($errorPayload['category'] ?? null) !== 'technical') {
-            return false;
-        }
-
-        if ($stepRun->retryCount() >= $retryPolicy->maxRetries()) {
-            return false;
-        }
-
-        $attempt = $stepRun->retryCount() + 1;
-        $delayMilliseconds = $retryPolicy->delayMillisecondsForAttempt($attempt);
-        $retryScheduledAt = new \DateTimeImmutable();
-        $nextRetryAt = $retryScheduledAt->modify(sprintf('+%d seconds', (int) ceil($delayMilliseconds / 1000)));
-
-        if (!$nextRetryAt instanceof \DateTimeImmutable) {
-            return false;
-        }
-
-        $stepRun->scheduleRetry(
-            lastRetryAt: $retryScheduledAt,
-            nextRetryAt: $nextRetryAt,
-            errorMessage: $errorMessage,
-            errorCount: 1,
-            durationMs: $durationMs,
-            memoryPeakBytes: $memoryPeakBytes,
-            errorPayload: $errorPayload,
-        );
-
-        $metadata = $stepRun->metadata();
-        $metadata['retry'] = [
-            'count' => $stepRun->retryCount(),
-            'max_retries' => $retryPolicy->maxRetries(),
-            'delay_seconds' => $retryPolicy->delaySeconds(),
-            'backoff_strategy' => $retryPolicy->backoffStrategy()->value,
-            'last_retry_at' => $retryScheduledAt->format(DATE_ATOM),
-            'next_retry_at' => $nextRetryAt->format(DATE_ATOM),
-        ];
-        $stepRun->replaceMetadata($metadata);
-
-        $workflowRun->markRetrying();
-
-        StepMessageDispatcher::dispatch(
-            $this->messageBus,
-            $workflowRun->runId(),
-            $stepRun->stepName(),
-            $delayMilliseconds,
-        );
-
-        return true;
     }
 
     /**

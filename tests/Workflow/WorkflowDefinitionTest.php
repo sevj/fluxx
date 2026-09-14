@@ -68,6 +68,11 @@ final class DummyIdempotentStep implements ExecutableWorkflowStepInterface, Idem
         return 'Contacts Write';
     }
 
+    public static function staticCode(): string
+    {
+        return 'contacts_write';
+    }
+
     public function execute(WorkflowContext $context, WorkflowStepInput $input): WorkflowStepResult
     {
         return new WorkflowStepResult();

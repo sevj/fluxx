@@ -84,6 +84,7 @@ final class WorkflowRunCompletionDeciderTest extends TestCase
         $handler = new class implements ExecutableWorkflowStepInterface {
             public function code(): string { return 'stub'; }
             public function name(): string { return 'Stub'; }
+            public static function staticCode(): string { return 'stub'; }
             public function execute(WorkflowContext $context, WorkflowStepInput $input): WorkflowStepResult
             {
                 return new WorkflowStepResult();

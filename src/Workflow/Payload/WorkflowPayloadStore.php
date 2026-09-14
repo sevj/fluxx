@@ -10,7 +10,7 @@ use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use JsonException;
 
-final readonly class WorkflowPayloadStore
+final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterface
 {
     private const SNAPSHOT_VERSION = 1;
 

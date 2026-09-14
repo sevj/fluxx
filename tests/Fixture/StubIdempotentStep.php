@@ -6,35 +6,39 @@ namespace Fluxx\Tests\Fixture;
 
 use Fluxx\Workflow\Context\WorkflowContext;
 use Fluxx\Workflow\Result\WorkflowStepResult;
-use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
+use Fluxx\Workflow\Step\IdempotentWorkflowStepInterface;
 use Fluxx\Workflow\Step\WorkflowStepInput;
 
-final class StubExecutableStep implements ExecutableWorkflowStepInterface
+final class StubIdempotentStep implements IdempotentWorkflowStepInterface
 {
     public function __construct(
-        private readonly string $code,
-        private readonly string $name,
+        private readonly string $idempotenceKey,
         private readonly ?WorkflowStepResult $result = null,
     ) {
     }
 
     public function code(): string
     {
-        return $this->code;
+        return 'fetch';
     }
 
     public function name(): string
     {
-        return $this->name;
+        return 'Fetch';
     }
 
     public static function staticCode(): string
     {
-        return 'stub_executable_step';
+        return 'fetch';
     }
 
     public function execute(WorkflowContext $context, WorkflowStepInput $input): WorkflowStepResult
     {
         return $this->result ?? new WorkflowStepResult();
+    }
+
+    public function idempotenceKey(WorkflowContext $context, WorkflowStepInput $input): ?string
+    {
+        return $this->idempotenceKey;
     }
 }

@@ -13,7 +13,7 @@ use Fluxx\Entity\WorkflowStepRun;
 /**
  * @extends ServiceEntityRepository<WorkflowPayload>
  */
-final class WorkflowPayloadRepository extends ServiceEntityRepository
+final class WorkflowPayloadRepository extends ServiceEntityRepository implements WorkflowPayloadLookupInterface
 {
     public function __construct(ManagerRegistry $registry)
     {
