@@ -13,6 +13,7 @@ use Fluxx\Entity\WorkflowRun;
 use Fluxx\Repository\RuntimeWorkerStateLookupInterface;
 use Fluxx\Repository\WorkflowExecutionLockStoreInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
+use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Workflow\WorkflowDefinition;
 use InvalidArgumentException;
 
@@ -23,6 +24,7 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
         private WorkflowExecutionLockStoreInterface $workflowExecutionLockRepository,
         private WorkflowRunLookupInterface $workflowRunRepository,
         private RuntimeWorkerStateLookupInterface $runtimeWorkerStateRepository,
+        private RuntimeSettingsManager $runtimeSettingsManager,
     ) {
     }
 
@@ -96,7 +98,12 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
             return true;
         }
 
-        $heartbeatThreshold = new DateTimeImmutable(sprintf('-%d seconds', $configuration->staleTimeoutSeconds()));
+        $staleTimeoutSeconds = min(
+            $configuration->staleTimeoutSeconds(),
+            $this->runtimeSettingsManager->get()->staleLockTimeoutSeconds,
+        );
+
+        $heartbeatThreshold = new DateTimeImmutable(sprintf('-%d seconds', $staleTimeoutSeconds));
 
         return !$this->runtimeWorkerStateRepository->hasActiveWorkerForRun($ownerRun->runId(), $heartbeatThreshold);
     }

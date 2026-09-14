@@ -240,7 +240,7 @@
                                             </a>
                                         </td>
                                         <td data-label="{{ 'run_show.step_type'|trans }}">
-                                            <span class="step-tone-pill step-tone-{{ step.typeTone }} step-tone-text{% if step.typeToneStyle %}" style="{{ step.typeToneStyle }}{% endif %}">{{ step.typeLabel }}</span>
+                                            <span class="step-tone-pill step-tone-{{ step.typeTone }} step-tone-text{% if step.typeToneStyle %}" style="{{ step.typeToneStyle }}{% endif %}">{{ step.typeLabel|trans }}</span>
                                         </td>
                                         <td data-label="{{ 'run_show.step_status'|trans }}">
                                             <span class="step-status-dot step-status-dot-{{ step.status|replace({'_': '-'}) }}" aria-hidden="true"></span>

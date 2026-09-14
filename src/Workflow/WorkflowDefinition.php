@@ -56,6 +56,8 @@ final readonly class WorkflowDefinition
             }
         }
 
+        $this->assertNoCycles($stepMap);
+
         $this->stepMap = $stepMap;
     }
 
@@ -210,5 +212,46 @@ final readonly class WorkflowDefinition
             $this->code,
             $stepCode,
         ));
+    }
+
+    /**
+     * @param array<string, WorkflowStepDefinition> $stepMap
+     */
+    private function assertNoCycles(array $stepMap): void
+    {
+        $color = [];
+
+        foreach ($stepMap as $code => $_) {
+            $color[$code] = 0;
+        }
+
+        $visit = function (string $code, array $path) use (&$visit, &$color, $stepMap): void {
+            $state = $color[$code] ?? 0;
+
+            if ($state === 2) {
+                return;
+            }
+
+            if ($state === 1) {
+                throw new InvalidArgumentException(sprintf(
+                    'Workflow "%s" defines a cyclic step dependency: %s.',
+                    $this->code,
+                    implode(' -> ', array_merge($path, [$code])),
+                ));
+            }
+
+            $color[$code] = 1;
+            $path[] = $code;
+
+            foreach ($stepMap[$code]->dependsOn() as $dependencyCode) {
+                $visit($dependencyCode, $path);
+            }
+
+            $color[$code] = 2;
+        };
+
+        foreach ($stepMap as $code => $_) {
+            $visit($code, []);
+        }
     }
 }

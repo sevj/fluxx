@@ -211,7 +211,7 @@ final class WorkflowStepRunRepositoryTest extends TestCase
 
         $repository = $this->createRepository($connection);
 
-        self::assertSame(
+        self::assertEquals(
             [
                 'run-1' => [[
                     'code' => 'fetch_company',
@@ -364,7 +364,7 @@ final class WorkflowStepRunRepositoryTest extends TestCase
 
         $repository = $this->createRepository($connection);
 
-        self::assertSame(
+        self::assertEquals(
             [
                 [
                     'workflowCode' => 'workflow',

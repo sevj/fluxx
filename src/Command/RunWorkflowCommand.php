@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Command;
 
-use Fluxx\Workflow\FluxxEngine;
+use Fluxx\Workflow\FluxxEngineInterface;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockConflict;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -26,7 +26,7 @@ use const JSON_THROW_ON_ERROR;
 final class RunWorkflowCommand extends Command
 {
     public function __construct(
-        private readonly FluxxEngine $fluxxEngine,
+        private readonly FluxxEngineInterface $fluxxEngine,
     ) {
         parent::__construct();
     }

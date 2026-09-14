@@ -62,6 +62,13 @@
                     <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('users') }}</span>
                     {{ 'navigation.users'|trans }}
                 </a>
+                <a
+                    href="{{ path('fluxx_configuration_index') }}"
+                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_configuration_index' ? ' is-active' : '' }}"
+                >
+                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('settings') }}</span>
+                    {{ 'navigation.configuration'|trans }}
+                </a>
             {% endif %}
         </nav>
     </div>

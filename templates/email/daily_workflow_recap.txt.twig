@@ -1,41 +1,42 @@
-Daily workflow recap
-Period: {{ recap.from|date('Y-m-d H:i') }} -> {{ recap.to|date('Y-m-d H:i') }}
+{% trans_default_domain 'fluxx' %}
+{{ 'email_recap.title'|trans }}
+{{ 'email_recap.period'|trans }}: {{ recap.from|date('Y-m-d H:i') }} -> {{ recap.to|date('Y-m-d H:i') }}
 
-Summary
-- Total runs: {{ recap.totalRuns }}
-- Processed records: {{ recap.processedCount }}
-- Successful records: {{ recap.successCount }}
-- Errored records: {{ recap.errorCount }}
-- Average step duration: {{ recap.averageDurationMs is null ? '-' : recap.averageDurationMs ~ ' ms' }}
-- Max step duration: {{ recap.maxDurationMs is null ? '-' : recap.maxDurationMs ~ ' ms' }}
+{{ 'email_recap.summary'|trans }}
+- {{ 'email_recap.total_runs'|trans }}: {{ recap.totalRuns }}
+- {{ 'email_recap.processed_records'|trans }}: {{ recap.processedCount }}
+- {{ 'email_recap.successful_records'|trans }}: {{ recap.successCount }}
+- {{ 'email_recap.errored_records'|trans }}: {{ recap.errorCount }}
+- {{ 'email_recap.avg_step_duration'|trans }}: {{ recap.averageDurationMs is null ? '-' : recap.averageDurationMs ~ ' ms' }}
+- {{ 'email_recap.max_step_duration'|trans }}: {{ recap.maxDurationMs is null ? '-' : recap.maxDurationMs ~ ' ms' }}
 
-Status counts
+{{ 'email_recap.status_counts'|trans }}
 {% for status, count in recap.statusCounts %}
-- {{ status }}: {{ count }}
+- {{ ('workflow_status.' ~ status)|trans }}: {{ count }}
 {% else %}
-- No workflow run.
+- {{ 'email_recap.no_workflow_run'|trans }}
 {% endfor %}
 
-Workflows
+{{ 'email_recap.workflows'|trans }}
 {% for workflow, stats in recap.workflowCounts %}
-- {{ workflow }}: {{ stats.total }} total, {{ stats.errors }} errors
+- {{ workflow }}: {{ stats.total }} {{ 'email_recap.total'|trans|lower }}, {{ stats.errors }} {{ 'email_recap.errors'|trans|lower }}
 {% else %}
-- No workflow run.
+- {{ 'email_recap.no_workflow_run'|trans }}
 {% endfor %}
 
-Errors
+{{ 'email_recap.errored_section'|trans }}
 {% for run in recap.erroredRuns %}
-- {{ run.createdAt|date('Y-m-d H:i') }} | {{ run.workflow }} | {{ run.status }} | {{ run.runId }} | {{ run.error ?: '-' }}
+- {{ run.createdAt|date('Y-m-d H:i') }} | {{ run.workflow }} | {{ ('workflow_status.' ~ run.status)|trans }} | {{ run.runId }} | {{ run.error ?: '-' }}
 {% for step in run.steps %}
-  - Step {{ step.code }} ({{ step.type }}) | {{ step.status }} | processed={{ step.processed }} success={{ step.success }} errors={{ step.errors }} retries={{ step.retries }} duration={{ step.durationMs is null ? '-' : step.durationMs ~ ' ms' }} memory={{ step.memoryPeakBytes is null ? '-' : (step.memoryPeakBytes / 1024 / 1024)|round(2) ~ ' MB' }}
-    Time: {{ step.startedAt ? step.startedAt|date('Y-m-d H:i:s') : '-' }} -> {{ step.finishedAt ? step.finishedAt|date('Y-m-d H:i:s') : '-' }}
-    Error: {{ step.error ?: '-' }}
+  - {{ 'email_recap.step'|trans }} {{ step.code }} ({{ step.type }}) | {{ step.status }} | {{ 'email_recap.processed_label'|trans }}={{ step.processed }} {{ 'email_recap.success_label'|trans }}={{ step.success }} {{ 'email_recap.errors_label'|trans }}={{ step.errors }} {{ 'email_recap.retries_label'|trans }}={{ step.retries }} {{ 'email_recap.duration_label'|trans }}={{ step.durationMs is null ? '-' : step.durationMs ~ ' ms' }} {{ 'email_recap.memory_label'|trans }}={{ step.memoryPeakBytes is null ? '-' : (step.memoryPeakBytes / 1024 / 1024)|round(2) ~ ' MB' }}
+    {{ 'email_recap.time'|trans }}: {{ step.startedAt ? step.startedAt|date('Y-m-d H:i:s') : '-' }} -> {{ step.finishedAt ? step.finishedAt|date('Y-m-d H:i:s') : '-' }}
+    {{ 'email_recap.error'|trans }}: {{ step.error ?: '-' }}
 {% for detail in step.errorDetails %}
     {{ detail }}
 {% endfor %}
 {% else %}
-  - No failed step stored for this run.
+  - {{ 'email_recap.no_failed_step'|trans }}
 {% endfor %}
 {% else %}
-- No failed run.
+- {{ 'email_recap.no_failed_run'|trans }}
 {% endfor %}

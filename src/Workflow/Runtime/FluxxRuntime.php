@@ -6,7 +6,6 @@ namespace Fluxx\Workflow\Runtime;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
-use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
@@ -65,7 +64,7 @@ final readonly class FluxxRuntime
         $stepDefinition = $definition->step($stepCode);
 
         $existingStepRun = $this->workflowStepRunRepository->findLatestByWorkflowRunAndStepName($workflowRun, $stepCode);
-        if ($existingStepRun?->status()->value === 'completed') {
+        if ($existingStepRun?->status() === WorkflowStepRunStatus::Completed) {
             return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
         }
 
@@ -283,35 +282,40 @@ final readonly class FluxxRuntime
     {
         $payloads = $this->workflowPayloadRepository->findByWorkflowRunAndTargetStepNameOrdered($workflowRun, $stepCode);
 
-        return new WorkflowStepInput(array_map(
-            fn (WorkflowPayload $payload): WorkflowStepInputPayload => new WorkflowStepInputPayload(
+        $inputs = [];
+
+        foreach ($payloads as $payload) {
+            $snapshot = $this->workflowPayloadStore->load($payload);
+
+            $inputs[] = new WorkflowStepInputPayload(
                 sourceStepCode: $payload->sourceStepRun()->stepName(),
                 targetStepCode: $payload->targetStepName(),
-                records: $this->extractRecords($payload),
-                metadata: $this->extractStepMetadata($payload),
-                snapshot: $this->workflowPayloadStore->load($payload),
-            ),
-            $payloads,
-        ));
+                records: $this->extractRecordsFromSnapshot($snapshot),
+                metadata: $this->extractStepMetadataFromSnapshot($snapshot),
+                snapshot: $snapshot,
+            );
+        }
+
+        return new WorkflowStepInput($inputs);
     }
 
     /**
+     * @param array<string, mixed> $snapshot
      * @return list<array<string, mixed>>
      */
-    private function extractRecords(WorkflowPayload $payload): array
+    private function extractRecordsFromSnapshot(array $snapshot): array
     {
-        $snapshot = $this->workflowPayloadStore->load($payload);
         $records = $snapshot['records'] ?? [];
 
         return is_array($records) ? $records : [];
     }
 
     /**
+     * @param array<string, mixed> $snapshot
      * @return array<string, mixed>
      */
-    private function extractStepMetadata(WorkflowPayload $payload): array
+    private function extractStepMetadataFromSnapshot(array $snapshot): array
     {
-        $snapshot = $this->workflowPayloadStore->load($payload);
         $metadata = $snapshot['metadata'] ?? [];
 
         if (!is_array($metadata)) {

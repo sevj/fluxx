@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Tests\Command;
 
 use Fluxx\Command\RunWorkflowCommand;
-use Fluxx\Workflow\FluxxEngine;
+use Fluxx\Workflow\FluxxEngineInterface;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Command\Command;
@@ -16,7 +16,7 @@ final class RunWorkflowCommandTest extends TestCase
     #[Test]
     public function it_dispatches_a_workflow_with_arbitrary_parameters(): void
     {
-        $engine = $this->createMock(FluxxEngine::class);
+        $engine = $this->createMock(FluxxEngineInterface::class);
         $engine->expects(self::once())
             ->method('run')
             ->with(
@@ -53,7 +53,7 @@ final class RunWorkflowCommandTest extends TestCase
     #[Test]
     public function it_rejects_invalid_parameter_syntax(): void
     {
-        $engine = $this->createMock(FluxxEngine::class);
+        $engine = $this->createMock(FluxxEngineInterface::class);
         $engine->expects(self::never())->method('run');
 
         $tester = new CommandTester(new RunWorkflowCommand($engine));

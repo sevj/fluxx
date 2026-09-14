@@ -7,6 +7,7 @@ namespace Fluxx\Workflow\Runtime;
 use DateTimeImmutable;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Workflow\Error\WorkflowErrorCategory;
 use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
 use Fluxx\Workflow\WorkflowDefinition;
@@ -43,7 +44,7 @@ final readonly class WorkflowRetryScheduler
             return false;
         }
 
-        if (($errorPayload['category'] ?? null) !== 'technical') {
+        if (($errorPayload['category'] ?? null) !== WorkflowErrorCategory::Technical->value) {
             return false;
         }
 

@@ -23,6 +23,19 @@ services:
         arguments:
             $providers: !tagged_iterator { tag: fluxx.step_type_provider }
 
+    Fluxx\Settings\RuntimeSettingsManager:
+        arguments:
+            $settingRepository: '@Fluxx\Repository\FluxxSettingRepository'
+            $defaultStaleLockTimeoutSeconds: '%fluxx.runtime.defaults.stale_lock_timeout_seconds%'
+            $defaultWorkerHeartbeatTimeoutSeconds: '%fluxx.runtime.defaults.worker_heartbeat_timeout_seconds%'
+            $defaultHealthWarningThresholdSeconds: '%fluxx.runtime.defaults.health_warning_threshold_seconds%'
+            $defaultHealthCriticalThresholdSeconds: '%fluxx.runtime.defaults.health_critical_threshold_seconds%'
+            $defaultMaxGlobalRetries: '%fluxx.runtime.defaults.max_global_retries%'
+
+    Fluxx\Repository\FluxxSettingLookupInterface: '@Fluxx\Repository\FluxxSettingRepository'
+
+    Fluxx\Workflow\FluxxEngineInterface: '@Fluxx\Workflow\FluxxEngine'
+
     Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface: '@Fluxx\Workflow\Lock\WorkflowExecutionLockManager'
     Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface: '@Fluxx\Workflow\Payload\WorkflowPayloadStore'
     Fluxx\Repository\WorkflowExecutionLockStoreInterface: '@Fluxx\Repository\WorkflowExecutionLockRepository'

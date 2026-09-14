@@ -8,9 +8,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowExecutionLockScope;
 use Fluxx\Entity\WorkflowExecutionLock;
 use Fluxx\Entity\WorkflowRun;
+use Fluxx\Repository\FluxxSettingLookupInterface;
 use Fluxx\Repository\RuntimeWorkerStateLookupInterface;
 use Fluxx\Repository\WorkflowExecutionLockStoreInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
+use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockConfiguration;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockConflict;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManager;
@@ -41,6 +43,7 @@ final class WorkflowExecutionLockManagerTest extends TestCase
             workflowExecutionLockRepository: $lockRepository,
             workflowRunRepository: $this->createMock(WorkflowRunLookupInterface::class),
             runtimeWorkerStateRepository: $this->createMock(RuntimeWorkerStateLookupInterface::class),
+            runtimeSettingsManager: $this->runtimeSettingsManager(),
         );
 
         $run = $this->workflowRun('run-1');
@@ -81,6 +84,7 @@ final class WorkflowExecutionLockManagerTest extends TestCase
             workflowExecutionLockRepository: $lockRepository,
             workflowRunRepository: $runRepository,
             runtimeWorkerStateRepository: $runtimeWorkerStateRepository,
+            runtimeSettingsManager: $this->runtimeSettingsManager(),
         );
 
         $manager->acquire($this->workflowRun('run-new'), $this->definition(WorkflowExecutionLockScope::WorkflowSource));
@@ -112,6 +116,7 @@ final class WorkflowExecutionLockManagerTest extends TestCase
             workflowExecutionLockRepository: $lockRepository,
             workflowRunRepository: $runRepository,
             runtimeWorkerStateRepository: $runtimeWorkerStateRepository,
+            runtimeSettingsManager: $this->runtimeSettingsManager(),
         );
 
         $this->expectException(WorkflowExecutionLockConflict::class);
@@ -139,6 +144,21 @@ final class WorkflowExecutionLockManagerTest extends TestCase
             targetSystem: 'Hubspot',
             steps: [],
             lock: new WorkflowExecutionLockConfiguration($scope, staleTimeoutSeconds: 300),
+        );
+    }
+
+    private function runtimeSettingsManager(): RuntimeSettingsManager
+    {
+        $settingRepository = $this->createMock(FluxxSettingLookupInterface::class);
+        $settingRepository->method('findValue')->willReturn(null);
+
+        return new RuntimeSettingsManager(
+            settingRepository: $settingRepository,
+            defaultStaleLockTimeoutSeconds: 1800,
+            defaultWorkerHeartbeatTimeoutSeconds: 120,
+            defaultHealthWarningThresholdSeconds: 60,
+            defaultHealthCriticalThresholdSeconds: 300,
+            defaultMaxGlobalRetries: 10,
         );
     }
 }

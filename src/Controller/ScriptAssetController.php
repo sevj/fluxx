@@ -30,9 +30,7 @@ final class ScriptAssetController extends AbstractController
 
         $response = new BinaryFileResponse(__DIR__ . '/../Resources/public/scripts/' . $filename);
         $response->headers->set('Content-Type', 'application/javascript; charset=UTF-8');
-        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
-        $response->headers->set('Pragma', 'no-cache');
-        $response->headers->set('Expires', '0');
+        $response->headers->set('Cache-Control', 'public, max-age=31536000, immutable');
         $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE, $filename);
 
         return $response;

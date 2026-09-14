@@ -1,22 +1,52 @@
 navigation:
     label: Fluxx navigation
     users: Users
+    configuration: Configuration
     workflows: Workflows
     statistics: Statistics
     runs: Runs
     runtime: Runtime
     health: Health
     troubleshooting: Troubleshooting
-    theme_toggle: Toggle color theme
-    theme_light: Light mode
-    theme_dark: Dark mode
-    theme_variant_label: Dark theme variant
-    theme_variant_graphite: Graphite
-    theme_variant_fluxx: Fluxx Cyan
-    theme_variant_ops: Ops Blue
-    theme_variant_aurora: Aurora
-    theme_variant_ember: Ember
     logout: Logout
+
+settings:
+    save: Save
+    title: Settings
+    heading: Settings
+    subtitle: Configure daily recap notifications and other operational settings.
+    daily_recap_title: Daily recap
+    daily_recap_description: Send a daily summary of workflow runs by email.
+    daily_recap_enabled: Enable daily recap
+    daily_recap_enabled_help: When enabled, a recap email is sent at the configured schedule.
+    send_empty_report: Send empty report
+    send_empty_report_help: When enabled, the recap is sent even if no runs occurred.
+    recipients: Recipients
+    recipients_placeholder: One email per line
+    recipients_help: One email address per line.
+    sender: Sender
+    subject_prefix: Subject prefix
+    timezone: Timezone
+
+configuration:
+    title: Configuration
+    heading: Configuration
+    subtitle: Adjust runtime operational parameters and daily recap notifications without redeploying.
+    tabs_label: Configuration sections
+    tab_runtime: Runtime
+    tab_daily_recap: Daily recap
+    runtime_title: Execution defaults
+    runtime_description: These values override the bundle defaults defined in config/packages/fluxx.yaml. Changes take effect immediately for new workflow runs.
+    stale_lock_timeout: Stale lock timeout (seconds)
+    stale_lock_timeout_help: A lock older than this threshold without a worker heartbeat is considered stale and recoverable.
+    worker_heartbeat_timeout: Worker heartbeat timeout (seconds)
+    worker_heartbeat_timeout_help: After this threshold without a heartbeat, a worker is considered idle or offline.
+    health_warning_threshold: Health warning threshold (seconds)
+    health_warning_threshold_help: Runs or workers exceeding this threshold trigger a warning state.
+    health_critical_threshold: Health critical threshold (seconds)
+    health_critical_threshold_help: Runs or workers exceeding this threshold trigger a critical alert.
+    max_global_retries: Max global retries
+    max_global_retries_help: Safety guard against infinite retry loops per step.
 
 login:
     title: Fluxx login
@@ -521,3 +551,39 @@ pagination:
     label: Workflow pagination
     previous: Previous
     next: Next
+
+email_recap:
+    subject: 'Daily workflow recap %date%'
+    brand: Fluxx
+    title: Daily workflow recap
+    period: Period
+    runs: Runs
+    processed: Processed
+    success: Success
+    errors: Errors
+    status_counts: Status counts
+    status: Status
+    count: Count
+    workflows: Workflows
+    workflow: Workflow
+    total: Total
+    no_workflow_run: No workflow run.
+    errored_section: Errors
+    no_failed_step: No failed step stored for this run.
+    no_failed_run: No failed run.
+    summary: Summary
+    total_runs: Total runs
+    processed_records: Processed records
+    successful_records: Successful records
+    errored_records: Errored records
+    avg_step_duration: Average step duration
+    max_step_duration: Max step duration
+    step: Step
+    processed_label: processed
+    success_label: success
+    errors_label: errors
+    retries_label: retries
+    duration_label: duration
+    memory_label: memory
+    time: Time
+    error: Error

@@ -54,6 +54,42 @@ final class WorkflowDefinitionTest extends TestCase
         self::assertSame('step_input_key', $definition->step('contacts_write')->idempotence()?->strategy());
         self::assertSame(3, $definition->retryPolicy()?->maxRetries());
     }
+
+    public function test_it_rejects_a_cyclic_dependency_graph(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('cyclic step dependency');
+
+        new WorkflowDefinition(
+            code: 'cyclic',
+            name: 'Cyclic',
+            sourceSystem: 'CSV',
+            targetSystem: 'Hubspot',
+            steps: [
+                new WorkflowStepDefinition(
+                    code: 'a',
+                    name: 'A',
+                    type: 'read',
+                    handler: new DummyIdempotentStep(),
+                    dependsOn: ['c'],
+                ),
+                new WorkflowStepDefinition(
+                    code: 'b',
+                    name: 'B',
+                    type: 'transform',
+                    handler: new DummyIdempotentStep(),
+                    dependsOn: ['a'],
+                ),
+                new WorkflowStepDefinition(
+                    code: 'c',
+                    name: 'C',
+                    type: 'write',
+                    handler: new DummyIdempotentStep(),
+                    dependsOn: ['b'],
+                ),
+            ],
+        );
+    }
 }
 
 final class DummyIdempotentStep implements ExecutableWorkflowStepInterface, IdempotentWorkflowStepInterface

@@ -12,7 +12,7 @@ use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Throwable;
 
-final readonly class FluxxEngine
+final readonly class FluxxEngine implements FluxxEngineInterface
 {
     public function __construct(
         private SynchronizationRegistry $registry,

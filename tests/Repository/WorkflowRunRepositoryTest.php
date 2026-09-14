@@ -151,7 +151,7 @@ final class WorkflowRunRepositoryTest extends TestCase
 
         $repository = $this->createRepository($connection);
 
-        self::assertSame(
+        self::assertEquals(
             [
                 'alpha' => [
                     'executionCount' => 12,

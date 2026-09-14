@@ -9,8 +9,10 @@ use InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('/fluxx/workflow/{workflowCode}/run/{runId}/step/{stepCode}', name: 'fluxx_workflow_step_run_show', methods: ['GET'])]
+#[IsGranted('ROLE_FLUXX_USER')]
 final class WorkflowStepRunDetailController extends AbstractController
 {
     public function __construct(

@@ -48,7 +48,9 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
             ]);
         }
 
-        if ($container->hasExtension('security')) {
+        $config = $this->resolveFluxxConfig($container);
+
+        if (($config['security']['enabled'] ?? true) && $container->hasExtension('security')) {
             $container->prependExtensionConfig('security', [
                 'password_hashers' => [
                     'Fluxx\\Entity\\User' => 'auto',
@@ -70,7 +72,31 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
 
     public function load(array $configs, ContainerBuilder $container): void
     {
+        $configuration = new Configuration();
+        $config = $this->processConfiguration($configuration, $configs);
+
+        $container->setParameter('fluxx.security.enabled', $config['security']['enabled']);
+        $container->setParameter('fluxx.runtime.defaults.stale_lock_timeout_seconds', $config['runtime']['defaults']['stale_lock_timeout_seconds']);
+        $container->setParameter('fluxx.runtime.defaults.worker_heartbeat_timeout_seconds', $config['runtime']['defaults']['worker_heartbeat_timeout_seconds']);
+        $container->setParameter('fluxx.runtime.defaults.health_warning_threshold_seconds', $config['runtime']['defaults']['health_warning_threshold_seconds']);
+        $container->setParameter('fluxx.runtime.defaults.health_critical_threshold_seconds', $config['runtime']['defaults']['health_critical_threshold_seconds']);
+        $container->setParameter('fluxx.runtime.defaults.max_global_retries', $config['runtime']['defaults']['max_global_retries']);
+
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolveFluxxConfig(ContainerBuilder $container): array
+    {
+        $configs = $container->getExtensionConfig($this->getAlias());
+
+        try {
+            return $this->processConfiguration(new Configuration(), $configs);
+        } catch (\Throwable) {
+            return [];
+        }
     }
 }

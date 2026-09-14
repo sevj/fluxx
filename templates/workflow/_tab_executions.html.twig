@@ -155,7 +155,7 @@
                                                             aria-label="{{ ('workflow_status.' ~ step.status)|trans }}"
                                                         ></span>
                                                         <div class="step-definition-type">
-                                                            <span class="step-tone-pill" title="{{ step.typeLabel }}">{{ step.typeLabel }}</span>
+                                                            <span class="step-tone-pill" title="{{ step.typeLabel|trans }}">{{ step.typeLabel|trans }}</span>
                                                         </div>
                                                         <div class="execution-step-name" title="{{ step.name }}">{{ step.name }}</div>
                                                         <div class="execution-step-meta">

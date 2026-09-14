@@ -76,6 +76,26 @@
             // Ignore storage failures and keep polling enabled by default.
         }
 
+        runtimeMonitor.addEventListener('submit', function (event) {
+            const form = event.target instanceof HTMLFormElement
+                ? event.target
+                : event.target.closest('form');
+
+            if (!form) {
+                return;
+            }
+
+            const confirmMessage = form.getAttribute('data-lock-release-confirm');
+            if (!confirmMessage) {
+                return;
+            }
+
+            if (!window.confirm(confirmMessage)) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        });
+
         const escapeHtml = function (value) {
             return String(value)
                 .replaceAll('&', '&amp;')
@@ -194,7 +214,7 @@
             const lockReleaseToken = runtimeMonitor.dataset.runtimeLockReleaseToken || '';
 
             locksTarget.innerHTML = locks.map(function (lock) {
-                const workflow = (lock.workflowName || lock.workflowCode || '-')
+                const workflow = escapeHtml(lock.workflowName || lock.workflowCode || '-')
                     + '<div class="item-code">' + escapeHtml(lock.workflowCode || '-') + '</div>';
                 const runStatus = lock.status
                     ? '<div class="table-note table-note-compact">' + escapeHtml(lock.status) + '</div>'
@@ -203,7 +223,7 @@
                 const runId = lock.runId || '';
                 const releaseUrl = lockReleaseUrlTemplate.replace('__RUN_ID__', encodeURIComponent(runId));
                 const releaseAction = runId && lockReleaseUrlTemplate
-                    ? '<form method="post" action="' + escapeHtml(releaseUrl) + '" class="inline-form" onsubmit="return confirm(\'' + labels.releaseLockConfirm + '\');">'
+                    ? '<form method="post" action="' + escapeHtml(releaseUrl) + '" class="inline-form" data-lock-release-confirm="' + escapeHtml(labels.releaseLockConfirm) + '">'
                         + '<input type="hidden" name="_token" value="' + escapeHtml(lockReleaseToken) + '">'
                         + '<input type="hidden" name="_redirect" value="' + escapeHtml(window.location.pathname) + '">'
                         + '<button type="submit" class="danger-button danger-button-compact"><span class="button-label">' + escapeHtml(labels.releaseLock) + '</span></button>'
@@ -331,7 +351,7 @@
                 const stateClass = message.state === 'in_flight' ? 'status-badge-running' : 'status-badge-pending';
                 const consumer = message.consumerName || '-';
                 const delivery = message.deliveryCount === null ? '-' : message.deliveryCount;
-                const workflow = (message.workflowName || message.workflowCode || '-') + '<div class="item-code">' + escapeHtml(message.workflowCode || '-') + '</div>';
+                const workflow = escapeHtml(message.workflowName || message.workflowCode || '-') + '<div class="item-code">' + escapeHtml(message.workflowCode || '-') + '</div>';
                 const runtime = message.durationMs !== null || message.memoryPeakBytes !== null
                     ? '<div class="table-note table-note-compact">' + escapeHtml(formatDuration(message.durationMs)) + ' / ' + escapeHtml(formatMemory(message.memoryPeakBytes)) + '</div>'
                     : '';

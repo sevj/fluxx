@@ -11,7 +11,7 @@ use Fluxx\Entity\FluxxSetting;
 /**
  * @extends ServiceEntityRepository<FluxxSetting>
  */
-final class FluxxSettingRepository extends ServiceEntityRepository
+final class FluxxSettingRepository extends ServiceEntityRepository implements FluxxSettingLookupInterface
 {
     public function __construct(ManagerRegistry $registry)
     {

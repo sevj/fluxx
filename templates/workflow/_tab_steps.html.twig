@@ -26,7 +26,7 @@
                     {% set step = node.step %}
                     <article class="step-definition-card step-definition-card-compact workflow-step-flow-card{{ row.connectsToMergeNext ? ' has-merge-next' : '' }} step-tone-{{ step.typeTone }} step-tone-surface" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}">
                         <div class="step-definition-type">
-                            <span class="step-tone-pill" title="{{ step.typeLabel }}">{{ step.typeLabel }}</span>
+                            <span class="step-tone-pill" title="{{ step.typeLabel|trans }}">{{ step.typeLabel|trans }}</span>
                         </div>
                         <div class="step-definition-name step-tone-text" title="{{ step.name }}">{{ step.name }}</div>
                         <div class="item-code" title="{{ step.code }}">{{ step.code }}</div>

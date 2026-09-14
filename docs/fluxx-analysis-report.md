@@ -147,9 +147,9 @@ Les transitions `markRunning/Retrying/Failed/…` ne sont pas protégées par un
 | 5 | Majeur 5 | Transactions explicites par étape | ✅ **Fait** | `runStep` enveloppé dans `beginTransaction/commit/rollback` ; erreur → rollback + nouvelle transaction pour retry/fail |
 | 6 | **Majeur 3** | Vendor-neutraliser (`AbstractHubspotClient`) | ✅ **Fait** | `AbstractHubspotClient` + `HubspotLogEntry` déplacés vers `App\Client\` de l'hôte |
 | 7 | Moyen 6 + Moyen 7 | Harmoniser Composer | ✅ **Fait** | `symfony/translation` aligné, `branch-alias` corrigé, `minimum-stability` stabilisé |
-| 8 | Moyen 8 | Introduire un `Configuration` | ⏳ Restant | |
+| 8 | Moyen 8 | Introduire un `Configuration` + écran admin | ✅ **Fait** | Classe `Configuration` (YAML) + écran admin `/fluxx/configuration` (params runtime en DB) |
 | 9 | Moyen 10 | Typage des étapes (enum) | ⏳ Restant | |
-| 10 | Moyen 9 | Assouplir le `prepend()` security | ⏳ Restant | |
+| 10 | Moyen 9 | Assouplir le `prepend()` security | ✅ **Fait** | `prepend()` conditionnel par `fluxx.security.enabled` (défaut `true`) — couvert par l'axe 8 |
 | 11 | Mineur 12 | Migrations / contrat de schéma | ⏳ Restant | |
 | 12 | Mineur 13 | Auto-configuration `fluxx.mapper` | ⏳ Restant | |
 | 13 | Mineur 11 | Nettoyer l'API publique | N/A | Note initiale erronée — méthodes vivantes |
@@ -166,8 +166,8 @@ Les transitions `markRunning/Retrying/Failed/…` ne sont pas protégées par un
 | Majeur 5 (flush sans transactions) | Axe 5 (corrigé) |
 | Moyen 6 (contrainte `translation`) | Axe 7 (corrigé) |
 | Moyen 7 (`branch-alias` / stability) | Axe 7 (corrigé) |
-| Moyen 8 (pas de `Configuration`) | Axe 8 |
-| Moyen 9 (security imposée) | Axe 10 |
+| Moyen 8 (pas de `Configuration`) | Axe 8 (corrigé) |
+| Moyen 9 (security imposée) | Axe 10 (corrigé, via axe 8) |
 | Moyen 10 (`WorkflowStepType` non-enum) | Axe 9 |
 | Mineur 11 (méthodes interface) | Axe 13 (N/A) |
 | Mineur 12 (pas de migrations) | Axe 11 |
@@ -378,6 +378,57 @@ Le traitement d'erreur a été extrait dans une méthode privée `handleStepErro
 
 ---
 
+### Axe 8 — Configuration YAML + écran admin
+
+Approche **combinée** : paramètres structurels en YAML (compilation container), paramètres opérationnels en base via un écran admin (runtime, sans redeploiement).
+
+#### Partie 1 — Configuration YAML (paramètres structurels)
+
+Classe `Configuration` implémentant `ConfigurationInterface`, avec l'arbre suivant :
+
+```yaml
+fluxx:
+    security:
+        enabled: true          # axe 10 : conditionne l'injection du provider/password_hasher/role_hierarchy
+    runtime:
+        defaults:
+            stale_lock_timeout_seconds: 1800
+            worker_heartbeat_timeout_seconds: 120
+            health_warning_threshold_seconds: 60
+            health_critical_threshold_seconds: 300
+            max_global_retries: 10
+```
+
+`FluxxExtension::load()` utilise `processConfiguration()` pour valider/fusionner la config de l'hôte et expose cada valeur comme paramètre container (`fluxx.runtime.defaults.*`). Les defaults s'appliquent sans qu'aucun `config/packages/fluxx.yaml` ne soit requis côté hôte.
+
+#### Partie 2 — Écran admin (paramètres opérationnels runtime)
+
+Un écran `/fluxx/configuration` (derrière `ROLE_ADMIN`) permet à un ops d'ajuster les paramètres opérationnels **sans redeploiement**. Les valeurs sont stockées dans la table `fluxx_setting` (clé-valeur JSON, déjà existante pour les daily recap settings).
+
+**Composants créés :**
+- `RuntimeSettings` (DTO readonly) — porte les 5 paramètres opérationnels
+- `RuntimeSettingsManager` — read/write via `FluxxSettingLookupInterface`, avec validation (bornes min/max, critical > warning) et defaults issus des paramètres container
+- `ConfigurationController` — GET affiche le formulaire, POST sauvegarde avec CSRF token
+- `templates/configuration/index.html.twig` — formulaire aligné sur le design system existant (CSS classes `settings-*`)
+- Lien admin ajouté dans `_navigation.html.twig` (icône `settings`)
+
+**Intégration dans le runtime :** `WorkflowExecutionLockManager` reçoit `RuntimeSettingsManager` et utilise `staleLockTimeoutSeconds` comme limite globale (minimum entre la config du workflow et le réglage admin) dans `shouldRecoverStaleLock()`.
+
+**Interface de lookup :** `FluxxSettingLookupInterface` (`findValue`/`saveValue`) créée pour permettre le mocking en tests (la classe concrète `FluxxSettingRepository` est `final`).
+
+#### Axe 10 — Security conditionnelle (couvert par l'axe 8)
+
+`FluxxExtension::prepend()` n'injecte plus systématiquement le provider `fluxx_users`, le password hasher et la role hierarchy. L'injection est **conditionnée** par `fluxx.security.enabled` (défaut `true`). Un hôte avec son propre SSO peut désactiver l'auth Fluxx via :
+
+```yaml
+# config/packages/fluxx.yaml
+fluxx:
+    security:
+        enabled: false
+```
+
+---
+
 ## Validations
 
 Exécutées dans le container Docker `connector-sipperec-server` (PHP 8.5.7, PHPUnit 13.3.1).
@@ -434,7 +485,7 @@ La suite de tests, qui ne pouvait même pas s'initialiser, tourne désormais (58
 | Testabilité & exécution après axes 2, 3 | ★★★★☆ (était ★★☆☆☆) — suite exécutable (64 tests), chemin critique `runStep` couvert par 6 tests |
 | Robustesse du chemin critique après axe 1 | ★★★★☆ (était ★★☆☆☆) — retry technique réparé |
 | Portabilité / dépendances après axe 6 | ★★★★☆ (était ★★★☆☆) — bundle vendor-neutral (HubSpot extrait) |
-| **Note globale (potentiel)** | **★★★★★ — cœur fiabilisé, testé, vendor-neutral et transactionnellement sûr, reste l'hygiène périphérique (axes 7-14)** |
+| **Note globale (potentiel)** | **★★★★★ — cœur fiabilisé, testé, vendor-neutral, transactionnellement sûr et configurable (YAML + admin), reste le polish final (axes 9, 11-14)** |
 
 ### Fichiers créés/modifiés — bundle (`vendor/sevj/fluxx/`)
 
@@ -452,8 +503,19 @@ La suite de tests, qui ne pouvait même pas s'initialiser, tourne désormais (58
 | `src/Repository/WorkflowStepRunRepository.php` | `implements WorkflowStepRunLookupInterface` |
 | `src/Repository/WorkflowPayloadRepository.php` | `implements WorkflowPayloadLookupInterface` |
 | `src/Workflow/Payload/WorkflowPayloadStore.php` | `implements WorkflowPayloadStoreInterface` |
-| `config/services.yaml` | alias DI pour les 3 nouvelles interfaces |
+| `config/services.yaml` | alias DI pour les 4 interfaces de lookup + `RuntimeSettingsManager` params (axes 3, 8) |
 | `composer.json` | `symfony/translation` aligné, `branch-alias` → `1.x-dev`, `minimum-stability` → `stable` (axe 7) |
+| `src/DependencyInjection/Configuration.php` | créé (arbre de config YAML — axe 8) |
+| `src/DependencyInjection/FluxxExtension.php` | `load()` utilise `Configuration` + expose params ; `prepend()` security conditionnel (axes 8, 10) |
+| `src/Settings/RuntimeSettings.php` | créé (DTO — axe 8) |
+| `src/Settings/RuntimeSettingsManager.php` | créé (read/write DB + validation — axe 8) |
+| `src/Repository/FluxxSettingLookupInterface.php` | créé (interface de lookup — axe 8) |
+| `src/Repository/FluxxSettingRepository.php` | `implements FluxxSettingLookupInterface` (axe 8) |
+| `src/Controller/ConfigurationController.php` | créé (écran admin `/fluxx/configuration` — axe 8) |
+| `templates/configuration/index.html.twig` | créé (formulaire admin — axe 8) |
+| `templates/_navigation.html.twig` | lien admin "Configuration" ajouté (axe 8) |
+| `translations/fluxx.en.yaml` | clés `configuration.*` + `settings.*` + `navigation.configuration` (axe 8) |
+| `src/Workflow/Lock/WorkflowExecutionLockManager.php` | injection `RuntimeSettingsManager` + stale timeout dynamique (axe 8) |
 | `src/Client/AbstractHubspotClient.php` | **supprimé** (axe 6) |
 | `src/Client/HubspotLogEntry.php` | **supprimé** (axe 6) |
 | `src/Client/` (répertoire) | **supprimé** (axe 6) |
@@ -464,6 +526,7 @@ La suite de tests, qui ne pouvait même pas s'initialiser, tourne désormais (58
 | `tests/Workflow/WorkflowDefinitionTest.php` | `+staticCode()` |
 | `tests/Workflow/Relaunch/WorkflowRelaunchPlannerTest.php` | `+staticCode()` |
 | `tests/Workflow/Runtime/WorkflowRunCompletionDeciderTest.php` | `+staticCode()` |
+| `tests/Workflow/Lock/WorkflowExecutionLockManagerTest.php` | `+RuntimeSettingsManager` mock (axe 8) |
 | `tests/Ui/WorkflowDetailsTabLoadingTest.php` | `isType` → `IsType` (débloquage PHPUnit 13) |
 
 ### Fichiers créés/modifiés — hôte (`connector-sipperec/`)
@@ -479,4 +542,7 @@ La suite de tests, qui ne pouvait même pas s'initialiser, tourne désormais (58
 
 > Rappel : la numérotation des axes est indépendante de celle des points faibles (voir le tableau de correspondance plus haut).
 
-1. **Axes 8-14** — Configuration exposée (Moyen 8), typage enum des steps (Moyen 10), migrations de schéma (Mineur 12), auto-config `fluxx.mapper` (Mineur 13), assouplir le `prepend()` security (Moyen 9), finalisation du backlog.
+1. **Axe 9** *(point faible : Moyen 10)* — Transformer `WorkflowStepType` en vrai `enum` PHP, typer `WorkflowStepDefinition.type()` et l'entité `WorkflowStepRun.stepType`.
+2. **Axe 11** *(point faible : Mineur 12)* — Livrer une migration Doctrine de référence pour les tables `fluxx_*`.
+3. **Axe 12** *(point faible : Mineur 13)* — Auto-configuration `fluxx.mapper` dans `services.yaml`.
+4. **Axe 14** — Finaliser le backlog `TODO.md` (operator reason, slowest runs, retry backlog growth, filtres date-range).

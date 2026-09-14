@@ -16,9 +16,7 @@ final class FaviconAssetController extends AbstractController
     {
         $response = new BinaryFileResponse(__DIR__ . '/../../favicon.png');
         $response->headers->set('Content-Type', 'image/png');
-        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
-        $response->headers->set('Pragma', 'no-cache');
-        $response->headers->set('Expires', '0');
+        $response->headers->set('Cache-Control', 'public, max-age=31536000, immutable');
         $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_INLINE, 'favicon.png');
 
         return $response;

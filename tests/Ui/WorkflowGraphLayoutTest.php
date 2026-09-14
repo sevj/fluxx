@@ -17,7 +17,6 @@ final class WorkflowGraphLayoutTest extends TestCase
         $reflection = new ReflectionClass(WorkflowDetails::class);
         $details = $reflection->newInstanceWithoutConstructor();
         $method = $reflection->getMethod('computeTerminalLanePaths');
-        $method->setAccessible(true);
 
         $lanePaths = $method->invoke($details, [
             'companies_transform' => [0],
