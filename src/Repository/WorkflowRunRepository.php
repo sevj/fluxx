@@ -189,6 +189,22 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
     }
 
     /**
+     * @return list<WorkflowRun>
+     */
+    public function findCreatedBetween(DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        return $this->createQueryBuilder('workflow_run')
+            ->andWhere('workflow_run.createdAt >= :from')
+            ->andWhere('workflow_run.createdAt <= :to')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->orderBy('workflow_run.createdAt', 'ASC')
+            ->addOrderBy('workflow_run.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return array<string, array{executionCount: int, errorCount: int}>
      */
     public function aggregateCreatedSinceByWorkflowName(string $workflowName, DateTimeImmutable $startAt, string $bucket): array
