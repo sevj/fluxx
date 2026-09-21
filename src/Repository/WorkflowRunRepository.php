@@ -659,4 +659,77 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
             ? $value
             : new DateTimeImmutable($value instanceof \DateTimeInterface ? $value->format(DATE_ATOM) : $value);
     }
+
+    /**
+     * @param list<string> $statuses
+     */
+    public function countRunsBeforeDate(DateTimeImmutable $before, array $statuses = [], ?string $workflowCode = null): int
+    {
+        $qb = $this->getEntityManager()->getConnection()->createQueryBuilder()
+            ->select('COUNT(id)')
+            ->from('fluxx_workflow_run')
+            ->where('created_at < :before')
+            ->setParameter('before', $before, Types::DATETIME_IMMUTABLE);
+
+        if ($statuses !== []) {
+            $qb->andWhere('status IN (:statuses)')
+                ->setParameter('statuses', $statuses, ArrayParameterType::STRING);
+        }
+
+        if ($workflowCode !== null) {
+            $qb->andWhere('workflow_name = :workflowCode')
+                ->setParameter('workflowCode', $workflowCode);
+        }
+
+        return (int) $qb->fetchOne();
+    }
+
+    /**
+     * @param list<string> $statuses
+     */
+    public function deleteRunsBeforeDate(DateTimeImmutable $before, array $statuses = [], ?string $workflowCode = null): int
+    {
+        $qb = $this->getEntityManager()->getConnection()->createQueryBuilder()
+            ->delete('fluxx_workflow_run')
+            ->where('created_at < :before')
+            ->setParameter('before', $before, Types::DATETIME_IMMUTABLE);
+
+        if ($statuses !== []) {
+            $qb->andWhere('status IN (:statuses)')
+                ->setParameter('statuses', $statuses, ArrayParameterType::STRING);
+        }
+
+        if ($workflowCode !== null) {
+            $qb->andWhere('workflow_name = :workflowCode')
+                ->setParameter('workflowCode', $workflowCode);
+        }
+
+        return (int) $qb->executeStatement();
+    }
+
+    /**
+     * @param list<string> $statuses
+     */
+    public function markRunsAsPayloadsPruned(DateTimeImmutable $before, array $statuses, ?string $workflowCode = null): int
+    {
+        if ($statuses === []) {
+            return 0;
+        }
+
+        $qb = $this->getEntityManager()->getConnection()->createQueryBuilder()
+            ->update('fluxx_workflow_run')
+            ->set('status', ':newStatus')
+            ->where('created_at < :before')
+            ->andWhere('status IN (:statuses)')
+            ->setParameter('newStatus', WorkflowRunStatus::PayloadsPruned->value)
+            ->setParameter('before', $before, Types::DATETIME_IMMUTABLE)
+            ->setParameter('statuses', $statuses, ArrayParameterType::STRING);
+
+        if ($workflowCode !== null) {
+            $qb->andWhere('workflow_name = :workflowCode')
+                ->setParameter('workflowCode', $workflowCode);
+        }
+
+        return (int) $qb->executeStatement();
+    }
 }

@@ -1,0 +1,636 @@
+navigation:
+    label: Navigation Fluxx
+    users: Utilisateurs
+    configuration: Configuration
+    workflows: Workflows
+    statistics: Statistiques
+    runs: Exécutions
+    runtime: Runtime
+    health: Santé
+    troubleshooting: Diagnostic
+    logout: Déconnexion
+
+settings:
+    save: Enregistrer
+    title: Paramètres
+    heading: Paramètres
+    subtitle: Configurez les notifications du récapitulatif quotidien et autres paramètres opérationnels.
+    daily_recap_title: Récapitulatif quotidien
+    daily_recap_description: Envoie un résumé quotidien des exécutions de workflows par e-mail.
+    daily_recap_enabled: Activer le récapitulatif quotidien
+    daily_recap_enabled_help: Lorsqu'activé, un e-mail de récapitulatif est envoyé selon la planification configurée.
+    send_empty_report: Envoyer le rapport vide
+    send_empty_report_help: Lorsqu'activé, le récapitulatif est envoyé même si aucune exécution n'a eu lieu.
+    recipients: Destinataires
+    recipients_placeholder: Une adresse par ligne
+    recipients_help: Une adresse e-mail par ligne.
+    sender: Expéditeur
+    subject_prefix: Préfixe du sujet
+    timezone: Fuseau horaire
+
+configuration:
+    title: Configuration
+    heading: Configuration
+    subtitle: Ajustez les paramètres opérationnels du runtime et le récapitulatif quotidien sans redéployer.
+    tabs_label: Sections de configuration
+    tab_runtime: Runtime
+    tab_daily_recap: Récapitulatif quotidien
+    runtime_title: Valeurs par défaut d'exécution
+    runtime_description: Ces valeurs remplacent les valeurs par défaut du bundle définies dans config/packages/fluxx.yaml. Les changements prennent effet immédiatement pour les nouvelles exécutions.
+    stale_lock_timeout: Délai de verrou périmé (secondes)
+    stale_lock_timeout_help: Un verrou plus ancien que ce seuil sans heartbeat du worker est considéré comme périmé et récupérable.
+    worker_heartbeat_timeout: Délai d'attente du heartbeat worker (secondes)
+    worker_heartbeat_timeout_help: Au-delà de ce seuil sans heartbeat, un worker est considéré comme inactif ou hors ligne.
+    health_warning_threshold: Seuil d'alerte santé (secondes)
+    health_warning_threshold_help: Les exécutions ou workers dépassant ce seuil déclenchent un état d'alerte.
+    health_critical_threshold: Seuil critique santé (secondes)
+    health_critical_threshold_help: Les exécutions ou workers dépassant ce seuil déclenchent une alerte critique.
+    max_global_retries: Nombre max de tentatives globales
+    max_global_retries_help: Garde-fou contre les boucles de tentatives infinies par étape.
+
+login:
+    title: Connexion Fluxx
+    heading: Se connecter
+    subtitle: Authentifiez-vous avec un compte utilisateur Fluxx pour accéder au back office.
+    email: E-mail
+    password: Mot de passe
+    submit: Se connecter
+    error: Identifiants invalides.
+
+workflow_index:
+    title: Workflows
+    heading: Workflows
+    subtitle: Les workflows configurés sont découverts depuis l'application Symfony hôte et listés ici.
+    count: Affichage de %from%-%to% sur %total% workflows
+    empty: Aucun workflow n'est actuellement enregistré dans l'application.
+    empty_search: Aucun workflow ne correspond à « %query% ».
+    search_label: Rechercher des workflows
+    search_placeholder: Rechercher par nom, code, système, catégorie ou description
+    search_submit: Rechercher
+    search_reset: Réinitialiser
+    workflow: Workflow
+    code: Code
+    source_system: Source
+    target_system: Cible
+    last_execution: Dernière exécution
+    execution_count: Exécutions
+    error_count: Erreurs
+    last_error: Dernière erreur
+    never: Jamais
+    no_error: Aucune erreur
+    uncategorized: Non catégorisé
+    toggle_group: 'Afficher/Masquer le groupe « %category% »'
+
+workflow_show:
+    title: Détails du workflow
+    back: Retour aux workflows
+    definition_overline: Définition
+    definition_title: Définition du workflow
+    systems_group: Systèmes
+    steps_group: Schéma
+    executions_group: Exécutions
+    tabs_label: Sections du détail du workflow
+    tab_steps: Schéma
+    tab_executions: Exécutions
+    tab_statistics: Statistiques
+    tab_loading: Chargement de l'onglet
+    tab_error: Impossible de charger cet onglet.
+    loading: Chargement des exécutions
+    waiting: En attente du premier rafraîchissement
+    state_live: En direct
+    state_error: Erreur
+    state_offline: Hors ligne
+    pause_polling: Mettre en pause
+    resume_polling: Reprendre
+    polling: Rafraîchissement
+    refresh_failed: Échec du rafraîchissement des exécutions
+    source_system: Système source
+    target_system: Système cible
+    execution_count: Exécutions
+    error_count: Erreurs
+    last_execution: Dernière exécution
+    last_error: Dernière erreur
+    never: Jamais
+    no_error: Aucune erreur
+    executions_overline: Runtime
+    executions_title: Dernières exécutions
+    execution_count_page: Affichage de %from%-%to% sur %total% exécutions
+    executions_empty: Aucune exécution n'a encore été enregistrée pour ce workflow.
+    execution_search_placeholder: Rechercher par ID d'exécution, déclencheur ou erreur
+    execution_filter_search_label: Recherche
+    execution_filter_status_label: Statut
+    execution_filter_status_all: Tous les statuts
+    execution_filter_errors_label: Erreurs
+    execution_filter_errors_all: Toutes les exécutions
+    execution_filter_errors_with: Avec erreurs
+    execution_filter_errors_without: Sans erreurs
+    execution_filter_from_label: Depuis
+    execution_filter_to_label: Jusqu'à
+    execution_apply_filters: Appliquer les filtres
+    execution_reset_filters: Réinitialiser
+    execution_status_legend: Légende des statuts
+    run: Exécution
+    trigger: Déclencheur
+    status: Statut
+    step_statuses: Statuts des étapes
+    dates: Dates
+    actions: Actions
+    created_at: Créée
+    started_at: Démarrée
+    finished_at: Terminée
+    step: Étape
+    step_counts_compact: '%success% ok / %errors% err'
+    step_runtime_compact: '%duration% ms - %memory% Mo'
+    lock_scope: Portée du verrou
+    step_idempotent: Idempotent
+    step_deduplicated: 'Dédupliquée depuis %runId%'
+    step_tooltip_status: 'Statut : %status%'
+    step_tooltip_counts: '%processed% traités · %success% succès · %errors% erreurs'
+    step_tooltip_duration: 'Durée : %duration% ms'
+    step_tooltip_memory: 'Mémoire : %memory% Mo'
+    step_tooltip_idempotence: "Clé d'idempotence : %key%"
+    relaunch_run: Relancer l'exécution
+    retry_run: Réessayer l'exécution
+    cancel_run: Annuler l'exécution
+    cancel_confirm: Annuler cette exécution ?
+    relaunch_from: 'Relancée depuis %runId% (%mode%)'
+    not_started: Non démarrée
+    not_finished: Non terminée
+    statistics_overline: Statistiques
+    statistics_title: Statistiques
+    statistics_subtitle: Volume d'exécutions et erreurs sur la période sélectionnée.
+    statistics_empty: Aucune exécution n'a été enregistrée sur la période sélectionnée.
+    executions_total: Exécutions
+    errors_total: Erreurs
+    metric_avg_duration: Durée moyenne
+    metric_p95_duration: Durée P95
+    metric_failure_rate: Taux d'échec
+    metric_partial_failure_rate: Taux d'échec partiel
+    metric_retry_rate: Taux de réessai
+    metric_relaunch_rate: Taux de relance
+    metric_processed_total: Enregistrements traités
+    metric_success_total: Enregistrements réussis
+    metric_record_errors_total: Erreurs d'enregistrements
+    step_metrics_title: Métriques par étape
+    step_failures: Échecs
+    step_retries: Réessais
+    step_idempotence_hits: Hits d'idempotence
+    step_executions: Exécutions
+    range_week: Semaine dernière
+    range_month: Mois dernier
+    range_year: Année dernière
+
+statistics_index:
+    title: Statistiques globales
+    heading: Statistiques globales
+    subtitle: Statistiques d'exécution agrégées sur tous les workflows enregistrés.
+    overview_title: Vue d'ensemble des exécutions
+    overview_subtitle: Volume et erreurs sur tous les workflows pour la période sélectionnée.
+    empty: Aucune exécution n'a été enregistrée sur la période sélectionnée.
+    executions_total: Exécutions
+    errors_total: Erreurs
+    metric_avg_duration: Durée moyenne
+    metric_p95_duration: Durée P95
+    metric_failure_rate: Taux d'échec
+    metric_partial_failure_rate: Taux d'échec partiel
+    metric_retry_rate: Taux de réessai
+    metric_relaunch_rate: Taux de relance
+    metric_processed_total: Enregistrements traités
+    metric_success_total: Enregistrements réussis
+    metric_record_errors_total: Erreurs d'enregistrements
+    range_week: Semaine dernière
+    range_month: Mois dernier
+    range_year: Année dernière
+
+run_index:
+    title: Toutes les exécutions
+    heading: Toutes les exécutions
+    search_label: Rechercher des exécutions
+    search_placeholder: Rechercher par ID d'exécution, workflow, système, déclencheur ou erreur
+    search_submit: Rechercher
+    search_reset: Réinitialiser
+    count: Affichage de %from%-%to% sur %total% exécutions
+    empty: Aucune exécution n'a encore été enregistrée.
+    empty_search: Aucune exécution ne correspond aux filtres actuels.
+    filter_workflow_label: Workflow
+    filter_workflow_all: Tous les workflows
+    filter_status_label: Statut
+    filter_status_all: Tous les statuts
+    filter_errors_label: Erreurs
+    filter_errors_all: Toutes les exécutions
+    filter_errors_with: Avec erreurs
+    filter_errors_without: Sans erreurs
+    filter_from_label: Depuis
+    filter_to_label: Jusqu'à
+    apply_filters: Appliquer les filtres
+    reset_filters: Réinitialiser
+    run: Exécution
+    workflow: Workflow
+    category: Catégorie
+    trigger: Déclencheur
+    source_system: Source
+    target_system: Cible
+    status: Statut
+    dates: Dates
+    error: Erreur
+    actions: Actions
+    created_at: Créée
+    started_at: Démarrée
+    not_started: Non démarrée
+    finished_at: Terminée
+    not_finished: Non terminée
+    locked: 'Verrouillé : %key%'
+    retry_run: Réessayer l'exécution
+    cancel_run: Annuler l'exécution
+    cancel_confirm: Annuler cette exécution ?
+    loading: Chargement des exécutions
+    waiting: En attente du premier rafraîchissement
+    state_live: En direct
+    state_error: Erreur
+    state_offline: Hors ligne
+    pause_polling: Mettre en pause
+    resume_polling: Reprendre
+    polling: Rafraîchissement
+    refresh_failed: Échec du rafraîchissement de la liste
+
+run_show:
+    title: Détail de l'exécution
+    heading: Détail de l'exécution
+    back: Retour au workflow
+    relaunch_run: Relancer l'exécution
+    cancel_run: Annuler l'exécution
+    cancel_confirm: Annuler cette exécution ?
+    overview_title: Vue d'ensemble
+    workflow_group: Workflow
+    execution_group: Exécution
+    summary_group: Résumé
+    workflow: Workflow
+    run: Exécution
+    status: Statut
+    trigger: Déclencheur
+    source_system: Source
+    target_system: Cible
+    batch_id: Lot
+    relaunch: Relance
+    relaunch_value: Relance de %runId% (%mode%)
+    restart_step: Étape de redémarrage
+    relaunch_trigger: Déclencheur de relance
+    relaunch_reason: Motif de relance
+    relaunch_operator: Relancée par
+    cancellation_group: Annulation
+    cancel_trigger: Déclencheur d'annulation
+    cancel_reason: Motif d'annulation
+    cancel_operator: Annulée par
+    cancelled_at: Annulée le
+    lock_scope: Portée du verrou
+    lock_key: Clé de verrou
+    created_at: Créée
+    started_at: Démarrée
+    finished_at: Terminée
+    not_started: Non démarrée
+    not_finished: Non terminée
+    not_available: N/D
+    step_count: Étapes
+    processed_total: Enregistrements traités
+    success_total: Enregistrements réussis
+    error_total: Enregistrements en erreur
+    steps_title: Étapes
+    steps_subtitle: Résultat par étape pour cette exécution. Cliquez sur une étape pour inspecter son payload et les options de réessai manuel.
+    steps_empty: Aucune étape n'a été enregistrée pour cette exécution.
+    position: '#'
+    step: Étape
+    step_type: Type
+    step_status: Statut
+    processed: Traités
+    errors: Erreurs
+    duration: Durée
+    memory: Mémoire
+
+workflow_status:
+    pending: En attente
+    relaunched: Relancée
+    retrying: En réessai
+    running: En cours
+    cancelled: Annulée
+    completed: Terminée
+    failed: Échouée
+    partially_failed: Échec partiel
+    payloads_pruned: Payloads purgés
+
+workflow_relaunch_mode:
+    full: Exécution complète
+    step: Depuis une étape
+    branch: Branche unique
+
+workflow_error_category:
+    technical: Technique
+    business: Métier
+
+workflow_lock_scope:
+    workflow: Workflow
+    workflow_source: Workflow + source
+    workflow_source_target: Workflow + source/cible
+    workflow_business_partition: Workflow + partition métier
+
+step_type:
+    read: Lecture
+    splitter: Répartiteur
+    transform: Transformation
+    write: Écriture
+    linker: Association
+
+step_run_show:
+    title: Détail de l'étape
+    back: Retour au workflow
+    overview_overline: Exécution
+    overview_title: Vue d'ensemble de l'étape
+    workflow_group: Workflow
+    step_group: Étape
+    execution_group: Exécution
+    workflow: Workflow
+    run: Exécution
+    trigger: Déclencheur
+    step_type: Type d'étape
+    workflow_status: Statut du workflow
+    relaunch: Relance
+    relaunch_value: 'Depuis %runId% (%mode%)'
+    lock_scope: Portée du verrou
+    lock_key: Clé de verrou
+    step_status: Statut de l'étape
+    source_system: Système source
+    target_system: Système cible
+    processed_count: Traités
+    success_count: Réussis
+    error_count: Erreurs
+    duration: Durée
+    memory_peak: Pic mémoire
+    retry_count: Tentatives
+    last_retry_at: Dernier réessai
+    next_retry_at: Prochain réessai
+    created_at: Créée
+    started_at: Démarrée
+    finished_at: Terminée
+    idempotence_key: Clé d'idempotence
+    deduplication_status: Déduplication
+    deduplication_source: Source de déduplication
+    deduplication_none: Aucune
+    deduplication_applied: Appliquée
+    deduplication_deduplicated: Dédupliquée
+    deduplication_source_value: 'Exécution %runId% / étape %stepCode%'
+    not_started: Non démarrée
+    not_finished: Non terminée
+    not_available: Indisponible
+    metadata_overline: Métadonnées
+    metadata_title: Métadonnées de l'étape
+    metadata_empty: Aucune métadonnée n'est stockée pour cette étape.
+    payloads_overline: Payloads
+    payloads_title: Payloads de l'étape
+    input_payloads: Payloads en entrée
+    output_payloads: Payloads en sortie
+    input_payloads_empty: Aucun payload d'entrée n'est disponible pour cette étape.
+    output_payloads_empty: Aucun payload de sortie n'est disponible pour cette étape.
+    payload_raw_size: Taille brute
+    payload_stored_size: Taille stockée
+    payload_compression_ratio: Taux de compression
+    payload_content_hash: Empreinte du contenu
+    payload_created_at: Créée
+    payload_metadata: Métadonnées
+    payload_content: Contenu
+    payload_sequence: 'Séquence %sequence%'
+    payload_records: '%count% enregistrements'
+    payload_table_id: Payload
+    payload_table_sequence: Séquence
+    payload_table_records: Enregistrements
+    payload_table_format: Format
+    payload_table_storage: Stockage
+    payload_table_raw_size: Taille brute
+    payload_table_stored_size: Taille stockée
+    payload_table_compression: Compression
+    payload_table_content_hash: Empreinte
+    payload_table_created: Créée
+    retry_step: Réessayer depuis cette étape
+    manual_title: Opérations manuelles
+    manual_subtitle: Confirmez explicitement la relance avant de réinitialiser l'exécution en aval de cette étape.
+    reason_label: Motif de l'opérateur
+    reason_placeholder: Pourquoi relancez-vous cette étape ?
+    confirm_relaunch: Je confirme que cette étape doit être relancée depuis ici.
+
+user_index:
+    title: Utilisateurs
+    heading: Utilisateurs
+    subtitle: Les comptes créés depuis la ligne de commande sont listés ici.
+    count: Affichage de %from%-%to% sur %total% utilisateurs
+    empty: Aucun utilisateur Fluxx n'existe encore.
+    empty_search: Aucun utilisateur ne correspond à « %query% ».
+    search_label: Rechercher des utilisateurs
+    search_placeholder: Rechercher par e-mail ou nom d'affichage
+    search_submit: Rechercher
+    search_reset: Réinitialiser
+    email: E-mail
+    display_name: Nom d'affichage
+    roles: Rôles
+    status: Statut
+    created_at: Créé
+    enabled: Activé
+    disabled: Désactivé
+    none: Aucun
+    add: Ajouter un utilisateur
+    edit: Modifier
+    enable: Activer
+    disable: Désactiver
+    delete: Supprimer
+    delete_confirm: Supprimer ce compte utilisateur ?
+    actions: Actions
+
+user_form:
+    create_title: Nouvel utilisateur
+    edit_title: Modifier l'utilisateur
+    create_heading: Nouvel utilisateur
+    edit_heading: Modifier l'utilisateur
+    back: Retour aux utilisateurs
+    email: E-mail
+    email_locked: L'e-mail ne peut pas être modifié après création.
+    display_name: Nom d'affichage
+    roles: Rôles
+    roles_hint: ROLE_USER est toujours accordé et ne peut être retiré.
+    enabled: Compte activé
+    password: Mot de passe
+    new_password_optional: Nouveau mot de passe
+    password_keep_placeholder: Laisser vide pour conserver le mot de passe actuel
+    password_hint: Au moins 8 caractères.
+    create_submit: Créer l'utilisateur
+    edit_submit: Enregistrer les modifications
+    cancel: Annuler
+    delete_submit: Supprimer le compte
+    delete_confirm: Supprimer ce compte utilisateur ?
+    created: Utilisateur créé.
+    updated: Utilisateur mis à jour.
+    flash_enabled: Utilisateur activé.
+    flash_disabled: Utilisateur désactivé.
+    deleted: Utilisateur supprimé.
+
+runtime_index:
+    title: Runtime
+    heading: Runtime
+    subtitle: Surveillez en direct l'état de la file de workers Fluxx et les étapes actuellement en attente ou en cours.
+    health: Santé du système
+    loading: Chargement de l'instantané du runtime
+    waiting: En attente du premier instantané
+    state_live: En direct
+    state_error: Erreur
+    state_offline: Hors ligne
+    polling: Rafraîchissement
+    pause_polling: Mettre en pause
+    resume_polling: Reprendre
+    refresh_failed: Échec de la requête d'instantané
+    backlog_count: En attente
+    in_flight_count: En cours
+    consumer_count: Consommateurs
+    active_lock_count: Verrous actifs
+    oldest_pending_age: Plus ancien en attente
+    queue_title: File
+    active_locks_title: Verrous de workflow actifs
+    transport_name: Transport
+    redis_stream: Stream Redis
+    redis_group: Groupe Redis
+    workers_title: Workers
+    workers_empty: Aucun consommateur actif n'a été détecté.
+    worker_name: Worker
+    worker_state: État
+    worker_pending: En attente
+    worker_current: Message courant
+    worker_runtime: Durée
+    worker_idle: Inactif
+    worker_last_seen: Dernière activité
+    worker_state_processing: Traitement
+    worker_state_active: Actif
+    worker_state_idle: Inactif
+    worker_state_stopped: Arrêté
+    worker_current_empty: Aucun message n'est actuellement traité.
+    worker_message: Message
+    active_locks_empty: Aucun verrou de workflow actif n'a été détecté.
+    lock_workflow: Workflow
+    lock_run: Exécution
+    lock_scope: Portée
+    lock_key: Clé de verrou
+    lock_acquired: Acquis
+    messages_title: Messages en direct
+    messages_empty: Aucun message n'est actuellement visible dans la file Fluxx.
+    message_run: Exécution
+    message_state: État
+    message_state_queued: En file
+    message_state_in_flight: En cours
+    message_workflow: Workflow
+    message_step: Étape
+    message_consumer: Consommateur
+    message_delivery: Livraison
+    message_age: Âge
+    self_heal:
+        title: Maintenance du runtime
+        prune_workers: Purger les workers périmés
+        purge_dead_consumers: Purger les consommateurs morts
+        reclaim_pending: Récupérer les messages en attente
+        release_stale_locks: Libérer les verrous périmés
+    lock_actions: Actions
+    release_lock: Libérer
+    release_lock_confirm: 'Libérer le verrou actif de cette exécution ? Les exécutions en aval bloquées pourront ensuite reprendre.'
+
+system_health:
+    title: Santé du système
+    heading: Santé du système
+    subtitle: Métriques de santé applicative des workers Fluxx, de la pression de file et des verrous d'exécution.
+    back_to_runtime: Retour au runtime
+    checks_title: Contrôles de santé
+    findings_title: Constats
+    findings_empty: Aucun constat d'alerte ou critique n'est actuellement détecté.
+    state_healthy: Sain
+    state_warning: Alerte
+    state_critical: Critique
+    last_refresh: Dernier rafraîchissement
+    metric_snapshot: Instantané
+    metric_consumers: Consommateurs
+    metric_backlog: En attente
+    metric_in_flight: En cours
+    metric_active_locks: Verrous actifs
+    metric_oldest_pending: Plus ancien en attente
+    metric_warning_count: Alertes
+    metric_critical_count: Alertes critiques
+    fact_version: Version
+    fact_queue: File
+    fact_crons: Crons
+    fact_php: PHP
+    fact_symfony: Symfony
+    fact_environment: Environnement
+    fact_opcache: OPcache
+    fact_db_size: Taille BDD
+    fact_cache: Cache
+    fact_logs: Logs
+    fact_disk: Disque
+    fact_migrations: Migrations
+    check_snapshot: Disponibilité de l'instantané
+    check_workers: Santé des workers
+    check_queue_pressure: Pression de file
+    check_queue_latency: Latence de file
+    check_locks: Santé des verrous
+    check_alerts: Alertes actives
+
+troubleshooting:
+    title: Diagnostic
+    heading: Diagnostic
+    subtitle: Liste ligne par ligne des exécutions problématiques et messages d'étapes échoués.
+    count: Affichage de %from%-%to% sur %total% incidents
+    empty: Aucune exécution problématique n'est actuellement visible.
+    empty_search: Aucune exécution problématique ne correspond à « %query% ».
+    search_label: Rechercher dans le diagnostic
+    search_placeholder: Rechercher par workflow, étape, ID d'exécution ou erreur
+    search_submit: Rechercher
+    search_reset: Réinitialiser
+    workflow: Workflow
+    source_system: Source
+    target_system: Cible
+    run: Exécution
+    step: Étape
+    fail_count: Échecs
+    failed_at: Échouée le
+    error: Erreur
+
+pagination:
+    label: Pagination des workflows
+    previous: Précédent
+    next: Suivant
+
+email_recap:
+    subject: 'Récapitulatif quotidien des workflows %date%'
+    brand: Fluxx
+    title: Récapitulatif quotidien des workflows
+    period: Période
+    runs: Exécutions
+    processed: Traités
+    success: Succès
+    errors: Erreurs
+    status_counts: Décompte par statut
+    status: Statut
+    count: Nombre
+    workflows: Workflows
+    workflow: Workflow
+    total: Total
+    no_workflow_run: Aucune exécution de workflow.
+    errored_section: Erreurs
+    no_failed_step: Aucune étape échouée enregistrée pour cette exécution.
+    no_failed_run: Aucune exécution échouée.
+    summary: Résumé
+    total_runs: Total des exécutions
+    processed_records: Enregistrements traités
+    successful_records: Enregistrements réussis
+    errored_records: Enregistrements en erreur
+    avg_step_duration: Durée moyenne par étape
+    max_step_duration: Durée maximale par étape
+    step: Étape
+    processed_label: traités
+    success_label: succès
+    errors_label: erreurs
+    retries_label: réessais
+    duration_label: durée
+    memory_label: mémoire
+    time: Heure
+    error: Erreur

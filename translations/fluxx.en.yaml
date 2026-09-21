@@ -315,6 +315,7 @@ workflow_status:
     completed: Completed
     failed: Failed
     partially_failed: Partially failed
+    payloads_pruned: Payloads pruned
 
 workflow_relaunch_mode:
     full: Full run

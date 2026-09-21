@@ -8,6 +8,8 @@ services:
             tags: ['fluxx.workflow']
         Fluxx\StepType\StepTypeProviderInterface:
             tags: ['fluxx.step_type_provider']
+        Fluxx\Mapper\MapperInterface:
+            tags: ['fluxx.mapper']
 
     Fluxx\:
         resource: '../src/'

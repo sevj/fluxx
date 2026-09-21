@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Fluxx\StepType;
 
+use Fluxx\Entity\Enum\WorkflowStepType;
+
 final readonly class StepTypeDefinition
 {
     public function __construct(
-        private string $code,
+        private WorkflowStepType|string $code,
         private string $label,
         private string $tone = 'custom',
     ) {
@@ -15,7 +17,7 @@ final readonly class StepTypeDefinition
 
     public function code(): string
     {
-        return $this->code;
+        return $this->code instanceof WorkflowStepType ? $this->code->value : $this->code;
     }
 
     public function label(): string

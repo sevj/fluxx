@@ -14,4 +14,5 @@ enum WorkflowRunStatus: string
     case Completed = 'completed';
     case Failed = 'failed';
     case PartiallyFailed = 'partially_failed';
+    case PayloadsPruned = 'payloads_pruned';
 }

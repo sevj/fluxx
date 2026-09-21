@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Fluxx\Repository;
 
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowRun;
@@ -86,5 +88,93 @@ final class WorkflowPayloadRepository extends ServiceEntityRepository implements
             ->addOrderBy('workflow_payload.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function countBeforeDate(DateTimeImmutable $before, ?string $workflowCode = null): int
+    {
+        $qb = $this->getEntityManager()->getConnection()->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from('fluxx_workflow_payload', 'p')
+            ->where('p.created_at < :before')
+            ->setParameter('before', $before, Types::DATETIME_IMMUTABLE);
+
+        if ($workflowCode !== null) {
+            $qb->innerJoin('p', 'fluxx_workflow_run', 'r', 'r.id = p.workflow_run_id')
+                ->andWhere('r.workflow_name = :workflowCode')
+                ->setParameter('workflowCode', $workflowCode);
+        }
+
+        return (int) $qb->fetchOne();
+    }
+
+    public function deleteBeforeDate(DateTimeImmutable $before, ?string $workflowCode = null): int
+    {
+        if ($workflowCode === null) {
+            return (int) $this->getEntityManager()->getConnection()->createQueryBuilder()
+                ->delete('fluxx_workflow_payload')
+                ->where('created_at < :before')
+                ->setParameter('before', $before, Types::DATETIME_IMMUTABLE)
+                ->executeStatement();
+        }
+
+        $subQb = $this->getEntityManager()->getConnection()->createQueryBuilder()
+            ->select('r.id')
+            ->from('fluxx_workflow_run', 'r')
+            ->where('r.workflow_name = :workflowCode')
+            ->setParameter('workflowCode', $workflowCode);
+
+        $sql = 'DELETE FROM fluxx_workflow_payload WHERE created_at < :before AND workflow_run_id IN (' . $subQb->getSQL() . ')';
+
+        return (int) $this->getEntityManager()->getConnection()->executeStatement(
+            $sql,
+            ['before' => $before, 'workflowCode' => $workflowCode],
+            ['before' => Types::DATETIME_IMMUTABLE],
+        );
+    }
+
+    public function deletePayloadsOfPrunedRunsBeforeDate(DateTimeImmutable $before, ?string $workflowCode = null): int
+    {
+        $subQb = $this->getEntityManager()->getConnection()->createQueryBuilder()
+            ->select('r.id')
+            ->from('fluxx_workflow_run', 'r')
+            ->where('r.status = :prunedStatus')
+            ->andWhere('r.created_at < :before')
+            ->setParameter('prunedStatus', \Fluxx\Entity\Enum\WorkflowRunStatus::PayloadsPruned->value)
+            ->setParameter('before', $before, Types::DATETIME_IMMUTABLE);
+
+        if ($workflowCode !== null) {
+            $subQb->andWhere('r.workflow_name = :workflowCode')
+                ->setParameter('workflowCode', $workflowCode);
+        }
+
+        $params = ['prunedStatus' => \Fluxx\Entity\Enum\WorkflowRunStatus::PayloadsPruned->value, 'before' => $before];
+        $types = ['before' => Types::DATETIME_IMMUTABLE];
+
+        if ($workflowCode !== null) {
+            $params['workflowCode'] = $workflowCode;
+        }
+
+        $sql = 'DELETE FROM fluxx_workflow_payload WHERE workflow_run_id IN (' . $subQb->getSQL() . ')';
+
+        return (int) $this->getEntityManager()->getConnection()->executeStatement($sql, $params, $types);
+    }
+
+    public function countPayloadsOfPrunedRunsBeforeDate(DateTimeImmutable $before, ?string $workflowCode = null): int
+    {
+        $qb = $this->getEntityManager()->getConnection()->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from('fluxx_workflow_payload', 'p')
+            ->innerJoin('p', 'fluxx_workflow_run', 'r', 'r.id = p.workflow_run_id')
+            ->where('r.status = :prunedStatus')
+            ->andWhere('r.created_at < :before')
+            ->setParameter('prunedStatus', \Fluxx\Entity\Enum\WorkflowRunStatus::PayloadsPruned->value)
+            ->setParameter('before', $before, Types::DATETIME_IMMUTABLE);
+
+        if ($workflowCode !== null) {
+            $qb->andWhere('r.workflow_name = :workflowCode')
+                ->setParameter('workflowCode', $workflowCode);
+        }
+
+        return (int) $qb->fetchOne();
     }
 }

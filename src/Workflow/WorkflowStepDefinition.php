@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow;
 
+use Fluxx\Entity\Enum\WorkflowStepType;
 use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
 use Fluxx\Workflow\Step\WorkflowStepIdempotence;
@@ -16,7 +17,7 @@ final readonly class WorkflowStepDefinition
     public function __construct(
         private string $code,
         private string $name,
-        private string $type,
+        private WorkflowStepType|string $type,
         private ExecutableWorkflowStepInterface $handler,
         private array $dependsOn = [],
         private ?WorkflowStepIdempotence $idempotence = null,
@@ -37,7 +38,12 @@ final readonly class WorkflowStepDefinition
 
     public function type(): string
     {
-        return $this->type;
+        return $this->type instanceof WorkflowStepType ? $this->type->value : $this->type;
+    }
+
+    public function typeEnum(): ?WorkflowStepType
+    {
+        return $this->type instanceof WorkflowStepType ? $this->type : WorkflowStepType::tryFrom($this->type);
     }
 
     public function handler(): ExecutableWorkflowStepInterface

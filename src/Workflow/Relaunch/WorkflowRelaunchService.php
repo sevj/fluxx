@@ -50,6 +50,10 @@ final readonly class WorkflowRelaunchService
             throw new RuntimeException(sprintf('Workflow run "%s" was not found.', $originalRunId));
         }
 
+        if (RunPayloadsPrunedException::isPruned($originalRun->status())) {
+            throw RunPayloadsPrunedException::forRun($originalRun->runId());
+        }
+
         if (!$force && !in_array($originalRun->status(), [
             WorkflowRunStatus::Completed,
             WorkflowRunStatus::Failed,

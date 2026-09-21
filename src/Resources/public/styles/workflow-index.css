@@ -2294,6 +2294,12 @@ tbody tr:hover {
     box-shadow: 0 0 0 4px var(--surface);
 }
 
+.step-status-dot-payloads-pruned {
+    background:
+        linear-gradient(135deg, var(--muted) 0 50%, var(--border-strong) 50% 100%);
+    box-shadow: 0 0 0 4px var(--surface);
+}
+
 .step-status-dot-relaunched {
     background: var(--transform-text);
     box-shadow: 0 0 0 4px var(--surface);

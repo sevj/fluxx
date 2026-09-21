@@ -4,15 +4,11 @@ declare(strict_types=1);
 
 namespace Fluxx\Entity\Enum;
 
-final class WorkflowStepType
+enum WorkflowStepType: string
 {
-    public const Read = 'read';
-    public const Splitter = 'splitter';
-    public const Transform = 'transform';
-    public const Write = 'write';
-    public const Linker = 'linker';
-
-    private function __construct()
-    {
-    }
+    case Read = 'read';
+    case Splitter = 'splitter';
+    case Transform = 'transform';
+    case Write = 'write';
+    case Linker = 'linker';
 }
