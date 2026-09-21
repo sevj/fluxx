@@ -186,6 +186,50 @@ Each step handler implements `ExecutableWorkflowStepInterface`. Fluxx passes:
 - `WorkflowStepInput` for upstream payloads
 - `WorkflowStepResult` for produced records, metadata, counters, and branch-specific outputs
 
+## Versioning
+
+Fluxx follows [Semantic Versioning 2.0.0](https://semver.org/). Given a version
+`MAJOR.MINOR.PATCH`:
+
+- **MAJOR** increases for incompatible changes to the public API.
+- **MINOR** increases for backward-compatible additions to the public API.
+- **PATCH** increases for backward-compatible fixes and internal changes.
+
+Notable changes for each release are recorded in [`CHANGELOG.md`](CHANGELOG.md). Each
+version line corresponds to a published git tag.
+
+### Public API
+
+The public API is the contract host applications integrate against. It consists of:
+
+- `Fluxx\Workflow\WorkflowInterface` — implemented by host services to declare a workflow.
+- `Fluxx\Workflow\WorkflowStepDefinition` — value object describing a step in a workflow graph.
+- The step handler interfaces in the `Fluxx\Workflow\Step` namespace:
+  - `WorkflowStepInterface` (base contract)
+  - `ExecutableWorkflowStepInterface`
+  - `ReadStepInterface`, `WriteStepInterface`, `SplitterStepInterface`,
+    `TransformStepInterface`, `LinkerStepInterface`, `IdempotentWorkflowStepInterface`
+- The enums `Fluxx\Entity\Enum\WorkflowRunStatus` and `Fluxx\Entity\Enum\WorkflowStepType`.
+
+Anything not listed above — Doctrine repositories (for example
+`WorkflowStepRunRepository`), internal services (for example `FluxxRuntime`,
+`FluxxRuntimeSnapshotProvider`, `WorkflowStepRunStatistics`), the operator UI
+(`Ui\*`, `Reporting\*`), entity internals beyond the public enums, command output
+formats, and Twig templates — is internal. Internal code may change in any release
+without a major bump.
+
+### Breaking-change policy
+
+- Adding a new method to a public interface that a host application must implement is
+  **breaking** and requires a MAJOR bump, unless it ships with a backward-compatible
+  default implementation (then it is a MINOR addition).
+- Adding new cases to the public enums, adding new public interfaces, new CLI commands,
+  and new optional `fluxx.*` configuration keys are backward-compatible (MINOR).
+- Removing or renaming existing public interfaces, methods, enum cases, or existing
+  `fluxx.*` configuration keys is breaking (MAJOR).
+- Bug fixes, performance work, and refactors that preserve the public API — including
+  moving implementation between repositories and reporting services — are PATCH.
+
 ## Extension Points
 
 ### Custom step types

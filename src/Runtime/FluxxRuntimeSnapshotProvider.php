@@ -6,10 +6,10 @@ namespace Fluxx\Runtime;
 
 use DateTimeImmutable;
 use Fluxx\Entity\RuntimeWorkerState;
+use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\RuntimeWorkerStateRepository;
 use Fluxx\Repository\WorkflowExecutionLockRepository;
 use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\Message\RunWorkflowStepMessage;
 use Fluxx\Workflow\SynchronizationRegistry;
@@ -36,7 +36,7 @@ final readonly class FluxxRuntimeSnapshotProvider
         private RuntimeWorkerStateRepository $runtimeWorkerStateRepository,
         private WorkflowExecutionLockRepository $workflowExecutionLockRepository,
         private WorkflowRunRepository $workflowRunRepository,
-        private WorkflowStepRunRepository $workflowStepRunRepository,
+        private WorkflowStepRunStatistics $workflowStepRunStatistics,
         private SynchronizationRegistry $registry,
         private StepTypeRegistry $stepTypeRegistry,
         #[Autowire('%fluxx.runtime.transport_name%')]
@@ -191,7 +191,7 @@ final readonly class FluxxRuntimeSnapshotProvider
         }
 
         $runMap = $this->workflowRunRepository->findByRunIdsIndexed($runIds);
-        $stepRunMap = $this->workflowStepRunRepository->findLatestByWorkflowRunsAndStepNamesIndexed(
+        $stepRunMap = $this->workflowStepRunStatistics->findLatestByWorkflowRunsAndStepNamesIndexed(
             array_values($runMap),
             $stepCodes,
         );

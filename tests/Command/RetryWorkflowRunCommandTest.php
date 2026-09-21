@@ -37,7 +37,7 @@ final class RetryWorkflowRunCommandTest extends TestCase
     #[Test]
     public function it_surfaces_lock_conflicts(): void
     {
-        $operator = $this->createMock(WorkflowRetryOperator::class);
+        $operator = $this->createStub(WorkflowRetryOperator::class);
         $operator->method('retryRun')
             ->willThrowException(new WorkflowExecutionLockConflict('contacts', 'contacts:CSV', 'run-locked'));
 

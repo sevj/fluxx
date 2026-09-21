@@ -6,8 +6,8 @@ namespace Fluxx\Ui;
 
 use DateInterval;
 use DateTimeImmutable;
+use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
 
 final readonly class GlobalStatistics
 {
@@ -15,7 +15,7 @@ final readonly class GlobalStatistics
 
     public function __construct(
         private WorkflowRunRepository $workflowRunRepository,
-        private WorkflowStepRunRepository $workflowStepRunRepository,
+        private WorkflowStepRunStatistics $workflowStepRunStatistics,
     ) {
     }
 
@@ -34,7 +34,7 @@ final readonly class GlobalStatistics
         $bucketFormat = $range === 'year' ? 'Y-m' : 'Y-m-d';
         $bucketStats = $this->workflowRunRepository->aggregateCreatedSinceAll($startAt, $range === 'year' ? 'month' : 'day');
         $runStatistics = $this->workflowRunRepository->summarizeCreatedSinceAll($startAt);
-        $stepStatistics = $this->workflowStepRunRepository->aggregateLatestStepStatisticsSinceAll($startAt);
+        $stepStatistics = $this->workflowStepRunStatistics->aggregateLatestStepStatisticsSinceAll($startAt);
 
         foreach ($bucketStarts as $bucketStart) {
             $bucketStats[$bucketStart->format($bucketFormat)] ??= [

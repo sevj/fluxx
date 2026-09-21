@@ -17,12 +17,14 @@ use Fluxx\Workflow\Relaunch\WorkflowRelaunchPlanner;
 use Fluxx\Workflow\Relaunch\WorkflowRelaunchService;
 use Fluxx\Workflow\SynchronizationRegistry;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Messenger\MessageBusInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 final class WorkflowRelaunchServiceTest extends TestCase
 {
     private WorkflowRunLookupInterface&MockObject $workflowRunRepository;

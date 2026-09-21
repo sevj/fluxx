@@ -16,7 +16,7 @@ final class InspectRuntimeCommandTest extends TestCase
     #[Test]
     public function it_renders_runtime_tables(): void
     {
-        $inspector = $this->createMock(RuntimeInspector::class);
+        $inspector = $this->createStub(RuntimeInspector::class);
         $inspector->method('snapshot')->willReturn([
             'ok' => true,
             'refreshedAt' => '2026-06-16T12:00:00+00:00',
@@ -56,7 +56,7 @@ final class InspectRuntimeCommandTest extends TestCase
     #[Test]
     public function it_supports_json_output(): void
     {
-        $inspector = $this->createMock(RuntimeInspector::class);
+        $inspector = $this->createStub(RuntimeInspector::class);
         $inspector->method('snapshot')->willReturn([
             'ok' => true,
             'summary' => ['backlogCount' => 0],

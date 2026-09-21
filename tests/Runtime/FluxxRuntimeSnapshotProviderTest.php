@@ -7,10 +7,10 @@ namespace Fluxx\Tests\Runtime;
 use DateTimeImmutable;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\RuntimeWorkerState;
+use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\RuntimeWorkerStateRepository;
 use Fluxx\Repository\WorkflowExecutionLockRepository;
 use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\Runtime\FluxxRuntimeSnapshotProvider;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\Message\RunWorkflowStepMessage;
@@ -158,15 +158,15 @@ final class FluxxRuntimeSnapshotProviderTest extends TestCase
 
     private function createProvider(): FluxxRuntimeSnapshotProvider
     {
-        $registry = $this->createMock(ManagerRegistry::class);
+        $registry = $this->createStub(ManagerRegistry::class);
 
         return new FluxxRuntimeSnapshotProvider(
             fluxxTransportDsn: 'redis://localhost/messages/fluxx',
-            transportSerializer: $this->createMock(SerializerInterface::class),
+            transportSerializer: $this->createStub(SerializerInterface::class),
             runtimeWorkerStateRepository: new RuntimeWorkerStateRepository($registry),
             workflowExecutionLockRepository: new WorkflowExecutionLockRepository($registry),
             workflowRunRepository: new WorkflowRunRepository($registry),
-            workflowStepRunRepository: new WorkflowStepRunRepository($registry),
+            workflowStepRunStatistics: new WorkflowStepRunStatistics($registry),
             registry: new SynchronizationRegistry([]),
             stepTypeRegistry: new StepTypeRegistry([]),
         );

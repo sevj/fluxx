@@ -9,8 +9,8 @@ use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\Persistence\ManagerRegistry;
+use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Tests\Fixture\FixtureWorkflow;
 use Fluxx\Tests\Fixture\StubExecutableStep;
@@ -35,7 +35,7 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
             registry: new SynchronizationRegistry([new FixtureWorkflow($this->createWorkflowDefinition())]),
             stepTypeRegistry: new StepTypeRegistry([]),
             workflowRunRepository: new WorkflowRunRepository($managerRegistry),
-            workflowStepRunRepository: new WorkflowStepRunRepository($managerRegistry),
+            workflowStepRunStatistics: new WorkflowStepRunStatistics($managerRegistry),
         );
 
         $view = $details->forTab(
@@ -56,7 +56,7 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
     public function it_loads_the_statistics_tab_without_touching_execution_entities(): void
     {
         $connection = $this->createMock(Connection::class);
-        $connection->method('getDatabasePlatform')->willReturn($this->createMock(AbstractMySQLPlatform::class));
+        $connection->method('getDatabasePlatform')->willReturn($this->createStub(AbstractMySQLPlatform::class));
         $connection->expects(self::exactly(2))
             ->method('fetchAllAssociative')
             ->willReturnCallback(static function (string $sql, array $params): array {
@@ -106,20 +106,20 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
             )
             ->willReturn(0);
 
-        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager = $this->createStub(EntityManagerInterface::class);
         $entityManager->method('getConnection')->willReturn($connection);
         $entityManager->method('getClassMetadata')->willReturnCallback(static function (string $className): ClassMetadata {
             return new ClassMetadata($className);
         });
 
-        $managerRegistry = $this->createMock(ManagerRegistry::class);
+        $managerRegistry = $this->createStub(ManagerRegistry::class);
         $managerRegistry->method('getManagerForClass')->willReturn($entityManager);
 
         $details = new WorkflowDetails(
             registry: new SynchronizationRegistry([new FixtureWorkflow($this->createWorkflowDefinition())]),
             stepTypeRegistry: new StepTypeRegistry([]),
             workflowRunRepository: new WorkflowRunRepository($managerRegistry),
-            workflowStepRunRepository: new WorkflowStepRunRepository($managerRegistry),
+            workflowStepRunStatistics: new WorkflowStepRunStatistics($managerRegistry),
         );
 
         $view = $details->forTab(

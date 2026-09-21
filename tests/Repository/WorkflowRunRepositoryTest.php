@@ -23,7 +23,7 @@ final class WorkflowRunRepositoryTest extends TestCase
     public function it_aggregates_bucket_counts_without_loading_run_entities(): void
     {
         $connection = $this->createMock(Connection::class);
-        $connection->method('getDatabasePlatform')->willReturn($this->createMock(AbstractMySQLPlatform::class));
+        $connection->method('getDatabasePlatform')->willReturn($this->createStub(AbstractMySQLPlatform::class));
         $connection->expects(self::once())
             ->method('fetchAllAssociative')
             ->with(
@@ -62,7 +62,7 @@ final class WorkflowRunRepositoryTest extends TestCase
     public function it_summarizes_statistics_with_scalar_queries_only(): void
     {
         $connection = $this->createMock(Connection::class);
-        $connection->method('getDatabasePlatform')->willReturn($this->createMock(AbstractMySQLPlatform::class));
+        $connection->method('getDatabasePlatform')->willReturn($this->createStub(AbstractMySQLPlatform::class));
         $connection->expects(self::once())
             ->method('fetchAssociative')
             ->with(
@@ -172,16 +172,12 @@ final class WorkflowRunRepositoryTest extends TestCase
 
     private function createRepository(Connection $connection): WorkflowRunRepository
     {
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->method('getClassMetadata')
-            ->with(WorkflowRun::class)
-            ->willReturn(new ClassMetadata(WorkflowRun::class));
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getClassMetadata')->willReturn(new ClassMetadata(WorkflowRun::class));
         $entityManager->method('getConnection')->willReturn($connection);
 
-        $registry = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManagerForClass')
-            ->with(WorkflowRun::class)
-            ->willReturn($entityManager);
+        $registry = $this->createStub(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($entityManager);
 
         return new WorkflowRunRepository($registry);
     }

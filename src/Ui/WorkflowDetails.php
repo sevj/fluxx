@@ -6,8 +6,8 @@ namespace Fluxx\Ui;
 
 use DateInterval;
 use DateTimeImmutable;
+use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Entity\WorkflowRun;
@@ -23,7 +23,7 @@ final readonly class WorkflowDetails
         private SynchronizationRegistry $registry,
         private StepTypeRegistry $stepTypeRegistry,
         private WorkflowRunRepository $workflowRunRepository,
-        private WorkflowStepRunRepository $workflowStepRunRepository,
+        private WorkflowStepRunStatistics $workflowStepRunStatistics,
     ) {
     }
 
@@ -795,7 +795,7 @@ final readonly class WorkflowDetails
         $offset = ($page - 1) * $perPage;
 
         $runs = $this->workflowRunRepository->findPaginatedByFilters($executionFilters, $perPage, $offset);
-        $stepRunMap = $this->workflowStepRunRepository->findLatestByWorkflowRunsAndStepNamesIndexed(
+        $stepRunMap = $this->workflowStepRunStatistics->findLatestByWorkflowRunsAndStepNamesIndexed(
             $runs,
             array_map(
                 static fn (\Fluxx\Workflow\WorkflowStepDefinition $step): string => $step->code(),
@@ -951,7 +951,7 @@ final readonly class WorkflowDetails
             $range === 'year' ? 'month' : 'day',
         );
         $runStatistics = $this->workflowRunRepository->summarizeCreatedSinceByWorkflowName($definition->code(), $startAt);
-        $stepStatistics = $this->workflowStepRunRepository->aggregateLatestStepStatisticsByWorkflowNameSince($definition->code(), $startAt);
+        $stepStatistics = $this->workflowStepRunStatistics->aggregateLatestStepStatisticsByWorkflowNameSince($definition->code(), $startAt);
 
         foreach ($bucketStarts as $bucketStart) {
             $bucketStats[$bucketStart->format($bucketFormat)] ??= [

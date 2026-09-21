@@ -7,22 +7,22 @@ namespace Fluxx\Reporting;
 use DateTimeImmutable;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowRun;
+use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\WorkflowRunRepository;
-use Fluxx\Repository\WorkflowStepRunRepository;
 use function in_array;
 
 final readonly class DailyWorkflowRecapBuilder
 {
     public function __construct(
         private WorkflowRunRepository $workflowRunRepository,
-        private WorkflowStepRunRepository $workflowStepRunRepository,
+        private WorkflowStepRunStatistics $workflowStepRunStatistics,
     ) {
     }
 
     public function build(DateTimeImmutable $from, DateTimeImmutable $to): DailyWorkflowRecap
     {
         $runs = $this->workflowRunRepository->findCreatedBetween($from, $to);
-        $stepSummary = $this->workflowStepRunRepository->summarizeByWorkflowRuns($runs);
+        $stepSummary = $this->workflowStepRunStatistics->summarizeByWorkflowRuns($runs);
         $statusCounts = [];
         $workflowCounts = [];
         $erroredRuns = [];
@@ -34,7 +34,7 @@ final readonly class DailyWorkflowRecapBuilder
                 true,
             ),
         ));
-        $erroredStepsByRunId = $this->workflowStepRunRepository->findErroredStepRowsByWorkflowRunsGrouped($erroredRunEntities);
+        $erroredStepsByRunId = $this->workflowStepRunStatistics->findErroredStepRowsByWorkflowRunsGrouped($erroredRunEntities);
 
         foreach ($runs as $run) {
             $status = $run->status()->value;

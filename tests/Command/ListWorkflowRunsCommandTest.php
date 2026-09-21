@@ -66,7 +66,7 @@ final class ListWorkflowRunsCommandTest extends TestCase
     public function it_rejects_invalid_pagination_values(): void
     {
         $tester = new CommandTester(new ListWorkflowRunsCommand(
-            $this->createMock(WorkflowRunLister::class),
+            $this->createStub(WorkflowRunLister::class),
             new WorkflowRunFilterFactory(),
         ));
 

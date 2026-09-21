@@ -115,16 +115,12 @@ final class WorkflowCatalogTest extends TestCase
 
     private function createRepository(Connection $connection): WorkflowRunRepository
     {
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->method('getClassMetadata')
-            ->with(WorkflowRun::class)
-            ->willReturn(new ClassMetadata(WorkflowRun::class));
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('getClassMetadata')->willReturn(new ClassMetadata(WorkflowRun::class));
         $entityManager->method('getConnection')->willReturn($connection);
 
-        $registry = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManagerForClass')
-            ->with(WorkflowRun::class)
-            ->willReturn($entityManager);
+        $registry = $this->createStub(ManagerRegistry::class);
+        $registry->method('getManagerForClass')->willReturn($entityManager);
 
         return new WorkflowRunRepository($registry);
     }

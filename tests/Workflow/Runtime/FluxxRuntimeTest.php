@@ -37,6 +37,7 @@ use Fluxx\Workflow\Step\WorkflowStepInput;
 use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowInterface;
 use Fluxx\Workflow\WorkflowStepDefinition;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -45,6 +46,7 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
 
+#[AllowMockObjectsWithoutExpectations]
 final class FluxxRuntimeTest extends TestCase
 {
     private WorkflowRunLookupInterface&MockObject $workflowRunRepository;

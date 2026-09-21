@@ -41,8 +41,8 @@ final class WorkflowExecutionLockManagerTest extends TestCase
         $manager = new WorkflowExecutionLockManager(
             entityManager: $entityManager,
             workflowExecutionLockRepository: $lockRepository,
-            workflowRunRepository: $this->createMock(WorkflowRunLookupInterface::class),
-            runtimeWorkerStateRepository: $this->createMock(RuntimeWorkerStateLookupInterface::class),
+            workflowRunRepository: $this->createStub(WorkflowRunLookupInterface::class),
+            runtimeWorkerStateRepository: $this->createStub(RuntimeWorkerStateLookupInterface::class),
             runtimeSettingsManager: $this->runtimeSettingsManager(),
         );
 
@@ -100,10 +100,10 @@ final class WorkflowExecutionLockManagerTest extends TestCase
         $ownerRun = $this->workflowRun('run-old');
         $ownerRun->markRunning();
 
-        $lockRepository = $this->createMock(WorkflowExecutionLockStoreInterface::class);
+        $lockRepository = $this->createStub(WorkflowExecutionLockStoreInterface::class);
         $lockRepository->method('findActiveByLockKey')->willReturn($existingLock);
 
-        $runRepository = $this->createMock(WorkflowRunLookupInterface::class);
+        $runRepository = $this->createStub(WorkflowRunLookupInterface::class);
         $runRepository->method('findOneByRunId')->willReturn($ownerRun);
 
         $runtimeWorkerStateRepository = $this->createMock(RuntimeWorkerStateLookupInterface::class);
@@ -112,7 +112,7 @@ final class WorkflowExecutionLockManagerTest extends TestCase
             ->willReturn(true);
 
         $manager = new WorkflowExecutionLockManager(
-            entityManager: $this->createMock(EntityManagerInterface::class),
+            entityManager: $this->createStub(EntityManagerInterface::class),
             workflowExecutionLockRepository: $lockRepository,
             workflowRunRepository: $runRepository,
             runtimeWorkerStateRepository: $runtimeWorkerStateRepository,
@@ -149,7 +149,7 @@ final class WorkflowExecutionLockManagerTest extends TestCase
 
     private function runtimeSettingsManager(): RuntimeSettingsManager
     {
-        $settingRepository = $this->createMock(FluxxSettingLookupInterface::class);
+        $settingRepository = $this->createStub(FluxxSettingLookupInterface::class);
         $settingRepository->method('findValue')->willReturn(null);
 
         return new RuntimeSettingsManager(
