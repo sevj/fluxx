@@ -82,6 +82,7 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('fluxx.runtime.defaults.health_warning_threshold_seconds', $config['runtime']['defaults']['health_warning_threshold_seconds']);
         $container->setParameter('fluxx.runtime.defaults.health_critical_threshold_seconds', $config['runtime']['defaults']['health_critical_threshold_seconds']);
         $container->setParameter('fluxx.runtime.defaults.max_global_retries', $config['runtime']['defaults']['max_global_retries']);
+        $container->setParameter('fluxx.runtime.defaults.max_payload_records', $config['runtime']['defaults']['max_payload_records']);
         $container->setParameter('fluxx.error_classification.enabled', $config['error_classification']['enabled']);
         $container->setParameter('fluxx.error_classification.business_exception_classes', $config['error_classification']['business_exception_classes']);
 

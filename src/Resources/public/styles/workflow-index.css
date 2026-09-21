@@ -1254,6 +1254,60 @@ tbody tr:hover {
     background: var(--scrollbar-subtle-thumb-hover);
 }
 
+.code-block-details {
+    margin: 0;
+}
+
+.code-block-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-soft);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+}
+
+.code-block-summary::-webkit-details-marker,
+.code-block-summary::marker {
+    display: none;
+    content: '';
+}
+
+.code-block-summary::before {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+    content: '';
+    flex-shrink: 0;
+}
+
+.code-block-details[open] > .code-block-summary {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.code-block-details[open] > .code-block-summary::before {
+    transform: rotate(45deg);
+}
+
+.code-block-details > .code-block {
+    margin-top: -1px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
 .payload-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1530,6 +1584,56 @@ tbody tr:hover {
     color: var(--text);
     font-size: 11px;
     font-weight: 700;
+}
+
+.payload-table {
+    width: 100%;
+    table-layout: auto;
+    border-collapse: collapse;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.payload-table-caption {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    background: var(--surface-strong);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    caption-side: top;
+}
+
+.payload-table th,
+.payload-table td {
+    padding: 8px 12px;
+    border-top: 1px solid var(--row-border, var(--border));
+    font-size: 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.payload-table th[scope="row"] {
+    width: 1%;
+    white-space: nowrap;
+    background: var(--surface-soft);
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.payload-table td {
+    color: var(--text);
+}
+
+.payload-table tr:first-child th,
+.payload-table tr:first-child td {
+    border-top: 0;
 }
 
 .definition-grid {
@@ -1923,7 +2027,7 @@ tbody tr:hover {
 }
 
 .execution-step-flow {
-    --workflow-execution-card-width: 132px;
+    --workflow-execution-card-width: 175px;
     display: grid;
     align-items: stretch;
     gap: 8px;
@@ -2038,8 +2142,8 @@ tbody tr:hover {
 
 .execution-step-flow {
     position: relative;
-    grid-template-columns: repeat(var(--workflow-graph-columns, 1), 160px);
-    grid-template-rows: repeat(var(--workflow-graph-rows, 1), 82px);
+    grid-template-columns: repeat(var(--workflow-graph-columns, 1), 200px);
+    grid-template-rows: repeat(var(--workflow-graph-rows, 1), 88px);
     column-gap: 0;
     row-gap: 0;
     width: max-content;
@@ -2086,8 +2190,10 @@ tbody tr:hover {
 .execution-step-card {
     position: relative;
     width: min(100%, var(--workflow-execution-card-width));
-    min-height: 64px;
-    padding: 7px 9px;
+    min-height: 70px;
+    padding: 9px 11px 9px 13px;
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--step-tone-text);
     border-radius: 8px;
     min-width: 0;
     justify-self: center;
@@ -2153,50 +2259,72 @@ tbody tr:hover {
 
 .step-status-dot {
     position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 10px;
-    height: 10px;
+    top: 7px;
+    right: 7px;
+    width: 13px;
+    height: 13px;
     border-radius: 999px;
     background: var(--border-strong);
-    box-shadow: 0 0 0 3px var(--surface);
+    box-shadow: 0 0 0 4px var(--surface);
 }
 
 .step-status-dot-completed {
     background: var(--success-text);
+    box-shadow: 0 0 0 4px var(--surface), 0 0 6px color-mix(in srgb, var(--success-text) 50%, transparent);
 }
 
 .step-status-dot-failed {
     background: var(--error-text);
-}
-
-.step-status-dot-inline {
-    position: static;
-    box-shadow: none;
-}
-
-.step-status-dot-pending {
-    background: var(--muted);
-}
-
-.step-status-dot-relaunched {
-    background: var(--transform-text);
-}
-
-.step-status-dot-running {
-    background: var(--read-text);
-}
-
-.step-status-dot-retrying {
-    background: var(--splitter-text);
-}
-
-.step-status-dot-cancelled {
-    background: var(--linker-text);
+    box-shadow: 0 0 0 4px var(--surface), 0 0 6px color-mix(in srgb, var(--error-text) 50%, transparent);
 }
 
 .step-status-dot-partially-failed {
     background: color-mix(in srgb, var(--error-text) 68%, var(--splitter-text));
+    box-shadow: 0 0 0 4px var(--surface), 0 0 6px color-mix(in srgb, var(--splitter-text) 45%, transparent);
+}
+
+.step-status-dot.step-status-dot-inline {
+    position: static;
+    box-shadow: none;
+    animation: none;
+}
+
+.step-status-dot-pending {
+    background: var(--border-strong);
+    box-shadow: 0 0 0 4px var(--surface);
+}
+
+.step-status-dot-relaunched {
+    background: var(--transform-text);
+    box-shadow: 0 0 0 4px var(--surface);
+}
+
+.step-status-dot-running {
+    background: var(--read-text);
+    box-shadow: 0 0 0 4px var(--surface), 0 0 8px color-mix(in srgb, var(--read-text) 55%, transparent);
+    animation: step-status-pulse 1.6s ease-in-out infinite;
+}
+
+.step-status-dot-retrying {
+    background: var(--splitter-text);
+    box-shadow: 0 0 0 4px var(--surface), 0 0 6px color-mix(in srgb, var(--splitter-text) 50%, transparent);
+    animation: step-status-pulse 1.6s ease-in-out infinite;
+}
+
+.step-status-dot-cancelled {
+    background: var(--muted);
+    box-shadow: 0 0 0 4px var(--surface);
+}
+
+@keyframes step-status-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.18);
+        opacity: 0.75;
+    }
 }
 
 .execution-status-legend {

@@ -144,6 +144,11 @@ workflow_show:
     lock_scope: Lock scope
     step_idempotent: Idempotent
     step_deduplicated: 'Deduplicated from %runId%'
+    step_tooltip_status: 'Status: %status%'
+    step_tooltip_counts: '%processed% processed · %success% success · %errors% errors'
+    step_tooltip_duration: 'Duration: %duration% ms'
+    step_tooltip_memory: 'Memory: %memory% MB'
+    step_tooltip_idempotence: 'Idempotence key: %key%'
     relaunch_run: Relaunch run
     retry_run: Retry run
     cancel_run: Cancel run
@@ -392,6 +397,16 @@ step_run_show:
     payload_content: Content
     payload_sequence: 'Sequence %sequence%'
     payload_records: '%count% records'
+    payload_table_id: Payload
+    payload_table_sequence: Sequence
+    payload_table_records: Records
+    payload_table_format: Format
+    payload_table_storage: Storage
+    payload_table_raw_size: Raw size
+    payload_table_stored_size: Stored size
+    payload_table_compression: Compression
+    payload_table_content_hash: Content hash
+    payload_table_created: Created
     retry_step: Retry from step
     manual_title: Manual operations
     manual_subtitle: Confirm the relaunch explicitly before resetting downstream execution for this step.

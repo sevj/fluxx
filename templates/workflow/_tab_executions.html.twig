@@ -147,7 +147,26 @@
                                             {% for node in row.nodes %}
                                                 {% set stepDefinition = node.step %}
                                                 {% set step = execution.stepMap[stepDefinition.code] %}
-                                                <a href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': workflow.code, 'runId': execution.runId, 'stepCode': step.code}) }}" class="step-status-link{{ row.connectsToMergeNext ? ' has-merge-next' : '' }}" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};">
+                                                {% set tooltipLines = [step.name] %}
+                                                {% set tooltipLines = tooltipLines|merge([step.typeLabel|trans]) %}
+                                                {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_status'|trans({'%status%': ('workflow_status.' ~ step.status)|trans})]) %}
+                                                {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_counts'|trans({'%processed%': step.processedCount, '%success%': step.successCount, '%errors%': step.errorCount})]) %}
+                                                {% if step.durationMs is not null %}
+                                                    {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_duration'|trans({'%duration%': step.durationMs})]) %}
+                                                {% endif %}
+                                                {% if step.memoryPeakBytes is not null %}
+                                                    {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_memory'|trans({'%memory%': ((step.memoryPeakBytes / 1048576)|round(1, 'common'))})]) %}
+                                                {% endif %}
+                                                {% if step.idempotenceKey is not null %}
+                                                    {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_idempotence'|trans({'%key%': step.idempotenceKey})]) %}
+                                                {% elseif step.deduplicationStatus == 'applied' %}
+                                                    {% set tooltipLines = tooltipLines|merge(['workflow_show.step_idempotent'|trans]) %}
+                                                {% endif %}
+                                                {% if step.deduplicationStatus == 'deduplicated' and step.deduplicatedFromRunId is not null %}
+                                                    {% set tooltipLines = tooltipLines|merge(['workflow_show.step_deduplicated'|trans({'%runId%': step.deduplicatedFromRunId})]) %}
+                                                {% endif %}
+                                                <a href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': workflow.code, 'runId': execution.runId, 'stepCode': step.code}) }}" class="step-status-link{{ row.connectsToMergeNext ? ' has-merge-next' : '' }}" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};" title="{{ tooltipLines|join('
+') }}">
                                                     <div class="step-status-cell execution-step-card step-tone-{{ step.typeTone }} step-tone-surface"{% if step.typeToneStyle %} style="{{ step.typeToneStyle }}"{% endif %}>
                                                         <span
                                                             class="step-status-dot step-status-dot-{{ step.status|replace({'_': '-'}) }}"
@@ -159,21 +178,6 @@
                                                         </div>
                                                         <div class="execution-step-name" title="{{ step.name }}">{{ step.name }}</div>
                                                         <div class="execution-step-meta">
-                                                            {% if step.deduplicationStatus == 'deduplicated' %}
-                                                                <span class="execution-step-meta-item metric-value" title="{{ 'workflow_show.step_deduplicated'|trans({'%runId%': step.deduplicatedFromRunId}) }}">
-                                                                    {{ 'workflow_show.step_deduplicated'|trans({'%runId%': step.deduplicatedFromRunId}) }}
-                                                                </span>
-                                                            {% elseif step.deduplicationStatus == 'applied' %}
-                                                                <span class="execution-step-meta-item metric-value" title="{{ 'workflow_show.step_idempotent'|trans }}">
-                                                                    {{ 'workflow_show.step_idempotent'|trans }}
-                                                                </span>
-                                                            {% endif %}
-                                                            <span class="execution-step-meta-item">
-                                                                {{ 'workflow_show.step_counts_compact'|trans({
-                                                                    '%success%': step.successCount,
-                                                                    '%errors%': step.errorCount
-                                                                }) }}
-                                                            </span>
                                                             <span class="execution-step-meta-item">
                                                                 {% if step.durationMs is not null and step.memoryPeakBytes is not null %}
                                                                     {{ 'workflow_show.step_runtime_compact'|trans({
@@ -184,8 +188,6 @@
                                                                     {{ step.durationMs }} ms
                                                                 {% elseif step.memoryPeakBytes is not null %}
                                                                     {{ ((step.memoryPeakBytes / 1048576)|round(1, 'common')) }} MB
-                                                                {% else %}
-                                                                    {{ step.processedCount }} rec
                                                                 {% endif %}
                                                             </span>
                                                         </div>

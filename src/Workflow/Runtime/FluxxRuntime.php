@@ -40,6 +40,7 @@ final readonly class FluxxRuntime
         private WorkflowCancellationSynchronizer $cancellationSynchronizer,
         private WorkflowRetryScheduler $retryScheduler,
         private WorkflowIdempotenceResolver $idempotenceResolver,
+        private int $maxPayloadRecords = 1000,
     ) {
     }
 
@@ -111,22 +112,47 @@ final readonly class FluxxRuntime
             $stepRun->replaceMetadata($result->metadata());
             $this->idempotenceResolver->applyKey($stepDefinition, $stepRun, $context, $input);
 
+            $chunkSize = $this->resolveChunkSize($stepDefinition);
+
             foreach ($definition->downstreamSteps($stepCode) as $downstreamStep) {
                 $output = $result->outputFor($downstreamStep->code());
+                $metadataBase = [
+                    'workflow_code' => $context->workflowCode(),
+                    'source_step_code' => $stepRun->stepName(),
+                    'step_metadata' => $output->metadata(),
+                ];
 
-                $this->workflowPayloadStore->storeStepInput(
-                    workflowRun: $workflowRun,
-                    sourceStepRun: $stepRun,
-                    targetStepType: $downstreamStep->type(),
-                    targetStepName: $downstreamStep->code(),
-                    records: $output->records(),
-                    recordCount: $output->recordCount(),
-                    metadata: [
-                        'workflow_code' => $context->workflowCode(),
-                        'source_step_code' => $stepRun->stepName(),
-                        'step_metadata' => $output->metadata(),
-                    ],
-                );
+                if ($chunkSize === null || count($output->records()) <= $chunkSize) {
+                    $this->workflowPayloadStore->storeStepInput(
+                        workflowRun: $workflowRun,
+                        sourceStepRun: $stepRun,
+                        targetStepType: $downstreamStep->type(),
+                        targetStepName: $downstreamStep->code(),
+                        records: $output->records(),
+                        recordCount: $output->recordCount(),
+                        metadata: $metadataBase,
+                    );
+
+                    continue;
+                }
+
+                $chunkedMetadata = $metadataBase + [
+                    'chunked' => true,
+                    'chunk_size' => $chunkSize,
+                ];
+
+                foreach (array_chunk($output->records(), $chunkSize) as $chunkIndex => $chunk) {
+                    $this->workflowPayloadStore->storeStepInput(
+                        workflowRun: $workflowRun,
+                        sourceStepRun: $stepRun,
+                        targetStepType: $downstreamStep->type(),
+                        targetStepName: $downstreamStep->code(),
+                        records: $chunk,
+                        recordCount: count($chunk),
+                        sequence: $chunkIndex + 1,
+                        metadata: $chunkedMetadata,
+                    );
+                }
             }
 
             $stepRun->markCompleted(
@@ -215,6 +241,17 @@ final readonly class FluxxRuntime
         if ($connection->isTransactionActive()) {
             $this->entityManager->rollback();
         }
+    }
+
+    private function resolveChunkSize(WorkflowStepDefinition $stepDefinition): ?int
+    {
+        $stepOverride = $stepDefinition->chunkSize();
+
+        if ($stepOverride !== null) {
+            return $stepOverride > 0 ? $stepOverride : null;
+        }
+
+        return $this->maxPayloadRecords > 0 ? $this->maxPayloadRecords : null;
     }
 
     private function getWorkflowRun(string $runId): WorkflowRun

@@ -320,6 +320,8 @@ final readonly class WorkflowDetails
         $branchPaths = $this->computeBranchPaths($steps, $stepMap);
         $lanePaths = $this->computeTerminalLanePaths($branchPaths);
         $rowCount = max(count($lanePaths), 1);
+        $laneCoverage = $this->computeStepLaneCoverage($steps, $stepMap, $lanePaths, $branchPaths);
+        $laneCoverage = $this->resolveFanInLaneCollisions($steps, $laneCoverage);
         $graphRows = [];
 
         ksort($rows);
@@ -329,7 +331,7 @@ final readonly class WorkflowDetails
 
         foreach ($rows as $row) {
             $nodes = array_map(
-                fn (WorkflowStepDefinitionView $step): WorkflowGraphNodeView => $this->createGraphNode($step, $branchPaths, $lanePaths, $columnCount),
+                fn (WorkflowStepDefinitionView $step): WorkflowGraphNodeView => $this->createGraphNode($step, $laneCoverage),
                 $row,
             );
 
@@ -501,43 +503,209 @@ final readonly class WorkflowDetails
     }
 
     /**
-     * @param array<string, list<int>> $branchPaths
+     * @param list<WorkflowStepDefinitionView> $steps
+     * @param array<string, WorkflowStepDefinitionView> $stepMap
      * @param list<list<int>> $lanePaths
+     * @param array<string, list<int>> $branchPaths
+     * @return array<string, list<int>>
      */
-    private function createGraphNode(
-        WorkflowStepDefinitionView $step,
-        array $branchPaths,
-        array $lanePaths,
-        int $columnCount,
-    ): WorkflowGraphNodeView {
-        $path = $branchPaths[$step->code()] ?? [];
+    private function computeStepLaneCoverage(array $steps, array $stepMap, array $lanePaths, array $branchPaths): array
+    {
+        $coverage = [];
 
-        if ($path === [] || $lanePaths === []) {
-            return new WorkflowGraphNodeView(
-                step: $step,
-                rowStart: 1,
-                columnStart: $step->level() + 1,
-                rowSpan: max(count($lanePaths), 1),
-            );
+        foreach ($steps as $step) {
+            $this->resolveStepLaneCoverage($step->code(), $stepMap, $lanePaths, $branchPaths, $coverage);
         }
 
-        $coveredRows = [];
+        return $coverage;
+    }
 
-        foreach ($lanePaths as $index => $lanePath) {
-            if ($this->isPathPrefix($path, $lanePath)) {
-                $coveredRows[] = $index + 1;
+    /**
+     * @param array<string, WorkflowStepDefinitionView> $stepMap
+     * @param list<list<int>> $lanePaths
+     * @param array<string, list<int>> $branchPaths
+     * @param array<string, list<int>> $coverage
+     * @return list<int>
+     */
+    private function resolveStepLaneCoverage(
+        string $code,
+        array $stepMap,
+        array $lanePaths,
+        array $branchPaths,
+        array &$coverage,
+    ): array {
+        if (isset($coverage[$code])) {
+            return $coverage[$code];
+        }
+
+        $step = $stepMap[$code];
+
+        if ($step->dependsOn() === []) {
+            $all = $lanePaths === [] ? [1] : range(1, count($lanePaths));
+
+            return $coverage[$code] = $all;
+        }
+
+        if (count($step->dependsOn()) === 1) {
+            $parentCode = $step->dependsOn()[0];
+            $parentCoverage = $this->resolveStepLaneCoverage($parentCode, $stepMap, $lanePaths, $branchPaths, $coverage);
+
+            $siblings = array_values(array_filter(
+                array_values($stepMap),
+                static fn (WorkflowStepDefinitionView $candidate): bool => $candidate->dependsOn() === [$parentCode],
+            ));
+
+            if (count($siblings) <= 1) {
+                return $coverage[$code] = $parentCoverage;
+            }
+
+            $childPath = $branchPaths[$code] ?? [];
+            $covered = [];
+
+            foreach ($lanePaths as $index => $lanePath) {
+                if ($this->isPathPrefix($childPath, $lanePath)) {
+                    $covered[] = $index + 1;
+                }
+            }
+
+            if ($covered === []) {
+                $covered[] = 1;
+            }
+
+            return $coverage[$code] = $covered;
+        }
+
+        $union = [];
+
+        foreach ($step->dependsOn() as $dependencyCode) {
+            $parentCoverage = $this->resolveStepLaneCoverage($dependencyCode, $stepMap, $lanePaths, $branchPaths, $coverage);
+
+            foreach ($parentCoverage as $lane) {
+                if (!in_array($lane, $union, true)) {
+                    $union[] = $lane;
+                }
             }
         }
 
-        if ($coveredRows === []) {
-            $coveredRows[] = 1;
+        sort($union);
+
+        return $coverage[$code] = $union;
+    }
+
+    /**
+     * @param list<WorkflowStepDefinitionView> $steps
+     * @param array<string, list<int>> $laneCoverage
+     * @return array<string, list<int>>
+     */
+    private function resolveFanInLaneCollisions(array $steps, array $laneCoverage): array
+    {
+        $byColumn = [];
+
+        foreach ($steps as $step) {
+            $byColumn[$step->level()][] = $step;
         }
+
+        ksort($byColumn);
+
+        foreach ($byColumn as $columnSteps) {
+            if (count($columnSteps) < 2) {
+                continue;
+            }
+
+            $hasMultiLane = false;
+
+            foreach ($columnSteps as $step) {
+                if (count($laneCoverage[$step->code()] ?? [1]) > 1) {
+                    $hasMultiLane = true;
+                    break;
+                }
+            }
+
+            if (!$hasMultiLane) {
+                continue;
+            }
+
+            $sorted = $columnSteps;
+            usort(
+                $sorted,
+                static function (WorkflowStepDefinitionView $a, WorkflowStepDefinitionView $b) use ($laneCoverage): int {
+                    $lanesA = $laneCoverage[$a->code()] ?? [1];
+                    $lanesB = $laneCoverage[$b->code()] ?? [1];
+                    $cmp = count($lanesA) <=> count($lanesB);
+
+                    if ($cmp !== 0) {
+                        return $cmp;
+                    }
+
+                    $cmp = min($lanesA) <=> min($lanesB);
+
+                    if ($cmp !== 0) {
+                        return $cmp;
+                    }
+
+                    return $a->code() <=> $b->code();
+                },
+            );
+
+            $occupied = [];
+
+            foreach ($sorted as $step) {
+                $lanes = $laneCoverage[$step->code()] ?? [1];
+
+                if (count($lanes) > 1) {
+                    $chosen = null;
+
+                    foreach ($lanes as $lane) {
+                        if (!in_array($lane, $occupied, true)) {
+                            $chosen = $lane;
+                            break;
+                        }
+                    }
+
+                    if ($chosen === null) {
+                        $chosen = max(array_merge($occupied, $lanes)) + 1;
+                    }
+
+                    $laneCoverage[$step->code()] = [$chosen];
+                    $occupied[] = $chosen;
+                } else {
+                    $lane = $lanes[0];
+
+                    if (in_array($lane, $occupied, true)) {
+                        $next = max(array_merge($occupied, [$lane])) + 1;
+                        $laneCoverage[$step->code()] = [$next];
+                        $occupied[] = $next;
+                    } else {
+                        $occupied[] = $lane;
+                    }
+                }
+            }
+        }
+
+        return $laneCoverage;
+    }
+
+    /**
+     * @param array<string, list<int>> $laneCoverage
+     */
+    private function createGraphNode(
+        WorkflowStepDefinitionView $step,
+        array $laneCoverage,
+    ): WorkflowGraphNodeView {
+        $coveredRows = $laneCoverage[$step->code()] ?? [1];
+
+        if ($coveredRows === []) {
+            $coveredRows = [1];
+        }
+
+        $rowStart = min($coveredRows);
+        $rowSpan = count($coveredRows) > 1 ? (max($coveredRows) - min($coveredRows) + 1) : 1;
 
         return new WorkflowGraphNodeView(
             step: $step,
-            rowStart: min($coveredRows),
+            rowStart: $rowStart,
             columnStart: $step->level() + 1,
-            rowSpan: count($coveredRows),
+            rowSpan: $rowSpan,
         );
     }
 

@@ -21,6 +21,7 @@ final readonly class WorkflowStepDefinition
         private array $dependsOn = [],
         private ?WorkflowStepIdempotence $idempotence = null,
         private ?WorkflowRetryPolicy $retryPolicy = null,
+        private ?int $chunkSize = null,
     ) {
     }
 
@@ -65,5 +66,10 @@ final readonly class WorkflowStepDefinition
     public function retryPolicy(): ?WorkflowRetryPolicy
     {
         return $this->retryPolicy;
+    }
+
+    public function chunkSize(): ?int
+    {
+        return $this->chunkSize;
     }
 }

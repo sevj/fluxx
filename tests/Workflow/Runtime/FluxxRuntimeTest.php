@@ -7,6 +7,7 @@ namespace Fluxx\Tests\Workflow\Runtime;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
+use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\FluxxSettingLookupInterface;
@@ -57,7 +58,11 @@ final class FluxxRuntimeTest extends TestCase
     private MessageBusInterface&MockObject $messageBus;
     private EntityManagerInterface&MockObject $entityManager;
 
+    /** @var list<array{records: array, recordCount: int, sequence: int, metadata: array}> */
+    private array $payloadCalls = [];
+
     private int $maxGlobalRetries = 10;
+    private int $maxPayloadRecords = 1000;
     private FluxxRuntime $runtime;
 
     protected function setUp(): void
@@ -142,6 +147,7 @@ final class FluxxRuntimeTest extends TestCase
             cancellationSynchronizer: $cancellationSynchronizer,
             retryScheduler: $retryScheduler,
             idempotenceResolver: $idempotenceResolver,
+            maxPayloadRecords: $this->maxPayloadRecords,
         );
     }
 
@@ -281,6 +287,167 @@ final class FluxxRuntimeTest extends TestCase
     }
 
     #[Test]
+    public function it_stores_a_single_payload_row_when_records_fit_the_chunk_size(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->maxPayloadRecords = 1000;
+
+        $handler = new StubStepHandler(new WorkflowStepResult(
+            records: [['id' => 1], ['id' => 2]],
+            processedCount: 2,
+            successCount: 2,
+        ));
+        $this->registryWithHandlerAndDownstream($handler, chunkSize: null);
+
+        $this->workflowPayloadStore
+            ->expects(self::once())
+            ->method('storeStepInput')
+            ->willReturnCallback($this->recordPayloadCall());
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertCount(1, $this->payloadCalls);
+        self::assertSame(2, $this->payloadCalls[0]['recordCount']);
+        self::assertSame(1, $this->payloadCalls[0]['sequence']);
+        self::assertArrayNotHasKey('chunked', $this->payloadCalls[0]['metadata']);
+    }
+
+    #[Test]
+    public function it_splits_a_large_output_into_multiple_payload_rows_using_the_bundle_default(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->maxPayloadRecords = 3;
+
+        $records = [];
+        for ($i = 1; $i <= 7; $i++) {
+            $records[] = ['id' => $i];
+        }
+
+        $handler = new StubStepHandler(new WorkflowStepResult(
+            records: $records,
+            processedCount: 7,
+            successCount: 7,
+        ));
+        $this->registryWithHandlerAndDownstream($handler, chunkSize: null);
+
+        $this->workflowPayloadStore
+            ->expects(self::exactly(3))
+            ->method('storeStepInput')
+            ->willReturnCallback($this->recordPayloadCall());
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertCount(3, $this->payloadCalls);
+        self::assertSame([1, 2, 3], array_column($this->payloadCalls, 'sequence'));
+        self::assertSame([3, 3, 1], array_column($this->payloadCalls, 'recordCount'));
+        self::assertSame(3, $this->payloadCalls[0]['metadata']['chunk_size']);
+        self::assertTrue($this->payloadCalls[0]['metadata']['chunked']);
+    }
+
+    #[Test]
+    public function it_honours_a_per_step_chunk_size_override(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->maxPayloadRecords = 1000;
+
+        $records = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $records[] = ['id' => $i];
+        }
+
+        $handler = new StubStepHandler(new WorkflowStepResult(
+            records: $records,
+            processedCount: 5,
+            successCount: 5,
+        ));
+        $this->registryWithHandlerAndDownstream($handler, chunkSize: 2);
+
+        $this->workflowPayloadStore
+            ->expects(self::exactly(3))
+            ->method('storeStepInput')
+            ->willReturnCallback($this->recordPayloadCall());
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertCount(3, $this->payloadCalls);
+        self::assertSame([1, 2, 3], array_column($this->payloadCalls, 'sequence'));
+        self::assertSame([2, 2, 1], array_column($this->payloadCalls, 'recordCount'));
+        self::assertSame(2, $this->payloadCalls[0]['metadata']['chunk_size']);
+    }
+
+    #[Test]
+    public function it_disables_chunking_when_bundle_default_is_zero(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->maxPayloadRecords = 0;
+
+        $records = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $records[] = ['id' => $i];
+        }
+
+        $handler = new StubStepHandler(new WorkflowStepResult(
+            records: $records,
+            processedCount: 5,
+            successCount: 5,
+        ));
+        $this->registryWithHandlerAndDownstream($handler, chunkSize: null);
+
+        $this->workflowPayloadStore
+            ->expects(self::once())
+            ->method('storeStepInput')
+            ->willReturnCallback($this->recordPayloadCall());
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertCount(1, $this->payloadCalls);
+        self::assertSame(5, $this->payloadCalls[0]['recordCount']);
+        self::assertSame(1, $this->payloadCalls[0]['sequence']);
+        self::assertArrayNotHasKey('chunked', $this->payloadCalls[0]['metadata']);
+    }
+
+    #[Test]
+    public function it_disables_chunking_when_per_step_override_is_zero(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->maxPayloadRecords = 2;
+
+        $records = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $records[] = ['id' => $i];
+        }
+
+        $handler = new StubStepHandler(new WorkflowStepResult(
+            records: $records,
+            processedCount: 5,
+            successCount: 5,
+        ));
+        $this->registryWithHandlerAndDownstream($handler, chunkSize: 0);
+
+        $this->workflowPayloadStore
+            ->expects(self::once())
+            ->method('storeStepInput')
+            ->willReturnCallback($this->recordPayloadCall());
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertCount(1, $this->payloadCalls);
+        self::assertSame(5, $this->payloadCalls[0]['recordCount']);
+        self::assertSame(1, $this->payloadCalls[0]['sequence']);
+        self::assertArrayNotHasKey('chunked', $this->payloadCalls[0]['metadata']);
+    }
+
+    #[Test]
     public function it_rolls_back_and_reopens_a_transaction_on_technical_error(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
@@ -383,6 +550,98 @@ final class FluxxRuntimeTest extends TestCase
         $stepRun->markCompleted(processedCount: 1, successCount: 1);
 
         return $stepRun;
+    }
+
+    private function registryWithHandlerAndDownstream(
+        ExecutableWorkflowStepInterface $handler,
+        ?int $chunkSize = null,
+    ): void {
+        $readStep = new WorkflowStepDefinition(
+            code: 'fetch',
+            name: 'Fetch',
+            type: 'read',
+            handler: $handler,
+            chunkSize: $chunkSize,
+        );
+        $writeStep = new WorkflowStepDefinition(
+            code: 'write',
+            name: 'Write',
+            type: 'write',
+            handler: new StubResultStep(new WorkflowStepResult()),
+            dependsOn: ['fetch'],
+        );
+
+        $workflow = $this->createMock(WorkflowInterface::class);
+        $workflow->method('definition')->willReturn(new WorkflowDefinition(
+            code: 'fixture',
+            name: 'Fixture',
+            sourceSystem: 'src',
+            targetSystem: 'tgt',
+            steps: [$readStep, $writeStep],
+        ));
+
+        $this->stepRunLookup = new InMemoryStepRunLookup();
+        $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
+    }
+
+    private function recordPayloadCall(): \Closure
+    {
+        $this->payloadCalls = [];
+
+        return function (WorkflowRun $workflowRun, WorkflowStepRun $sourceStepRun, string $targetStepType, string $targetStepName, array $records, int $recordCount, int $sequence = 1, array $metadata = []): WorkflowPayload {
+            $this->payloadCalls[] = [
+                'records' => $records,
+                'recordCount' => $recordCount,
+                'sequence' => $sequence,
+                'metadata' => $metadata,
+                'targetStepName' => $targetStepName,
+            ];
+
+            return new WorkflowPayload(
+                workflowRun: $workflowRun,
+                sourceStepRun: $sourceStepRun,
+                targetStepType: $targetStepType,
+                targetStepName: $targetStepName,
+                sequence: $sequence,
+                format: 'json',
+                compression: 'gzip',
+                storageMode: 'database',
+                content: '',
+                contentHash: bin2hex(random_bytes(8)),
+                recordCount: $recordCount,
+                rawSize: 0,
+                storedSize: 0,
+                metadata: $metadata,
+            );
+        };
+    }
+}
+
+final class StubResultStep implements ExecutableWorkflowStepInterface
+{
+    public function __construct(
+        private readonly WorkflowStepResult $result,
+    ) {
+    }
+
+    public function code(): string
+    {
+        return 'write';
+    }
+
+    public function name(): string
+    {
+        return 'Write';
+    }
+
+    public static function staticCode(): string
+    {
+        return 'write';
+    }
+
+    public function execute(\Fluxx\Workflow\Context\WorkflowContext $context, WorkflowStepInput $input): WorkflowStepResult
+    {
+        return $this->result;
     }
 }
 
