@@ -811,6 +811,7 @@ final readonly class WorkflowDetails
                     runId: $run->runId(),
                     trigger: $run->trigger(),
                     status: $run->status()->value,
+                    synchronous: $run->isSynchronous(),
                     lockKey: $run->lockKey(),
                     lockScope: $run->lockScope()?->value,
                     relaunchMode: is_string($run->relaunchMetadata()['mode'] ?? null) ? $run->relaunchMetadata()['mode'] : null,

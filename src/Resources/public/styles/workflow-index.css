@@ -26,6 +26,8 @@
     --linker-text: #be185d;
     --target-bg: #dcfce7;
     --target-text: #166534;
+    --sync-bg: #e0f2fe;
+    --sync-text: #0e7490;
     --write-bg: #dcfce7;
     --write-text: #166534;
     --error-bg: #fee2e2;
@@ -87,6 +89,8 @@
     --linker-text: #f9a8d4;
     --target-bg: rgba(74, 222, 128, 0.14);
     --target-text: #86efac;
+    --sync-bg: rgba(34, 211, 238, 0.16);
+    --sync-text: #67e8f9;
     --write-bg: rgba(74, 222, 128, 0.14);
     --write-text: #86efac;
     --error-bg: rgba(248, 113, 113, 0.16);
@@ -945,6 +949,10 @@ table {
 
 .workflow-table-compact .execution-cell-run {
     max-width: 148px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
 }
 
 .workflow-table-compact .execution-cell-trigger,
@@ -1139,6 +1147,11 @@ tbody tr:hover {
 .system-chip-target {
     background: var(--target-bg);
     color: var(--target-text);
+}
+
+.system-chip-sync {
+    background: var(--sync-bg);
+    color: var(--sync-text);
 }
 
 .metric-value {

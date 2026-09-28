@@ -36,6 +36,7 @@ final class WorkflowExecutionOverviewTest extends TestCase
             runId: 'run-1',
             trigger: 'manual',
             status: 'running',
+            synchronous: false,
             lockKey: 'contacts:CSV:Hubspot',
             lockScope: 'workflow_source_target',
             relaunchMode: 'step',

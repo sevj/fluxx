@@ -46,6 +46,9 @@
                     <tr class="clickable-row" data-row-href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" tabindex="0" role="link">
                         <td data-label="{{ 'run_index.run'|trans }}" class="execution-cell-run">
                             <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="run-id">{{ run.runId }}</a>
+                            {% if run.synchronous %}
+                                <span class="system-chip system-chip-sync" title="{{ 'run_index.synchronous_title'|trans }}">{{ 'run_index.synchronous'|trans }}</span>
+                            {% endif %}
                         </td>
                         <td data-label="{{ 'run_index.workflow'|trans }}">
                             <a href="{{ path('fluxx_workflow_show', {'code': run.workflowCode}) }}" class="workflow-link">

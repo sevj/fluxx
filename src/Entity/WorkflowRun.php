@@ -73,6 +73,9 @@ class WorkflowRun
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $errorMessage = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $synchronous = false;
+
     /**
      * @param array<string, mixed> $metadata
      */
@@ -173,6 +176,16 @@ class WorkflowRun
     public function errorMessage(): ?string
     {
         return $this->errorMessage;
+    }
+
+    public function isSynchronous(): bool
+    {
+        return $this->synchronous;
+    }
+
+    public function markSynchronous(): void
+    {
+        $this->synchronous = true;
     }
 
     /**

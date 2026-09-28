@@ -176,6 +176,8 @@ workflow_show:
     step_retries: Réessais
     step_idempotence_hits: Hits d'idempotence
     step_executions: Exécutions
+    synchronous: Synchrone
+    synchronous_title: 'Workflow lancé en synchrone (dans le processus, sans worker)'
     range_week: Semaine dernière
     range_month: Mois dernier
     range_year: Année dernière
@@ -252,6 +254,9 @@ run_index:
     resume_polling: Reprendre
     polling: Rafraîchissement
     refresh_failed: Échec du rafraîchissement de la liste
+    synchronous: Synchrone
+    synchronous_title: 'Workflow lancé en synchrone (dans le processus, sans worker)'
+    asynchronous_title: 'Workflow lancé en asynchrone (worker via Messenger)'
 
 run_show:
     title: Détail de l'exécution
@@ -270,6 +275,8 @@ run_show:
     trigger: Déclencheur
     source_system: Source
     target_system: Cible
+    synchronous: Synchrone
+    synchronous_title: 'Workflow lancé en synchrone (dans le processus, sans worker)'
     batch_id: Lot
     relaunch: Relance
     relaunch_value: Relance de %runId% (%mode%)

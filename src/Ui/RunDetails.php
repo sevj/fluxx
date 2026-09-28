@@ -43,6 +43,7 @@ final readonly class RunDetails
             runId: $run->runId(),
             trigger: $run->trigger(),
             status: $run->status()->value,
+            synchronous: $run->isSynchronous(),
             lockKey: $run->lockKey(),
             lockScope: $run->lockScope()?->value,
             relaunchMode: self::readString($relaunchMetadata, 'mode'),

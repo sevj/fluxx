@@ -17,6 +17,7 @@ final readonly class RunRowView
         private string $targetSystem,
         private string $trigger,
         private string $status,
+        private bool $synchronous,
         private ?string $lockKey,
         private ?string $lockScope,
         private DateTimeImmutable $createdAt,
@@ -64,6 +65,11 @@ final readonly class RunRowView
     public function status(): string
     {
         return $this->status;
+    }
+
+    public function synchronous(): bool
+    {
+        return $this->synchronous;
     }
 
     public function lockKey(): ?string

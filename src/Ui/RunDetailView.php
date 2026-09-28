@@ -19,6 +19,7 @@ final readonly class RunDetailView
         private string $runId,
         private string $trigger,
         private string $status,
+        private bool $synchronous,
         private ?string $lockKey,
         private ?string $lockScope,
         private ?string $relaunchMode,
@@ -83,6 +84,11 @@ final readonly class RunDetailView
     public function status(): string
     {
         return $this->status;
+    }
+
+    public function synchronous(): bool
+    {
+        return $this->synchronous;
     }
 
     public function lockKey(): ?string

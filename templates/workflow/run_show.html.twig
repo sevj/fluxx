@@ -8,7 +8,7 @@
     <title>{{ run.runId }} - {{ 'run_show.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260921-payloads-pruned'}) }}">
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260928-sync'}) }}">
 
 </head>
 <body>
@@ -78,6 +78,9 @@
                             <div class="definition-inline-item">
                                 <span class="definition-inline-key">{{ 'run_show.run'|trans }}</span>
                                 <span class="run-id">{{ run.runId }}</span>
+                                {% if run.synchronous %}
+                                    <span class="system-chip system-chip-sync" title="{{ 'run_show.synchronous_title'|trans }}">{{ 'run_show.synchronous'|trans }}</span>
+                                {% endif %}
                             </div>
                             <div class="definition-inline-item">
                                 <span class="definition-inline-key">{{ 'run_show.status'|trans }}</span>

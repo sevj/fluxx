@@ -176,6 +176,8 @@ workflow_show:
     step_retries: Retries
     step_idempotence_hits: Idempotence hits
     step_executions: Executions
+    synchronous: Synchronous
+    synchronous_title: 'Workflow launched synchronously (in-process, no worker)'
     range_week: Last week
     range_month: Last month
     range_year: Last year
@@ -252,6 +254,9 @@ run_index:
     resume_polling: Resume polling
     polling: Refreshing
     refresh_failed: Run list refresh failed
+    synchronous: Synchronous
+    synchronous_title: 'Workflow launched synchronously (in-process, no worker)'
+    asynchronous_title: 'Workflow launched asynchronously (worker via Messenger)'
 
 run_show:
     title: Run detail
@@ -270,6 +275,8 @@ run_show:
     trigger: Trigger
     source_system: Source
     target_system: Target
+    synchronous: Synchronous
+    synchronous_title: 'Workflow launched synchronously (in-process, no worker)'
     batch_id: Batch
     relaunch: Relaunch
     relaunch_value: Relaunch of %runId% (%mode%)

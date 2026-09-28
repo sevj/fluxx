@@ -117,6 +117,9 @@
                     <tr>
                         <td data-label="{{ 'workflow_show.run'|trans }}" class="execution-cell-run">
                             <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': workflow.code, 'runId': execution.runId}) }}" class="run-id">{{ execution.runId }}</a>
+                            {% if execution.synchronous %}
+                                <span class="system-chip system-chip-sync" title="{{ 'workflow_show.synchronous_title'|trans }}">{{ 'workflow_show.synchronous'|trans }}</span>
+                            {% endif %}
                         </td>
                         <td data-label="{{ 'workflow_show.trigger'|trans }}" class="execution-cell-trigger">
                             <span class="system-chip">{{ execution.trigger }}</span>

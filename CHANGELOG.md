@@ -8,6 +8,13 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-09-28
+
+### Added
+- Persist and surface the synchronous execution mode on `WorkflowRun`: a
+  `synchronous` flag set by `SynchronousFluxxEngine`, and a badge shown in the
+  runs list, executions tab, and run detail.
+
 ## [1.5.0] - 2026-09-28
 
 ### Added

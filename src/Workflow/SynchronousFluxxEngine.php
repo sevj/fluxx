@@ -66,6 +66,7 @@ final readonly class SynchronousFluxxEngine implements FluxxEngineInterface
             metadata: $metadata,
         );
         $workflowRun->markRunning();
+        $workflowRun->markSynchronous();
 
         $this->workflowExecutionLockManager->acquire($workflowRun, $definition);
 
