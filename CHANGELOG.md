@@ -8,6 +8,26 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-28
+
+### Added
+- `SynchronousFluxxEngine`, a synchronous variant of `FluxxEngine` that executes the
+  entire step graph in the calling process (no Messenger). Implements
+  `FluxxEngineInterface` (`run()` returns the `runId`) and exposes `runWithResult()`
+  which returns a `SynchronousWorkflowResult` carrying both the `runId` and the
+  records produced by the terminal (leaf) step.
+- `SynchronousWorkflowResult`, a value object holding `runId` + `records`.
+- `FluxxRuntime::lastResult(): ?WorkflowStepResult` exposing the `WorkflowStepResult`
+  of the last step executed on the happy path.
+- Documentation of the synchronous variant in `docs/fluxx.md` (section 4.1).
+- Unit tests `SynchronousFluxxEngineTest` covering single/multi-step execution,
+  leaf record capture (list and associative dict), `runId` return, and failure
+  handling (run marked `Failed`, lock released, exception rethrown).
+
+### Changed
+- `FluxxRuntime` is no longer `readonly` (added a mutable `lastResult` property).
+  No public signature change; existing properties remain `private` with no setters.
+
 ## [1.4.0] - 2026-09-21
 
 ### Added

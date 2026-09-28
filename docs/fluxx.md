@@ -219,6 +219,44 @@ Si le dispatch échoue, le run est marqué `failed`, le verrou relâché (`relea
 
 **Fonctionnellement** : un trigger (webhook HubSpot, webhook INSEE, appel API, action manuelle UI) appelle simplement `run()`. À partir de là, le workflow s'exécute de façon asynchrone et indépendante : l'appelant n'attend pas la fin.
 
+### 4.1 Variante synchrone : `SynchronousFluxxEngine`
+
+`SynchronousFluxxEngine` est une alternative à `FluxxEngine` qui exécute tout le graphe d'étapes **dans le processus appelant**, sans passer par Messenger. Elle implémente le même `FluxxEngineInterface` (`run()` retourne le `runId`), mais expose en plus `runWithResult()` qui retourne un `SynchronousWorkflowResult` portant le `runId` **et** les records produits par l'étape terminale (leaf).
+
+```php
+public function runWithResult(
+    string $workflowCode,
+    string $trigger = 'manual',
+    ?string $batchId = null,
+    array $metadata = [],
+): SynchronousWorkflowResult;
+
+final readonly class SynchronousWorkflowResult
+{
+    public string $runId;
+    public array $records;   // records du/des step(s) terminal(aux)
+}
+```
+
+Séquence interne :
+
+1. résolution de la définition + génération du `runId`,
+2. création du `WorkflowRun`, `markRunning()`, acquisition du verrou, persistence,
+3. **file d'attente en mémoire** initialisée avec les codes des étapes racines,
+4. boucle : `FluxxRuntime::runStep($runId, $stepCode)` pour chaque code défilé, les étapes suivantes renvoyées sont enfilées à leur tour,
+5. capture du `WorkflowStepResult` des étapes leaf via `FluxxRuntime::lastResult()` (les records d'un leaf ne sont pas persistés en payload, car `storeStepInput` n'est appelé que vers les étapes downstream),
+6. retour du `SynchronousWorkflowResult`.
+
+`FluxxRuntime` expose `lastResult(): ?WorkflowStepResult` — le résultat de la dernière étape exécutée sur le happy path. `SynchronousFluxxEngine` s'en sert pour récupérer les records du leaf sans modifier le contrat de `runStep()`.
+
+**Gestion des records** : si `records()` est une liste (clés numériques), chaque élément est conservé individuellement ; si c'est un dict associatif (ex. un record unique `['item' => ..., 'hubspotId' => ...]`), le dict entier est conservé comme un seul record.
+
+**Limites** :
+
+- **Pas de retry** : un échec d'étape échoue le run immédiatement (le path async programme des retries via `DelayStamp` sur le bus, ce qui n'a pas de sens en synchrone).
+- **Pas de heartbeat worker** : la récupération des verrous « stale » basée sur `hasActiveWorkerForRun()` ne s'applique pas. Un kill brutal du process laisse le verrou orphelin jusqu'à `staleTimeoutSeconds`.
+- **Appel bloquant** : `runWithResult()` ne rend la main qu'à la fin du workflow (succès ou échec).
+
 ---
 
 ## 5. Exécution asynchrone (Messenger + Redis)

@@ -16,6 +16,7 @@ use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
+use Fluxx\Workflow\Result\WorkflowStepResult;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowStepDefinition;
@@ -24,8 +25,10 @@ use Fluxx\Workflow\Step\WorkflowStepInputPayload;
 use RuntimeException;
 use Throwable;
 
-final readonly class FluxxRuntime
+final class FluxxRuntime
 {
+    private ?WorkflowStepResult $lastResult = null;
+
     public function __construct(
         private SynchronizationRegistry $registry,
         private EntityManagerInterface $entityManager,
@@ -42,6 +45,11 @@ final readonly class FluxxRuntime
         private WorkflowIdempotenceResolver $idempotenceResolver,
         private int $maxPayloadRecords = 1000,
     ) {
+    }
+
+    public function lastResult(): ?WorkflowStepResult
+    {
+        return $this->lastResult;
     }
 
     /**
@@ -108,6 +116,8 @@ final readonly class FluxxRuntime
                 $context,
                 $input,
             );
+
+            $this->lastResult = $result;
 
             $stepRun->replaceMetadata($result->metadata());
             $this->idempotenceResolver->applyKey($stepDefinition, $stepRun, $context, $input);
