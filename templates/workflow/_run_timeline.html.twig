@@ -1,0 +1,63 @@
+{% trans_default_domain 'fluxx' %}
+{% set timeline = run.timeline %}
+<section class="section-card run-timeline-card">
+    <div class="section-heading">
+        <div>
+            <h2 class="section-title">{{ 'run_show.timeline_title'|trans }}</h2>
+            <p class="subtitle section-subtitle">{{ 'run_show.timeline_subtitle'|trans }}</p>
+        </div>
+        <div class="run-timeline-window">
+            {% if timeline.isLive %}
+                <span class="status-badge status-badge-running">{{ 'run_show.timeline_live'|trans }}</span>
+            {% endif %}
+            <span class="metric-value">{{ timeline.windowStart|date('H:i:s') }}</span>
+            <span class="metric-empty">→</span>
+            {% if timeline.isLive %}
+                <span class="metric-value">{{ 'run_show.timeline_now'|trans }}</span>
+            {% else %}
+                <span class="metric-value">{{ timeline.windowEnd|date('H:i:s') }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not timeline.hasTiming %}
+        <section class="empty">{{ 'run_show.timeline_empty'|trans }}</section>
+    {% else %}
+        <div class="run-timeline">
+            {% for step in timeline.steps %}
+                <div class="run-timeline-row">
+                    <div class="run-timeline-label">
+                        <span class="step-status-dot step-status-dot-{{ step.status|replace({'_': '-'}) }}" aria-hidden="true"></span>
+                        <a
+                            href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) }}"
+                            class="workflow-link"
+                        >
+                            <div class="run-timeline-name">{{ step.name }}</div>
+                            <div class="item-code">{{ step.code }}</div>
+                        </a>
+                    </div>
+                    <div class="run-timeline-track">
+                        {% if step.isPending %}
+                            <span class="run-timeline-pending">{{ 'run_show.timeline_not_started'|trans }}</span>
+                        {% else %}
+                            <a
+                                href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) }}"
+                                class="run-timeline-bar step-tone-{{ step.typeTone }} step-tone-surface step-status-bar-{{ step.status|replace({'_': '-'}) }}{% if step.isRunning %} is-running{% endif %}"
+                                style="left: {{ step.leftPercent }}%; width: {{ step.widthPercent }}%;{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}"
+                                title="{{ step.name }} — {{ ('workflow_status.' ~ step.status)|trans }}{% if step.durationMs is not null %} — {{ step.durationMs }} ms{% endif %}"
+                            >
+                                <span class="run-timeline-bar-meta">
+                                    {% if step.durationMs is not null %}
+                                        {{ step.durationMs }} ms
+                                    {% elseif step.isRunning %}
+                                        {{ 'run_show.timeline_running'|trans }}
+                                    {% endif %}
+                                </span>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>

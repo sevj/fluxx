@@ -18,6 +18,7 @@ final readonly class RunDetails
         private StepTypeRegistry $stepTypeRegistry,
         private WorkflowRunRepository $workflowRunRepository,
         private WorkflowStepRunRepository $workflowStepRunRepository,
+        private RunTimeline $runTimeline,
     ) {
     }
 
@@ -34,6 +35,7 @@ final readonly class RunDetails
         $errorPayload = $run->errorPayload();
         $relaunchMetadata = $run->relaunchMetadata();
         $cancellationMetadata = $run->cancellationMetadata();
+        $stepRuns = $this->workflowStepRunRepository->findByWorkflowRunOrdered($run);
 
         return new RunDetailView(
             workflowCode: $definition->code(),
@@ -70,7 +72,8 @@ final readonly class RunDetails
             processedTotal: $this->sumStepCount($run, static fn ($step) => $step->processedCount()),
             successTotal: $this->sumStepCount($run, static fn ($step) => $step->successCount()),
             errorTotal: $this->sumStepCount($run, static fn ($step) => $step->errorCount()),
-            steps: $this->buildStepViews($run),
+            steps: $this->buildStepViews($run, $stepRuns),
+            timeline: $this->runTimeline->for($run, $stepRuns),
         );
     }
 
@@ -135,14 +138,14 @@ final readonly class RunDetails
     }
 
     /**
+     * @param list<\Fluxx\Entity\WorkflowStepRun> $stepRuns
      * @return list<WorkflowExecutionStepOverview>
      */
-    private function buildStepViews(WorkflowRun $run): array
+    private function buildStepViews(WorkflowRun $run, array $stepRuns): array
     {
-        $steps = $this->workflowStepRunRepository->findByWorkflowRunOrdered($run);
         $views = [];
 
-        foreach ($steps as $stepRun) {
+        foreach ($stepRuns as $stepRun) {
             $stepType = $this->stepTypeRegistry->get($stepRun->stepType());
 
             $views[] = new WorkflowExecutionStepOverview(

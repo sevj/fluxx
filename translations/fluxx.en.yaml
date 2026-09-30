@@ -12,9 +12,6 @@ navigation:
 
 settings:
     save: Save
-    title: Settings
-    heading: Settings
-    subtitle: Configure daily recap notifications and other operational settings.
     daily_recap_title: Daily recap
     daily_recap_description: Send a daily summary of workflow runs by email.
     daily_recap_enabled: Enable daily recap
@@ -303,6 +300,13 @@ run_show:
     error_total: Errored records
     steps_title: Steps
     steps_subtitle: Per-step outcome for this run. Click a step to inspect its payload and manual retry options.
+    timeline_title: Timeline
+    timeline_subtitle: Step execution windows over the run duration.
+    timeline_live: Live
+    timeline_now: now
+    timeline_running: running
+    timeline_not_started: not started
+    timeline_empty: No step has started running yet.
     steps_empty: No step has been recorded for this run.
     position: #
     step: Step

@@ -1,3 +1,11 @@
 fluxx_controllers:
     resource: ../src/Controller/
     type: attribute
+
+fluxx_settings_redirect:
+    path: /fluxx/settings
+    controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController::urlRedirectAction
+    defaults:
+        path: /fluxx/configuration?tab=daily_recap
+        permanent: true
+    methods: [GET]

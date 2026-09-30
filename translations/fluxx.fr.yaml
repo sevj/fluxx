@@ -12,9 +12,6 @@ navigation:
 
 settings:
     save: Enregistrer
-    title: Paramètres
-    heading: Paramètres
-    subtitle: Configurez les notifications du récapitulatif quotidien et autres paramètres opérationnels.
     daily_recap_title: Récapitulatif quotidien
     daily_recap_description: Envoie un résumé quotidien des exécutions de workflows par e-mail.
     daily_recap_enabled: Activer le récapitulatif quotidien
@@ -303,6 +300,13 @@ run_show:
     error_total: Enregistrements en erreur
     steps_title: Étapes
     steps_subtitle: Résultat par étape pour cette exécution. Cliquez sur une étape pour inspecter son payload et les options de réessai manuel.
+    timeline_title: Chronologie
+    timeline_subtitle: Fenêtres d'exécution des étapes sur la durée de l'exécution.
+    timeline_live: En direct
+    timeline_now: maintenant
+    timeline_running: en cours
+    timeline_not_started: non démarrée
+    timeline_empty: Aucune étape n'a encore démarré.
     steps_empty: Aucune étape n'a été enregistrée pour cette exécution.
     position: '#'
     step: Étape

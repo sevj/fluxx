@@ -8,6 +8,24 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-30
+
+### Added
+- Swimlane timeline on the run detail page, plotted above the per-step table.
+- `RunTimeline` service + `RunTimelineView`/`RunTimelineStepView` view models computing
+  proportional step windows in PHP; `RunTimelineTest` covers the cases.
+- `run_show.timeline_*` translations (en/fr).
+
+### Changed
+- `RunDetailView` carries a precomputed `timeline`; `RunDetails` builds it via `RunTimeline`.
+- `run_show` stylesheet cache-bust bumped to `20260930-timeline`.
+
+### Removed
+- Orphan `SettingsController` + `templates/settings/`; `GET /fluxx/settings` permanently
+  redirects to `/fluxx/configuration?tab=daily_recap`. Orphan `settings.title/heading/subtitle`
+  translation keys dropped.
+- Internal `docs/` working notes and screenshots.
+
 ## [1.5.1] - 2026-09-28
 
 ### Added

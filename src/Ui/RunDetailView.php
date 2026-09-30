@@ -48,6 +48,7 @@ final readonly class RunDetailView
         private int $successTotal,
         private int $errorTotal,
         private array $steps,
+        private RunTimelineView $timeline,
     ) {
     }
 
@@ -230,5 +231,10 @@ final readonly class RunDetailView
     public function steps(): array
     {
         return $this->steps;
+    }
+
+    public function timeline(): RunTimelineView
+    {
+        return $this->timeline;
     }
 }
