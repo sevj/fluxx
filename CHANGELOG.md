@@ -8,6 +8,11 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-09-30
+
+### Changed
+- Some ui fixes
+
 ## [1.6.0] - 2026-09-30
 
 ### Added

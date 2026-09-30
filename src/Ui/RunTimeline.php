@@ -9,6 +9,7 @@ use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\SynchronizationRegistry;
+use Fluxx\Workflow\WorkflowDefinition;
 
 final readonly class RunTimeline
 {
@@ -32,64 +33,61 @@ final readonly class RunTimeline
         ];
         $isTerminal = in_array($run->status(), $terminalStatuses, true);
 
-        $windowStart = null;
+        $definition = $this->registry->has($run->workflowName())
+            ? $this->registry->get($run->workflowName())->definition()
+            : null;
 
-        foreach ($stepRuns as $stepRun) {
-            $startedAt = $stepRun->startedAt();
-            if ($startedAt !== null && ($windowStart === null || $startedAt < $windowStart)) {
-                $windowStart = $startedAt;
+        $windowStart = $run->startedAt() ?? $run->createdAt();
+        $windowEnd = $isTerminal ? ($run->finishedAt() ?? $now) : $now;
+        $isLive = !$isTerminal;
+
+        $indexed = $this->indexStepRuns($stepRuns);
+        $widthMs = $this->resolveWidthMs($indexed, $isTerminal, $now);
+
+        $startOffsetMs = $this->resolveStartOffsets($indexed, $definition, $widthMs);
+
+        $totalMs = 1;
+        foreach ($widthMs as $code => $width) {
+            if ($width === null) {
+                continue;
+            }
+            $end = ($startOffsetMs[$code] ?? 0) + $width;
+            if ($end > $totalMs) {
+                $totalMs = $end;
             }
         }
 
-        $windowStart ??= $run->startedAt() ?? $run->createdAt();
-
-        if ($isTerminal) {
-            $windowEnd = $run->finishedAt() ?? $run->createdAt();
-            foreach ($stepRuns as $stepRun) {
-                $finishedAt = $stepRun->finishedAt();
-                if ($finishedAt !== null && $finishedAt > $windowEnd) {
-                    $windowEnd = $finishedAt;
-                }
-            }
-            $isLive = false;
-        } else {
-            $windowEnd = $now;
-            $isLive = true;
-        }
-
-        $totalDurationMs = max(1, $this->dateDiffMs($windowEnd, $windowStart));
         $hasTiming = false;
-
-        foreach ($stepRuns as $stepRun) {
-            if ($stepRun->startedAt() !== null) {
+        foreach ($widthMs as $width) {
+            if ($width !== null && $width > 0) {
                 $hasTiming = true;
                 break;
             }
         }
 
         $stepViews = [];
-
         foreach ($stepRuns as $stepRun) {
+            $code = $stepRun->stepName();
+            $stepType = $this->stepTypeRegistry->get($stepRun->stepType());
             $startedAt = $stepRun->startedAt();
             $finishedAt = $stepRun->finishedAt();
-            $stepType = $this->stepTypeRegistry->get($stepRun->stepType());
             $isRunning = $startedAt !== null && $finishedAt === null && !$isTerminal;
+            $width = $widthMs[$code] ?? null;
+            $offset = $startOffsetMs[$code] ?? 0;
 
             $leftPercent = null;
             $widthPercent = null;
 
-            if ($startedAt !== null) {
-                $effectiveFinish = $finishedAt ?? $windowEnd;
-                $leftPercent = $this->dateDiffMs($startedAt, $windowStart) / $totalDurationMs * 100.0;
-                $widthPercent = $this->dateDiffMs($effectiveFinish, $startedAt) / $totalDurationMs * 100.0;
-
-                $leftPercent = max(0.0, min(100.0, $leftPercent));
-                $widthPercent = max(0.5, min(max(0.0, 100.0 - $leftPercent), $widthPercent));
+            if ($width !== null) {
+                $leftPercent = max(0.0, min(100.0, ($offset / $totalMs) * 100.0));
+                $rawWidth = ($width / $totalMs) * 100.0;
+                $rawWidth = max(0.0, min(max(0.0, 100.0 - $leftPercent), $rawWidth));
+                $widthPercent = max($width > 0 ? 0.5 : 0.0, $rawWidth);
             }
 
             $stepViews[] = new RunTimelineStepView(
-                code: $stepRun->stepName(),
-                name: $this->resolveStepName($run, $stepRun->stepName()),
+                code: $code,
+                name: $this->resolveStepName($definition, $code),
                 status: $stepRun->status()->value,
                 typeTone: $stepType->toneClass(),
                 typeToneStyle: $stepType->toneStyle(),
@@ -106,19 +104,146 @@ final readonly class RunTimeline
         return new RunTimelineView(
             windowStart: $windowStart,
             windowEnd: $windowEnd,
-            totalDurationMs: $totalDurationMs,
+            totalDurationMs: $totalMs,
             isLive: $isLive,
             hasTiming: $hasTiming,
             steps: $stepViews,
         );
     }
 
-    private function resolveStepName(WorkflowRun $run, string $stepCode): string
+    /**
+     * @param list<WorkflowStepRun> $stepRuns
+     * @return array<string, WorkflowStepRun>
+     */
+    private function indexStepRuns(array $stepRuns): array
     {
-        $definition = $this->registry->has($run->workflowName())
-            ? $this->registry->get($run->workflowName())->definition()
-            : null;
+        $indexed = [];
+        foreach ($stepRuns as $stepRun) {
+            $indexed[$stepRun->stepName()] = $stepRun;
+        }
 
+        return $indexed;
+    }
+
+    /**
+     * @param array<string, WorkflowStepRun> $indexed
+     * @return array<string, ?int>
+     */
+    private function resolveWidthMs(array $indexed, bool $isTerminal, \DateTimeImmutable $now): array
+    {
+        $widths = [];
+        foreach ($indexed as $code => $stepRun) {
+            $finishedAt = $stepRun->finishedAt();
+            $startedAt = $stepRun->startedAt();
+            $duration = $stepRun->durationMs();
+
+            if ($duration !== null) {
+                $widths[$code] = max(0, $duration);
+                continue;
+            }
+
+            if ($startedAt !== null && $finishedAt !== null) {
+                $widths[$code] = max(0, $this->dateDiffMs($finishedAt, $startedAt));
+                continue;
+            }
+
+            if ($startedAt !== null && !$isTerminal) {
+                $widths[$code] = max(0, $this->dateDiffMs($now, $startedAt));
+                continue;
+            }
+
+            $widths[$code] = null;
+        }
+
+        return $widths;
+    }
+
+    /**
+     * @param array<string, WorkflowStepRun> $indexed
+     * @param array<string, ?int> $widthMs
+     * @return array<string, int>
+     */
+    private function resolveStartOffsets(array $indexed, ?WorkflowDefinition $definition, array $widthMs): array
+    {
+        $dependencies = $this->resolveDependencies($indexed, $definition);
+        $offsets = [];
+        $pending = array_keys($indexed);
+
+        while ($pending !== []) {
+            $progressed = false;
+
+            foreach ($pending as $index => $code) {
+                $deps = $dependencies[$code] ?? [];
+                $ready = true;
+
+                foreach ($deps as $depCode) {
+                    if (!isset($offsets[$depCode])) {
+                        $ready = false;
+                        break;
+                    }
+                }
+
+                if (!$ready) {
+                    continue;
+                }
+
+                $offset = 0;
+                foreach ($deps as $depCode) {
+                    $depWidth = $widthMs[$depCode] ?? 0;
+                    $candidate = ($offsets[$depCode] ?? 0) + max(0, $depWidth);
+                    if ($candidate > $offset) {
+                        $offset = $candidate;
+                    }
+                }
+
+                $offsets[$code] = $offset;
+                unset($pending[$index]);
+                $progressed = true;
+            }
+
+            if (!$progressed) {
+                foreach ($pending as $code) {
+                    $offsets[$code] = 0;
+                }
+                break;
+            }
+        }
+
+        return $offsets;
+    }
+
+    /**
+     * @param array<string, WorkflowStepRun> $indexed
+     * @return array<string, list<string>>
+     */
+    private function resolveDependencies(array $indexed, ?WorkflowDefinition $definition): array
+    {
+        $dependencies = [];
+
+        if ($definition === null) {
+            return $dependencies;
+        }
+
+        foreach ($definition->steps() as $stepDefinition) {
+            $code = $stepDefinition->code();
+            if (!isset($indexed[$code])) {
+                continue;
+            }
+
+            $deps = [];
+            foreach ($stepDefinition->dependsOn() as $depCode) {
+                if (isset($indexed[$depCode])) {
+                    $deps[] = $depCode;
+                }
+            }
+            $dependencies[$code] = $deps;
+        }
+
+        return $dependencies;
+    }
+
+    private function resolveStepName(?WorkflowDefinition $definition, string $stepCode): string
+    {
         if ($definition === null) {
             return $stepCode;
         }
