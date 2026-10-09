@@ -8,6 +8,17 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-09
+
+### Added
+- `SynchronousFluxxEngineInterface` so callers can type-hint the synchronous engine
+  without depending on the concrete `SynchronousFluxxEngine` class. Both classes
+  keep implementing `FluxxEngineInterface`.
+- `RunWorkflowCommand::--sync` option: when set, the command executes the workflow
+  synchronously (`SynchronousFluxxEngine::runWithResult`) and prints the resulting
+  records. Default behavior (async dispatch) is unchanged.
+- `RunWorkflowCommand` test covering synchronous execution output.
+
 ## [1.6.1] - 2026-09-30
 
 ### Changed

@@ -12,7 +12,7 @@ use Fluxx\Workflow\Runtime\FluxxRuntime;
 use Fluxx\Workflow\Result\WorkflowStepResult;
 use Throwable;
 
-final readonly class SynchronousFluxxEngine implements FluxxEngineInterface
+final readonly class SynchronousFluxxEngine implements FluxxEngineInterface, SynchronousFluxxEngineInterface
 {
     public function __construct(
         private SynchronizationRegistry $registry,

@@ -6,6 +6,8 @@ namespace Fluxx\Tests\Command;
 
 use Fluxx\Command\RunWorkflowCommand;
 use Fluxx\Workflow\FluxxEngineInterface;
+use Fluxx\Workflow\SynchronousFluxxEngineInterface;
+use Fluxx\Workflow\SynchronousWorkflowResult;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Command\Command;
@@ -34,7 +36,10 @@ final class RunWorkflowCommandTest extends TestCase
             )
             ->willReturn('run-1');
 
-        $tester = new CommandTester(new RunWorkflowCommand($engine));
+        $syncEngine = $this->createMock(SynchronousFluxxEngineInterface::class);
+        $syncEngine->expects(self::never())->method('runWithResult');
+
+        $tester = new CommandTester(new RunWorkflowCommand($engine, $syncEngine));
         $exitCode = $tester->execute([
             'workflow' => 'contacts',
             '--batch-id' => 'nightly-1',
@@ -56,7 +61,10 @@ final class RunWorkflowCommandTest extends TestCase
         $engine = $this->createMock(FluxxEngineInterface::class);
         $engine->expects(self::never())->method('run');
 
-        $tester = new CommandTester(new RunWorkflowCommand($engine));
+        $syncEngine = $this->createMock(SynchronousFluxxEngineInterface::class);
+        $syncEngine->expects(self::never())->method('runWithResult');
+
+        $tester = new CommandTester(new RunWorkflowCommand($engine, $syncEngine));
         $exitCode = $tester->execute([
             'workflow' => 'contacts',
             '--parameter' => ['offset'],
@@ -64,5 +72,30 @@ final class RunWorkflowCommandTest extends TestCase
 
         self::assertSame(Command::INVALID, $exitCode);
         self::assertStringContainsString('must use the format key=value', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function it_runs_synchronously_and_outputs_records(): void
+    {
+        $engine = $this->createMock(FluxxEngineInterface::class);
+        $engine->expects(self::never())->method('run');
+
+        $syncEngine = $this->createMock(SynchronousFluxxEngineInterface::class);
+        $syncEngine->expects(self::once())
+            ->method('runWithResult')
+            ->with('contacts', 'manual', null, ['parameters' => ['dry' => true]])
+            ->willReturn(new SynchronousWorkflowResult(runId: 'sync-1', records: [['name' => 'ACME']]));
+
+        $tester = new CommandTester(new RunWorkflowCommand($engine, $syncEngine));
+        $exitCode = $tester->execute([
+            'workflow' => 'contacts',
+            '--sync' => null,
+            '--parameter' => ['dry=true'],
+        ]);
+
+        self::assertSame(Command::SUCCESS, $exitCode);
+        self::assertStringContainsString('completed synchronously', $tester->getDisplay());
+        self::assertStringContainsString('Run ID: sync-1', $tester->getDisplay());
+        self::assertStringContainsString('"name": "ACME"', $tester->getDisplay());
     }
 }

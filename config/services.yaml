@@ -46,6 +46,7 @@ services:
             $maxPayloadRecords: '%fluxx.runtime.defaults.max_payload_records%'
 
     Fluxx\Workflow\FluxxEngineInterface: '@Fluxx\Workflow\FluxxEngine'
+    Fluxx\Workflow\SynchronousFluxxEngineInterface: '@Fluxx\Workflow\SynchronousFluxxEngine'
 
     Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface: '@Fluxx\Workflow\Lock\WorkflowExecutionLockManager'
     Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface: '@Fluxx\Workflow\Payload\WorkflowPayloadStore'

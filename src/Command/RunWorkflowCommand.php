@@ -6,6 +6,7 @@ namespace Fluxx\Command;
 
 use Fluxx\Workflow\FluxxEngineInterface;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockConflict;
+use Fluxx\Workflow\SynchronousFluxxEngineInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -18,15 +19,17 @@ use function is_numeric;
 use function is_array;
 use function is_string;
 use function json_decode;
+use function json_encode;
 use function preg_match;
 use function sprintf;
 use const JSON_THROW_ON_ERROR;
 
-#[AsCommand(name: 'fluxx:workflow:run', description: 'Dispatch a workflow run asynchronously.')]
+#[AsCommand(name: 'fluxx:workflow:run', description: 'Dispatch a workflow run asynchronously or synchronously.')]
 final class RunWorkflowCommand extends Command
 {
     public function __construct(
         private readonly FluxxEngineInterface $fluxxEngine,
+        private readonly SynchronousFluxxEngineInterface $synchronousEngine,
     ) {
         parent::__construct();
     }
@@ -37,6 +40,7 @@ final class RunWorkflowCommand extends Command
             ->addArgument('workflow', InputArgument::REQUIRED, 'Workflow code.')
             ->addOption('trigger', null, InputOption::VALUE_REQUIRED, 'Trigger name.', 'manual')
             ->addOption('batch-id', null, InputOption::VALUE_REQUIRED, 'Optional batch identifier.')
+            ->addOption('sync', null, InputOption::VALUE_NONE, 'Run the workflow synchronously and output the result records.')
             ->addOption(
                 'parameter',
                 null,
@@ -51,6 +55,7 @@ final class RunWorkflowCommand extends Command
         $workflowCode = (string) $input->getArgument('workflow');
         $trigger = (string) $input->getOption('trigger');
         $batchId = $input->getOption('batch-id');
+        $sync = (bool) $input->getOption('sync');
         $parameters = $this->parseParameters($input->getOption('parameter'));
 
         if ($parameters === null) {
@@ -59,12 +64,32 @@ final class RunWorkflowCommand extends Command
             return Command::INVALID;
         }
 
+        $metadata = $parameters === [] ? [] : ['parameters' => $parameters];
+        $batchIdArgument = is_string($batchId) && $batchId !== '' ? $batchId : null;
+
         try {
+            if ($sync) {
+                $result = $this->synchronousEngine->runWithResult(
+                    workflowCode: $workflowCode,
+                    trigger: $trigger,
+                    batchId: $batchIdArgument,
+                    metadata: $metadata,
+                );
+
+                $io->success(sprintf('Workflow "%s" completed synchronously. Run ID: %s (%d record(s))', $workflowCode, $result->runId(), count($result->records())));
+
+                if ($result->records() !== []) {
+                    $io->write(json_encode($result->records(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                }
+
+                return Command::SUCCESS;
+            }
+
             $runId = $this->fluxxEngine->run(
                 workflowCode: $workflowCode,
                 trigger: $trigger,
-                batchId: is_string($batchId) && $batchId !== '' ? $batchId : null,
-                metadata: $parameters === [] ? [] : ['parameters' => $parameters],
+                batchId: $batchIdArgument,
+                metadata: $metadata,
             );
         } catch (WorkflowExecutionLockConflict $exception) {
             $io->error(sprintf(
