@@ -419,6 +419,8 @@ step_run_show:
     payload_table_compression: Compression
     payload_table_content_hash: Empreinte
     payload_table_created: Créée
+    payload_table_target_steps: Envoyé à
+    payload_shared_badge: partagé
     retry_step: Réessayer depuis cette étape
     manual_title: Opérations manuelles
     manual_subtitle: Confirmez explicitement la relance avant de réinitialiser l'exécution en aval de cette étape.

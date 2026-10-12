@@ -170,13 +170,36 @@ final readonly class StepRunDetails
     }
 
     /**
+     * Groups payloads by content hash so that output payloads sharing the same
+     * deduplicated content blob are displayed as a single card listing all
+     * target steps. Input payloads (one per upstream) are never grouped.
+     *
      * @param list<WorkflowPayload> $payloads
      * @return list<WorkflowPayloadView>
      */
     private function buildPayloadViews(array $payloads): array
     {
-        return array_map(
-            fn (WorkflowPayload $payload): WorkflowPayloadView => new WorkflowPayloadView(
+        $grouped = [];
+
+        foreach ($payloads as $payload) {
+            $hash = $payload->contentHash();
+
+            if (!isset($grouped[$hash])) {
+                $grouped[$hash] = [
+                    'payload' => $payload,
+                    'targetSteps' => [],
+                ];
+            }
+
+            $grouped[$hash]['targetSteps'][] = $payload->targetStepName();
+        }
+
+        $views = [];
+
+        foreach ($grouped as $entry) {
+            $payload = $entry['payload'];
+
+            $views[] = new WorkflowPayloadView(
                 id: $payload->id() ?? 0,
                 sequence: $payload->sequence(),
                 recordCount: $payload->recordCount(),
@@ -189,8 +212,10 @@ final readonly class StepRunDetails
                 createdAt: $payload->createdAt(),
                 metadata: $payload->metadata(),
                 snapshot: $this->workflowPayloadStore->load($payload),
-            ),
-            $payloads,
-        );
+                targetSteps: $entry['targetSteps'],
+            );
+        }
+
+        return $views;
     }
 }

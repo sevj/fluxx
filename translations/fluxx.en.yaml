@@ -419,6 +419,8 @@ step_run_show:
     payload_table_compression: Compression
     payload_table_content_hash: Content hash
     payload_table_created: Created
+    payload_table_target_steps: Sent to
+    payload_shared_badge: shared
     retry_step: Retry from step
     manual_title: Manual operations
     manual_subtitle: Confirm the relaunch explicitly before resetting downstream execution for this step.

@@ -8,7 +8,7 @@
     <title>{{ stepRun.stepName }} - {{ 'step_run_show.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260921-payload-table-caption'}) }}">
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20261012-payload-dedup'}) }}">
 </head>
 <body>
     <main class="page">
@@ -392,8 +392,21 @@
                                             <caption class="payload-table-caption">
                                                 <span class="payload-chip payload-chip-id">#{{ payload.id }}</span>
                                                 {{ 'step_run_show.payload_table_sequence'|trans }} {{ payload.sequence }}
+                                                {% if payload.isShared %}
+                                                    <span class="payload-chip payload-chip-shared">{{ 'step_run_show.payload_shared_badge'|trans }} ×{{ payload.targetSteps|length }}</span>
+                                                {% endif %}
                                             </caption>
                                             <tbody>
+                                                {% if payload.targetSteps is not empty %}
+                                                <tr>
+                                                    <th scope="row">{{ 'step_run_show.payload_table_target_steps'|trans }}</th>
+                                                    <td colspan="5">
+                                                        {% for step in payload.targetSteps %}
+                                                            <code class="item-code">{{ step }}</code>{% if not loop.last %}, {% endif %}
+                                                        {% endfor %}
+                                                    </td>
+                                                </tr>
+                                                {% endif %}
                                                 <tr>
                                                     <th scope="row">{{ 'step_run_show.payload_table_records'|trans }}</th>
                                                     <td>{{ payload.recordCount }}</td>

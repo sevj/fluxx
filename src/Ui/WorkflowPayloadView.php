@@ -11,6 +11,7 @@ final readonly class WorkflowPayloadView
     /**
      * @param array<string, mixed> $metadata
      * @param array<string, mixed> $snapshot
+     * @param list<string> $targetSteps
      */
     public function __construct(
         private int $id,
@@ -25,6 +26,7 @@ final readonly class WorkflowPayloadView
         private DateTimeImmutable $createdAt,
         private array $metadata,
         private array $snapshot,
+        private array $targetSteps = [],
     ) {
     }
 
@@ -53,5 +55,18 @@ final readonly class WorkflowPayloadView
     public function snapshot(): array
     {
         return $this->snapshot;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function targetSteps(): array
+    {
+        return $this->targetSteps;
+    }
+
+    public function isShared(): bool
+    {
+        return count($this->targetSteps) > 1;
     }
 }

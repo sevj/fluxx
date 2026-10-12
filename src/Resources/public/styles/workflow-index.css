@@ -1599,6 +1599,11 @@ tbody tr:hover {
     font-weight: 700;
 }
 
+.payload-chip-shared {
+    background: var(--accent-soft, #e8f0fe);
+    color: var(--accent, #1a73e8);
+}
+
 .payload-table {
     width: 100%;
     table-layout: auto;
