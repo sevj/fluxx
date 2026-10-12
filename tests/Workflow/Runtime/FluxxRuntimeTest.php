@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowPayload;
+use Fluxx\Entity\WorkflowPayloadContent;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\FluxxSettingLookupInterface;
@@ -599,20 +600,26 @@ final class FluxxRuntimeTest extends TestCase
                 'targetStepName' => $targetStepName,
             ];
 
-            return new WorkflowPayload(
+            $content = new WorkflowPayloadContent(
                 workflowRun: $workflowRun,
                 sourceStepRun: $sourceStepRun,
-                targetStepType: $targetStepType,
-                targetStepName: $targetStepName,
-                sequence: $sequence,
+                contentHash: bin2hex(random_bytes(8)),
                 format: 'json',
                 compression: 'gzip',
                 storageMode: 'database',
                 content: '',
-                contentHash: bin2hex(random_bytes(8)),
                 recordCount: $recordCount,
                 rawSize: 0,
                 storedSize: 0,
+            );
+
+            return new WorkflowPayload(
+                workflowRun: $workflowRun,
+                sourceStepRun: $sourceStepRun,
+                payloadContent: $content,
+                targetStepType: $targetStepType,
+                targetStepName: $targetStepName,
+                sequence: $sequence,
                 metadata: $metadata,
             );
         };

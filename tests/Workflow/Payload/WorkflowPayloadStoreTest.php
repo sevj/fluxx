@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Fluxx\Tests\Workflow\Payload;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\EntityRepository;
 use Fluxx\Entity\WorkflowPayload;
+use Fluxx\Entity\WorkflowPayloadContent;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Workflow\Payload\WorkflowPayloadStore;
@@ -19,19 +21,34 @@ final class WorkflowPayloadStoreTest extends TestCase
 {
     private EntityManagerInterface&MockObject $entityManager;
 
+    private EntityRepository&MockObject $contentRepository;
+
     private WorkflowPayloadStore $store;
 
     private WorkflowRun $run;
 
     private WorkflowStepRun $sourceStepRun;
 
+    private ?WorkflowPayloadContent $findOneByResult = null;
+
     protected function setUp(): void
     {
         $this->entityManager = $this->createMock(EntityManagerInterface::class);
+        $this->contentRepository = $this->createMock(EntityRepository::class);
         $this->store = new WorkflowPayloadStore($this->entityManager);
 
         $this->run = new WorkflowRun('run-1', 'sync_contacts', 'crm', 'erp', 'manual');
         $this->sourceStepRun = new WorkflowStepRun($this->run, 'fetch', 'fetch_contacts', 1);
+
+        $this->contentRepository->method('findOneBy')->willReturnCallback(
+            fn (): ?WorkflowPayloadContent => $this->findOneByResult,
+        );
+
+        $this->entityManager
+            ->method('getRepository')
+            ->willReturnCallback(fn (string $class): EntityRepository =>
+                $class === WorkflowPayloadContent::class ? $this->contentRepository : $this->createMock(EntityRepository::class),
+        );
     }
 
     #[Test]
@@ -45,10 +62,11 @@ final class WorkflowPayloadStoreTest extends TestCase
 
         $persistedPayload = null;
         $this->entityManager
-            ->expects(self::once())
             ->method('persist')
-            ->willReturnCallback(function (WorkflowPayload $payload) use (&$persistedPayload): void {
-                $persistedPayload = $payload;
+            ->willReturnCallback(function (object $entity) use (&$persistedPayload): void {
+                if ($entity instanceof WorkflowPayload) {
+                    $persistedPayload = $entity;
+                }
             });
 
         $stored = $this->store->storeStepInput(
@@ -91,6 +109,42 @@ final class WorkflowPayloadStoreTest extends TestCase
     }
 
     #[Test]
+    public function it_deduplicates_content_across_downstreams_with_identical_records(): void
+    {
+        $records = [['id' => 1, 'name' => 'Ada Lovelace']];
+        $metadata = ['source' => 'crm'];
+
+        $this->findOneByResult = null;
+
+        $first = $this->store->storeStepInput(
+            workflowRun: $this->run,
+            sourceStepRun: $this->sourceStepRun,
+            targetStepType: 'transform',
+            targetStepName: 'transform_contacts',
+            records: $records,
+            recordCount: 1,
+            metadata: $metadata,
+        );
+
+        $sharedContent = $first->payloadContent();
+        $this->findOneByResult = $sharedContent;
+
+        $second = $this->store->storeStepInput(
+            workflowRun: $this->run,
+            sourceStepRun: $this->sourceStepRun,
+            targetStepType: 'write',
+            targetStepName: 'write_contacts',
+            records: $records,
+            recordCount: 1,
+            metadata: $metadata,
+        );
+
+        self::assertSame($sharedContent, $second->payloadContent());
+        self::assertSame($first->contentHash(), $second->contentHash());
+        self::assertSame($first->content(), $second->content());
+    }
+
+    #[Test]
     public function it_rejects_a_tampered_compressed_payload(): void
     {
         $original = $this->store->storeStepInput(
@@ -102,20 +156,26 @@ final class WorkflowPayloadStoreTest extends TestCase
             recordCount: 1,
         );
 
-        $tampered = new WorkflowPayload(
+        $tamperedContent = new WorkflowPayloadContent(
             workflowRun: $this->run,
             sourceStepRun: $this->sourceStepRun,
-            targetStepType: $original->targetStepType(),
-            targetStepName: $original->targetStepName(),
-            sequence: $original->sequence(),
-            format: $original->format(),
-            compression: $original->compression(),
-            storageMode: $original->storageMode(),
-            content: base64_encode('not-a-valid-gzip-stream'),
             contentHash: $original->contentHash(),
+            format: 'json',
+            compression: 'gzip',
+            storageMode: 'database',
+            content: base64_encode('not-a-valid-gzip-stream'),
             recordCount: $original->recordCount(),
             rawSize: $original->rawSize(),
             storedSize: $original->storedSize(),
+        );
+
+        $tampered = new WorkflowPayload(
+            workflowRun: $this->run,
+            sourceStepRun: $this->sourceStepRun,
+            payloadContent: $tamperedContent,
+            targetStepType: $original->targetStepType(),
+            targetStepName: $original->targetStepName(),
+            sequence: $original->sequence(),
             metadata: $original->metadata(),
         );
 

@@ -25,6 +25,10 @@ class WorkflowPayload
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private WorkflowStepRun $sourceStepRun;
 
+    #[ORM\ManyToOne(targetEntity: WorkflowPayloadContent::class, cascade: ['persist'])]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private WorkflowPayloadContent $payloadContent;
+
     #[ORM\Column(length: 50)]
     private string $targetStepType;
 
@@ -33,30 +37,6 @@ class WorkflowPayload
 
     #[ORM\Column]
     private int $sequence;
-
-    #[ORM\Column(length: 20)]
-    private string $format;
-
-    #[ORM\Column(length: 20)]
-    private string $compression;
-
-    #[ORM\Column(length: 20)]
-    private string $storageMode;
-
-    #[ORM\Column(type: 'text')]
-    private string $content;
-
-    #[ORM\Column(length: 64)]
-    private string $contentHash;
-
-    #[ORM\Column(options: ['default' => 0])]
-    private int $recordCount = 0;
-
-    #[ORM\Column]
-    private int $rawSize;
-
-    #[ORM\Column]
-    private int $storedSize;
 
     /** @var array<string, mixed> */
     #[ORM\Column(type: 'json')]
@@ -71,32 +51,18 @@ class WorkflowPayload
     public function __construct(
         WorkflowRun $workflowRun,
         WorkflowStepRun $sourceStepRun,
+        WorkflowPayloadContent $payloadContent,
         string $targetStepType,
         string $targetStepName,
         int $sequence,
-        string $format,
-        string $compression,
-        string $storageMode,
-        string $content,
-        string $contentHash,
-        int $recordCount,
-        int $rawSize,
-        int $storedSize,
         array $metadata = [],
     ) {
         $this->workflowRun = $workflowRun;
         $this->sourceStepRun = $sourceStepRun;
+        $this->payloadContent = $payloadContent;
         $this->targetStepType = $targetStepType;
         $this->targetStepName = $targetStepName;
         $this->sequence = $sequence;
-        $this->format = $format;
-        $this->compression = $compression;
-        $this->storageMode = $storageMode;
-        $this->content = $content;
-        $this->contentHash = $contentHash;
-        $this->recordCount = $recordCount;
-        $this->rawSize = $rawSize;
-        $this->storedSize = $storedSize;
         $this->metadata = $metadata;
         $this->createdAt = new DateTimeImmutable();
     }
@@ -116,6 +82,11 @@ class WorkflowPayload
         return $this->sourceStepRun;
     }
 
+    public function payloadContent(): WorkflowPayloadContent
+    {
+        return $this->payloadContent;
+    }
+
     public function targetStepType(): string
     {
         return $this->targetStepType;
@@ -133,42 +104,42 @@ class WorkflowPayload
 
     public function format(): string
     {
-        return $this->format;
+        return $this->payloadContent->format();
     }
 
     public function compression(): string
     {
-        return $this->compression;
+        return $this->payloadContent->compression();
     }
 
     public function storageMode(): string
     {
-        return $this->storageMode;
+        return $this->payloadContent->storageMode();
     }
 
     public function content(): string
     {
-        return $this->content;
+        return $this->payloadContent->content();
     }
 
     public function contentHash(): string
     {
-        return $this->contentHash;
+        return $this->payloadContent->contentHash();
     }
 
     public function recordCount(): int
     {
-        return $this->recordCount;
+        return $this->payloadContent->recordCount();
     }
 
     public function rawSize(): int
     {
-        return $this->rawSize;
+        return $this->payloadContent->rawSize();
     }
 
     public function storedSize(): int
     {
-        return $this->storedSize;
+        return $this->payloadContent->storedSize();
     }
 
     /**

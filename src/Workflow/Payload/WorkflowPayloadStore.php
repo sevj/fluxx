@@ -6,9 +6,11 @@ namespace Fluxx\Workflow\Payload;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\WorkflowPayload;
+use Fluxx\Entity\WorkflowPayloadContent;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use JsonException;
+use RuntimeException;
 
 final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterface
 {
@@ -20,7 +22,7 @@ final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterfa
     }
 
     /**
-     * @param array<string, mixed> $payload
+     * @param list<array<string, mixed>> $records
      * @param array<string, mixed> $metadata
      *
      * @throws JsonException
@@ -46,34 +48,79 @@ final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterfa
         ];
 
         $json = json_encode($payload, JSON_THROW_ON_ERROR);
-        $compressed = gzencode($json, 6);
+        $contentHash = hash('sha256', $json);
 
-        if ($compressed === false) {
-            throw new \RuntimeException('Unable to compress workflow payload.');
-        }
-
-        $storedContent = base64_encode($compressed);
+        $payloadContent = $this->resolvePayloadContent(
+            $workflowRun,
+            $sourceStepRun,
+            $contentHash,
+            $recordCount,
+            $json,
+        );
 
         $workflowPayload = new WorkflowPayload(
             workflowRun: $workflowRun,
             sourceStepRun: $sourceStepRun,
+            payloadContent: $payloadContent,
             targetStepType: $targetStepType,
             targetStepName: $targetStepName,
             sequence: $sequence,
-            format: 'json',
-            compression: 'gzip',
-            storageMode: 'database',
-            content: $storedContent,
-            contentHash: hash('sha256', $json),
-            recordCount: $recordCount,
-            rawSize: strlen($json),
-            storedSize: strlen($storedContent),
             metadata: $metadata,
         );
 
         $this->entityManager->persist($workflowPayload);
 
         return $workflowPayload;
+    }
+
+    /**
+     * Reuses an existing payload content blob when records with the same hash
+     * were already stored for this workflow run (deduplication across fan-out
+     * downstreams that receive identical records).
+     *
+     * @throws JsonException
+     */
+    private function resolvePayloadContent(
+        WorkflowRun $workflowRun,
+        WorkflowStepRun $sourceStepRun,
+        string $contentHash,
+        int $recordCount,
+        string $json,
+    ): WorkflowPayloadContent {
+        $existing = $this->entityManager->getRepository(WorkflowPayloadContent::class)
+            ->findOneBy([
+                'workflowRun' => $workflowRun,
+                'contentHash' => $contentHash,
+            ]);
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $compressed = gzencode($json, 6);
+
+        if ($compressed === false) {
+            throw new RuntimeException('Unable to compress workflow payload.');
+        }
+
+        $storedContent = base64_encode($compressed);
+
+        $payloadContent = new WorkflowPayloadContent(
+            workflowRun: $workflowRun,
+            sourceStepRun: $sourceStepRun,
+            contentHash: $contentHash,
+            format: 'json',
+            compression: 'gzip',
+            storageMode: 'database',
+            content: $storedContent,
+            recordCount: $recordCount,
+            rawSize: strlen($json),
+            storedSize: strlen($storedContent),
+        );
+
+        $this->entityManager->persist($payloadContent);
+
+        return $payloadContent;
     }
 
     /**
@@ -86,13 +133,13 @@ final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterfa
         $decoded = base64_decode($workflowPayload->content(), true);
 
         if ($decoded === false) {
-            throw new \RuntimeException('Unable to decode workflow payload.');
+            throw new RuntimeException('Unable to decode workflow payload.');
         }
 
         $json = @gzdecode($decoded);
 
         if ($json === false) {
-            throw new \RuntimeException('Unable to decompress workflow payload.');
+            throw new RuntimeException('Unable to decompress workflow payload.');
         }
 
         /** @var array<string, mixed> $payload */

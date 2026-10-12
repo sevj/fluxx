@@ -109,27 +109,33 @@ final class WorkflowPayloadRepository extends ServiceEntityRepository implements
 
     public function deleteBeforeDate(DateTimeImmutable $before, ?string $workflowCode = null): int
     {
+        $connection = $this->getEntityManager()->getConnection();
+
         if ($workflowCode === null) {
-            return (int) $this->getEntityManager()->getConnection()->createQueryBuilder()
+            $deleted = (int) $connection->createQueryBuilder()
                 ->delete('fluxx_workflow_payload')
                 ->where('created_at < :before')
                 ->setParameter('before', $before, Types::DATETIME_IMMUTABLE)
                 ->executeStatement();
+        } else {
+            $subQb = $connection->createQueryBuilder()
+                ->select('r.id')
+                ->from('fluxx_workflow_run', 'r')
+                ->where('r.workflow_name = :workflowCode')
+                ->setParameter('workflowCode', $workflowCode);
+
+            $sql = 'DELETE FROM fluxx_workflow_payload WHERE created_at < :before AND workflow_run_id IN (' . $subQb->getSQL() . ')';
+
+            $deleted = (int) $connection->executeStatement(
+                $sql,
+                ['before' => $before, 'workflowCode' => $workflowCode],
+                ['before' => Types::DATETIME_IMMUTABLE],
+            );
         }
 
-        $subQb = $this->getEntityManager()->getConnection()->createQueryBuilder()
-            ->select('r.id')
-            ->from('fluxx_workflow_run', 'r')
-            ->where('r.workflow_name = :workflowCode')
-            ->setParameter('workflowCode', $workflowCode);
+        $this->deleteOrphanedContent();
 
-        $sql = 'DELETE FROM fluxx_workflow_payload WHERE created_at < :before AND workflow_run_id IN (' . $subQb->getSQL() . ')';
-
-        return (int) $this->getEntityManager()->getConnection()->executeStatement(
-            $sql,
-            ['before' => $before, 'workflowCode' => $workflowCode],
-            ['before' => Types::DATETIME_IMMUTABLE],
-        );
+        return $deleted;
     }
 
     public function deletePayloadsOfPrunedRunsBeforeDate(DateTimeImmutable $before, ?string $workflowCode = null): int
@@ -156,7 +162,21 @@ final class WorkflowPayloadRepository extends ServiceEntityRepository implements
 
         $sql = 'DELETE FROM fluxx_workflow_payload WHERE workflow_run_id IN (' . $subQb->getSQL() . ')';
 
-        return (int) $this->getEntityManager()->getConnection()->executeStatement($sql, $params, $types);
+        $deleted = (int) $this->getEntityManager()->getConnection()->executeStatement($sql, $params, $types);
+
+        $this->deleteOrphanedContent();
+
+        return $deleted;
+    }
+
+    /**
+     * Deletes payload content rows no longer referenced by any payload row.
+     */
+    private function deleteOrphanedContent(): void
+    {
+        $this->getEntityManager()->getConnection()->executeStatement(
+            'DELETE FROM fluxx_workflow_payload_content WHERE id NOT IN (SELECT payload_content_id FROM fluxx_workflow_payload)',
+        );
     }
 
     public function countPayloadsOfPrunedRunsBeforeDate(DateTimeImmutable $before, ?string $workflowCode = null): int
