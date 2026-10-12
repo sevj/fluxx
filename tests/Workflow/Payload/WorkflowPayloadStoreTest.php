@@ -90,8 +90,6 @@ final class WorkflowPayloadStoreTest extends TestCase
             'version' => 1,
             'workflow_code' => 'sync_contacts',
             'run_id' => 'run-1',
-            'target_step_type' => 'transform',
-            'target_step_code' => 'transform_contacts',
             'records' => $records,
             'metadata' => $metadata,
         ], JSON_THROW_ON_ERROR)), $stored->contentHash());
@@ -102,8 +100,6 @@ final class WorkflowPayloadStoreTest extends TestCase
 
         self::assertSame($records, $loaded['records']);
         self::assertSame($metadata, $loaded['metadata']);
-        self::assertSame('transform', $loaded['target_step_type']);
-        self::assertSame('transform_contacts', $loaded['target_step_code']);
         self::assertSame('run-1', $loaded['run_id']);
         self::assertSame(1, $loaded['version']);
     }

@@ -41,8 +41,6 @@ final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterfa
             'version' => self::SNAPSHOT_VERSION,
             'workflow_code' => $workflowRun->workflowName(),
             'run_id' => $workflowRun->runId(),
-            'target_step_type' => $targetStepType,
-            'target_step_code' => $targetStepName,
             'records' => $records,
             'metadata' => $metadata,
         ];
