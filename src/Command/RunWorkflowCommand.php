@@ -74,6 +74,7 @@ final class RunWorkflowCommand extends Command
                     trigger: $trigger,
                     batchId: $batchIdArgument,
                     metadata: $metadata,
+                    output: $output,
                 );
 
                 $io->success(sprintf('Workflow "%s" completed synchronously. Run ID: %s (%d record(s))', $workflowCode, $result->runId(), count($result->records())));

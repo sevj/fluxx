@@ -11,6 +11,7 @@ use Fluxx\Workflow\SynchronousWorkflowResult;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class RunWorkflowCommandTest extends TestCase
@@ -83,7 +84,9 @@ final class RunWorkflowCommandTest extends TestCase
         $syncEngine = $this->createMock(SynchronousFluxxEngineInterface::class);
         $syncEngine->expects(self::once())
             ->method('runWithResult')
-            ->with('contacts', 'manual', null, ['parameters' => ['dry' => true]])
+            ->with('contacts', 'manual', null, ['parameters' => ['dry' => true]], self::callback(
+                static fn (mixed $output): bool => $output instanceof OutputInterface,
+            ))
             ->willReturn(new SynchronousWorkflowResult(runId: 'sync-1', records: [['name' => 'ACME']]));
 
         $tester = new CommandTester(new RunWorkflowCommand($engine, $syncEngine));

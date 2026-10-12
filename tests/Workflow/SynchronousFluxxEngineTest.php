@@ -37,6 +37,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -186,6 +187,42 @@ final class SynchronousFluxxEngineTest extends TestCase
             self::assertSame(WorkflowRunStatus::Failed, $persistedRun->status());
             self::assertSame('boom', $persistedRun->errorMessage());
         }
+    }
+
+    #[Test]
+    public function it_writes_per_step_progress_to_the_supplied_output(): void
+    {
+        $records = [['id' => 1, 'siret' => '21750001600015']];
+        $handler = new StubStepHandler(new WorkflowStepResult(records: $records, processedCount: 1, successCount: 1));
+        $engine = $this->buildEngine($this->registry($handler));
+
+        $output = new BufferedOutput();
+        $engine->runWithResult('fixture', output: $output);
+
+        $display = $output->fetch();
+        self::assertStringContainsString('Step 1/1', $display);
+        self::assertStringContainsString('Fetch', $display);
+        self::assertStringContainsString('(fetch)', $display);
+        self::assertStringContainsString('1 processed', $display);
+    }
+
+    #[Test]
+    public function it_writes_failed_label_on_step_error_when_output_is_supplied(): void
+    {
+        $handler = new FailingStepHandler(new RuntimeException('boom'));
+        $engine = $this->buildEngine($this->registry($handler));
+
+        $output = new BufferedOutput();
+
+        try {
+            $engine->runWithResult('fixture', output: $output);
+        } catch (RuntimeException $exception) {
+            self::assertSame('boom', $exception->getMessage());
+        }
+
+        $display = $output->fetch();
+        self::assertStringContainsString('Step 1/1', $display);
+        self::assertStringContainsString('FAILED: boom', $display);
     }
 
     private function buildEngine(SynchronizationRegistry $registry): SynchronousFluxxEngine

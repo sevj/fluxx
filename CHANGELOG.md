@@ -8,6 +8,26 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-10-12
+
+### Added
+- `SynchronousFluxxEngineInterface::runWithResult` now accepts an optional
+  `?OutputInterface $output` parameter. When supplied (the
+  `fluxx:workflow:run --sync` command now passes its console output through),
+  the synchronous engine prints one progress line per executed step during the
+  breadth-first traversal:
+
+      Step 1/27: Fetch company list (efficy_company_list_fetch)… 3644 processed, 1.20s
+      Step 3/27: Write companies to HubSpot (hubspot_company_write)… 3644 processed, 3 errors, 45.00s
+      Step 4/27: Barrier (efficy_base_entities_barrier)… done, 0.00s
+
+  The "name (code)…" prefix is written before the step starts so long-running
+  steps are visible immediately; the `+N processed, errorCount, duration`
+  suffix is appended once the step returns. When a step throws, the line is
+  completed with ` FAILED: <message>` and the exception propagates as before.
+  The parameter is optional and defaults to `null`, so existing callers and
+  mock consumers are unaffected.
+
 ## [1.7.1] - 2026-10-12
 
 ### Fixed
