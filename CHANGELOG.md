@@ -8,6 +8,22 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-10-12
+
+### Fixed
+- Workflow graph layout now correctly handles DAGs with more than two parallel
+  branches joining into a merge step. Previously, `rowCount` was computed from
+  terminal lane paths only, causing nodes assigned to lanes beyond that count
+  to overflow the grid and edges to be clipped by the SVG viewBox.
+- `resolveLaneSpans`: widens root and merge steps to span all occupied lanes
+  after `resolveFanInLaneCollisions` assigns single-lane nodes to higher lanes.
+  Propagates multi-lane spans to only-child descendants.
+- `centerColumnLanes`: vertically centers each column's single-lane nodes so
+  every level's centroid aligns with the graph center, regardless of how many
+  items share that level.
+- `computeMaxLane`: extracted helper to determine the true row count after
+  collision resolution.
+
 ## [1.7.0] - 2026-10-09
 
 ### Added

@@ -322,6 +322,9 @@ final readonly class WorkflowDetails
         $rowCount = max(count($lanePaths), 1);
         $laneCoverage = $this->computeStepLaneCoverage($steps, $stepMap, $lanePaths, $branchPaths);
         $laneCoverage = $this->resolveFanInLaneCollisions($steps, $laneCoverage);
+        $maxLane = $this->computeMaxLane($laneCoverage);
+        $laneCoverage = $this->centerColumnLanes($steps, $laneCoverage, $maxLane);
+        [$laneCoverage, $rowCount] = $this->resolveLaneSpans($steps, $stepMap, $laneCoverage, $maxLane);
         $graphRows = [];
 
         ksort($rows);
@@ -679,6 +682,167 @@ final readonly class WorkflowDetails
                         $occupied[] = $lane;
                     }
                 }
+            }
+        }
+
+        return $laneCoverage;
+    }
+
+    /**
+     * Computes the maximum lane index across all lane coverages after
+     * collision resolution, determining the total row count for the graph.
+     *
+     * @param array<string, list<int>> $laneCoverage
+     */
+    private function computeMaxLane(array $laneCoverage): int
+    {
+        $maxLane = 1;
+
+        foreach ($laneCoverage as $lanes) {
+            if ($lanes !== []) {
+                $maxLane = max($maxLane, max($lanes));
+            }
+        }
+
+        return $maxLane;
+    }
+
+    /**
+     * After collision resolution and centering, multi-lane spanners may have
+     * been assigned to lanes beyond the original lane-path count. This method:
+     *
+     *   1. Widens root steps so they span all occupied lanes.
+     *   2. Widens merge steps (alone in their column) so they span the union
+     *      of their parents' post-centering coverages.
+     *   3. Propagates corrected multi-lane spans to single-dependency
+     *      only-child descendants, so joins are visually centered correctly.
+     *
+     * Steps modified by collision resolution keep their single-lane assignment.
+     *
+     * @param list<WorkflowStepDefinitionView> $steps
+     * @param array<string, WorkflowStepDefinitionView> $stepMap
+     * @param array<string, list<int>> $laneCoverage
+     * @return array{0: array<string, list<int>>, 1: int}
+     */
+    private function resolveLaneSpans(array $steps, array $stepMap, array $laneCoverage, int $maxLane): array
+    {
+        $byLevel = [];
+
+        foreach ($steps as $step) {
+            $byLevel[$step->level()][] = $step;
+        }
+
+        ksort($byLevel);
+
+        foreach ($byLevel as $levelSteps) {
+            foreach ($levelSteps as $step) {
+                if ($step->dependsOn() === []) {
+                    $laneCoverage[$step->code()] = range(1, $maxLane);
+                } elseif (count($step->dependsOn()) > 1) {
+                    if (count($levelSteps) === 1) {
+                        $union = [];
+
+                        foreach ($step->dependsOn() as $dependencyCode) {
+                            foreach ($laneCoverage[$dependencyCode] ?? [1] as $lane) {
+                                if (!in_array($lane, $union, true)) {
+                                    $union[] = $lane;
+                                }
+                            }
+                        }
+
+                        sort($union);
+                        $laneCoverage[$step->code()] = $union;
+                    }
+                } else {
+                    $parentCode = $step->dependsOn()[0];
+                    $parentLanes = $laneCoverage[$parentCode] ?? [1];
+
+                    if (count($parentLanes) > 1) {
+                        $siblings = array_values(array_filter(
+                            array_values($stepMap),
+                            static fn (WorkflowStepDefinitionView $candidate): bool => $candidate->dependsOn() === [$parentCode],
+                        ));
+
+                        if (count($siblings) <= 1) {
+                            $laneCoverage[$step->code()] = $parentLanes;
+                        }
+                    }
+                }
+            }
+        }
+
+        return [$laneCoverage, $this->computeMaxLane($laneCoverage)];
+    }
+
+    /**
+     * Vertically centers each column's single-lane nodes across the full row
+     * count so that every level is centered relative to the total graph
+     * height. Multi-lane spanners (roots, merges, propagated only-children)
+     * already cover the right lanes and are left untouched.
+     *
+     * Single-lane nodes are distributed evenly across [1, rowCount] using
+     * the formula: lane[i] = round(1 + i * (rowCount - 1) / (N - 1)).
+     * This places items at the extremes for N > 1 (maximising spread while
+     * keeping the column centroid aligned with the graph center) and at the
+     * middle lane for N = 1. Relative order is preserved by sorting on each
+     * node's current lane before reassignment.
+     *
+     * @param list<WorkflowStepDefinitionView> $steps
+     * @param array<string, list<int>> $laneCoverage
+     * @return array<string, list<int>>
+     */
+    private function centerColumnLanes(array $steps, array $laneCoverage, int $rowCount): array
+    {
+        if ($rowCount <= 1) {
+            return $laneCoverage;
+        }
+
+        $byLevel = [];
+
+        foreach ($steps as $step) {
+            $byLevel[$step->level()][] = $step;
+        }
+
+        ksort($byLevel);
+
+        foreach ($byLevel as $levelSteps) {
+            $singleLane = [];
+            $hasSpanner = false;
+
+            foreach ($levelSteps as $step) {
+                $lanes = $laneCoverage[$step->code()] ?? [1];
+
+                if (count($lanes) > 1) {
+                    $hasSpanner = true;
+                } else {
+                    $singleLane[] = $step;
+                }
+            }
+
+            if ($hasSpanner || $singleLane === []) {
+                continue;
+            }
+
+            usort(
+                $singleLane,
+                static function (WorkflowStepDefinitionView $a, WorkflowStepDefinitionView $b) use ($laneCoverage): int {
+                    $laneA = ($laneCoverage[$a->code()] ?? [1])[0] ?? 1;
+                    $laneB = ($laneCoverage[$b->code()] ?? [1])[0] ?? 1;
+
+                    return $laneA <=> $laneB;
+                },
+            );
+
+            $n = count($singleLane);
+
+            if ($n === 1) {
+                $laneCoverage[$singleLane[0]->code()] = [(int) ceil($rowCount / 2)];
+                continue;
+            }
+
+            for ($i = 0; $i < $n; ++$i) {
+                $lane = (int) round(1 + ($i * ($rowCount - 1) / ($n - 1)));
+                $laneCoverage[$singleLane[$i]->code()] = [$lane];
             }
         }
 
