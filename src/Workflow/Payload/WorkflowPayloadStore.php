@@ -85,6 +85,8 @@ final readonly class WorkflowPayloadStore implements WorkflowPayloadStoreInterfa
         int $recordCount,
         string $json,
     ): WorkflowPayloadContent {
+        $this->entityManager->flush();
+
         $existing = $this->entityManager->getRepository(WorkflowPayloadContent::class)
             ->findOneBy([
                 'workflowRun' => $workflowRun,
