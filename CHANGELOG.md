@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.10.4] - 2026-10-15
+
+### Fixed
+- The runtime dashboard self-healing panel action "Release stale locks" failed
+  with `Unknown self-healing action "release_stale_locks"`: the form posted the
+  action, but `RuntimeSelfHealController` had no matching `match` arm, so
+  `StaleLockReleaser` was never invoked from the UI. The action is now wired and
+  reports the number of released locks.
+
+## [1.10.3] - 2026-10-15
+
+### Changed
+- The "Latest activity" feed of the "Active runs" live view gets a scrollable
+  fixed-height container so long feeds no longer stretch the page.
+
 ## [1.10.2] - 2026-10-15
 
 ### Changed

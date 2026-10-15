@@ -43,6 +43,7 @@ final class RuntimeSelfHealController extends AbstractController
                 'prune_workers' => $this->pruneWorkers(),
                 'purge_dead_consumers' => $this->purgeDeadConsumers(),
                 'reclaim_pending' => $this->reclaimPending(),
+                'release_stale_locks' => $this->releaseStaleLocks(),
                 'finish_orphan_runs' => $this->finishOrphanRuns(),
                 default => throw new \InvalidArgumentException(sprintf('Unknown self-healing action "%s".', $action)),
             };
