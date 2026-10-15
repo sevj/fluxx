@@ -259,7 +259,6 @@ run_index:
 runs_active:
     title: Runs en cours
     heading: Runs en cours
-    subtitle: Ce que l'application exécute à l'instant. La vue s'actualise automatiquement.
     empty: Aucun run n'est en cours actuellement.
     loading: Chargement
     pause_polling: Mettre en pause

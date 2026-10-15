@@ -259,7 +259,6 @@ run_index:
 runs_active:
     title: Active runs
     heading: Active runs
-    subtitle: What the application is executing right now. The view refreshes automatically.
     empty: No run is currently in progress.
     loading: Loading
     pause_polling: Pause polling
