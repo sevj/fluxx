@@ -3707,7 +3707,27 @@ a.run-id:hover {
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--surface);
-    overflow: hidden;
+    overflow: hidden auto;
+    max-height: 260px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-subtle-thumb) var(--scrollbar-subtle-track);
+}
+
+.active-run-activity-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.active-run-activity-list::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-subtle-thumb);
+    border-radius: 999px;
+}
+
+.active-run-activity-list::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-subtle-thumb-hover);
+}
+
+.active-run-activity-list::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .active-run-activity-item {
