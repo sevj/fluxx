@@ -67,7 +67,6 @@ final readonly class ActiveRunsViewFactory
             : 0.0;
 
         $isOrphaned = !$hasLiveWorker
-            && !$run->isSynchronous()
             && $this->resolveLastActivityAt($run, $stepRuns) < $now->modify(sprintf('-%d seconds', max($staleSeconds, 1)));
 
         return new ActiveRunRowView(

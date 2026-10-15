@@ -166,11 +166,12 @@ final class ActiveRunsViewFactoryTest extends TestCase
         self::assertFalse($this->factory()->row(run: $run, stepRuns: [$read], workerNames: [], hasLiveWorker: true, staleSeconds: 1800, now: $now)->isOrphaned());
 
         $freshRun = $this->createRun(startedAt: $now->modify('-2 minutes'));
+        $freshRun->markSynchronous();
         self::assertFalse($this->factory()->row(run: $freshRun, stepRuns: [], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now)->isOrphaned());
     }
 
     #[Test]
-    public function it_never_flags_synchronous_runs_as_orphaned(): void
+    public function it_flags_synchronous_runs_stalled_within_the_window_too(): void
     {
         $now = new DateTimeImmutable(self::NOW);
         $run = $this->createRun(startedAt: $now->modify('-2 hours'));
@@ -178,7 +179,7 @@ final class ActiveRunsViewFactoryTest extends TestCase
 
         $row = $this->factory()->row(run: $run, stepRuns: [], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now);
 
-        self::assertFalse($row->isOrphaned());
+        self::assertTrue($row->isOrphaned());
     }
 
     private function factory(): ActiveRunsViewFactory

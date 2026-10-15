@@ -25,9 +25,13 @@ use Fluxx\Settings\RuntimeSettingsManager;
  * out of the live views.
  *
  * A run is skipped when a processing worker still claims it (fresh heartbeat
- * between steps, or a step started recently and still mid-flight), when its
- * last recorded activity is younger than the staleness window, or when the run
- * executes synchronously in-process (host request or CLI, no worker to detect).
+ * between steps, or a step started recently and still mid-flight), or when its
+ * last recorded activity is younger than the staleness window.
+ *
+ * Synchronous (in-process) runs are treated with the activity signal alone:
+ * they have no worker to claim them, but they keep recording step runs back to
+ * back while their host process lives. A stalled synchronous run is therefore
+ * finalized on the same activity criterion.
  */
 final readonly class OrphanRunFinisher
 {
@@ -68,10 +72,6 @@ final readonly class OrphanRunFinisher
         $finished = [];
 
         foreach ($candidates as $run) {
-            if ($run->isSynchronous()) {
-                continue;
-            }
-
             if (in_array($run->runId(), $processingRunIds, true)) {
                 continue;
             }

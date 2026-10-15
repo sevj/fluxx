@@ -286,7 +286,7 @@ runs_active:
     feed_failed: Échec
     feed_retrying: Nouvel essai
     orphaned: Orphelin
-    orphaned_help: "Aucune activité worker dans la fenêtre de staleness : le run ne peut plus progresser et sera clôturé automatiquement. Utilisez l'auto-réparation pour le clôturer maintenant."
+    orphaned_help: "Aucune activité dans la fenêtre de staleness : aucun worker ne traite ce run et il ne peut plus progresser. Il sera clôturé automatiquement, ou via l'auto-réparation pour agir immédiatement."
 
 run_show:
     title: Détail de l'exécution

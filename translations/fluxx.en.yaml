@@ -286,7 +286,7 @@ runs_active:
     feed_failed: Failed
     feed_retrying: Retrying
     orphaned: Orphaned
-    orphaned_help: 'No worker activity within the staleness window: the run can no longer make progress and will be closed automatically. Use self-healing to close it now.'
+    orphaned_help: 'No activity within the staleness window: no worker is processing this run and it can no longer make progress. It will be closed automatically, or use self-healing to close it now.'
 
 run_show:
     title: Run detail

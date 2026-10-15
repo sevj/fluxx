@@ -8,6 +8,15 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-15
+
+### Fixed
+- Orphan-run self-healing now also covers synchronous (in-process) runs: they
+  were previously excluded, yet production data showed they are the primary
+  source of eternal runs (CLI/host process killed mid-run). Synchronous runs are
+  finalized on step-activity staleness alone, as they have no worker claim to
+  check. The live view flags stalled synchronous runs the same way.
+
 ## [1.10.0] - 2026-10-15
 
 ### Added
