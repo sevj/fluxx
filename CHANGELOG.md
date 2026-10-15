@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
-## [Unreleased]
+## [1.10.2] - 2026-10-15
+
+### Changed
+- The "Active runs" live view lists the most recently started runs first instead
+  of oldest first.
 
 ## [1.10.1] - 2026-10-15
 
