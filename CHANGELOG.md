@@ -8,6 +8,29 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-15
+
+### Added
+- "Active runs" live view (`/fluxx/runs/active`, nav link "Active runs") focused on what the
+  application is executing right now, as an operational complement to the runs catalog
+  (history) and the runtime dashboard (queues and workers, admin-only):
+  - one card per in-progress run (`pending`, `relaunched`, `retrying`, `running`, oldest first,
+    capped at 50) showing source/target systems, trigger, status badge, elapsed time, and the
+    workers currently processing it;
+  - the steps currently executing per run (`running`/`relaunched` steps without a finish time,
+    with elapsed time and step-type tone) and a progress bar with completed/failed steps over
+    the workflow's total step count;
+  - a "Latest activity" feed listing step runs recorded or updated within the last 15 minutes
+    (queued, running, completed, failed, retrying) with links to the run detail;
+  - summary counters (active runs, steps executing, busy workers) refreshed every second by a
+    fragment polling endpoint (`/fluxx/runs/active/poll`), with the same pause/resume and
+    offline/error indicators as the runs catalog.
+- `WorkflowRunRepository::findActiveRuns` and
+  `WorkflowStepRunRepository::findRecentActivity` repository queries backing the view.
+- `Fluxx\Ui\ActiveRunBoard`, `ActiveRunsViewFactory` and their read-only view objects
+  (`ActiveRunBoardPage`, `ActiveRunRowView`, `ActiveRunStepView`, `ActiveRunActivityView`).
+- Unit tests for the progress/current-step/activity window rules.
+
 ## [1.7.2] - 2026-10-12
 
 ### Added

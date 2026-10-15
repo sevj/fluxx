@@ -1,0 +1,96 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<div class="active-runs-summary">
+    <div class="active-runs-summary-item">
+        <span class="active-runs-summary-value">{{ activeBoard.activeRunCount }}</span>
+        <span class="active-runs-summary-label">{{ 'runs_active.summary_runs'|trans }}</span>
+    </div>
+    <div class="active-runs-summary-item">
+        <span class="active-runs-summary-value">{{ activeBoard.runningStepCount }}</span>
+        <span class="active-runs-summary-label">{{ 'runs_active.summary_steps'|trans }}</span>
+    </div>
+    <div class="active-runs-summary-item">
+        <span class="active-runs-summary-value">{{ activeBoard.busyWorkerCount }}</span>
+        <span class="active-runs-summary-label">{{ 'runs_active.summary_workers'|trans }}</span>
+    </div>
+</div>
+
+{% if activeBoard.rows is empty %}
+    <section class="empty">
+        {{ 'runs_active.empty'|trans }}
+    </section>
+{% else %}
+    <div class="active-runs-list">
+        {% for run in activeBoard.rows %}
+            <article class="active-run-card clickable-row" data-row-href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" tabindex="0" role="link">
+                <header class="active-run-header">
+                    <div class="active-run-title">
+                        <a href="{{ path('fluxx_workflow_show', {'code': run.workflowCode}) }}" class="workflow-link">
+                            <span class="workflow-name">{{ run.workflowName ?: run.workflowCode }}</span>
+                        </a>
+                        <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="run-id">{{ run.runId }}</a>
+                        <span class="status-badge status-badge-{{ run.status|replace({'_': '-'}) }}">{{ ('workflow_status.' ~ run.status)|trans }}</span>
+                    </div>
+                    <div class="active-run-meta">
+                        <span class="system-chip system-chip-source">{{ run.sourceSystem }}</span>
+                        <span class="active-run-arrow" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
+                        <span class="system-chip system-chip-target">{{ run.targetSystem }}</span>
+                        <span class="system-chip">{{ run.trigger }}</span>
+                        <span class="active-run-duration" title="{{ 'runs_active.duration'|trans }}">{{ run.durationLabel }}</span>
+                    </div>
+                </header>
+
+                {% if run.currentSteps is not empty %}
+                    <div class="active-run-steps">
+                        {% for step in run.currentSteps %}
+                            <div class="active-run-step step-tone-{{ step.typeTone }} step-tone-surface"{% if step.typeToneStyle %} style="{{ step.typeToneStyle }}"{% endif %}>
+                                <span class="step-tone-pill" title="{{ step.code }}">{{ icons.icon('activity') }} {{ step.name }}</span>
+                                <span class="active-run-step-elapsed" title="{{ 'runs_active.current_step_since'|trans }}">{{ step.elapsedLabel }}</span>
+                            </div>
+                        {% endfor %}
+                        {% if run.workerNames is not empty %}
+                            <span class="active-run-worker" title="{{ 'runs_active.worker'|trans }}">{{ icons.icon('server') }} {{ run.workerNames|join(', ') }}</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <div class="active-run-progress">
+                    <div class="active-run-progress-bar" role="progressbar" aria-valuenow="{{ run.progressPercent|round(0, 'floor') }}" aria-valuemin="0" aria-valuemax="100">
+                        <div class="active-run-progress-fill" style="width: {{ run.progressPercent }}%"></div>
+                        {% set failedPercent = run.totalSteps > 0 ? ((run.failedSteps / run.totalSteps) * 100) : 0 %}
+                        {% if failedPercent > 0 %}
+                            <div class="active-run-progress-failed" style="width: {{ failedPercent }}%"></div>
+                        {% endif %}
+                    </div>
+                    <span class="active-run-progress-label">
+                        {{ 'runs_active.progress'|trans({'%completed%': run.completedSteps, '%total%': run.totalSteps}) }}
+                        {% if run.failedSteps > 0 %}
+                            <span class="active-run-progress-failed-label">{{ 'runs_active.progress_failed'|trans({'%count%': run.failedSteps}) }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="active-run-activity">
+    <h2 class="active-run-activity-title">{{ 'runs_active.feed_title'|trans }}</h2>
+    {% if activeBoard.activities is empty %}
+        <p class="active-run-activity-empty">{{ 'runs_active.feed_empty'|trans }}</p>
+    {% else %}
+        <ul class="active-run-activity-list">
+            {% for activity in activeBoard.activities %}
+                <li class="active-run-activity-item step-tone-{{ activity.typeTone }} step-tone-surface"{% if activity.typeToneStyle %} style="{{ activity.typeToneStyle }}"{% endif %}>
+                    <span class="active-run-activity-time">{{ activity.occurredAt|date('H:i:s') }}</span>
+                    <span class="status-badge status-badge-{{ activity.kind }}">{{ ('runs_active.feed_' ~ activity.kind)|trans }}</span>
+                    <span class="active-run-activity-step">{{ activity.stepName }}</span>
+                    <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': activity.workflowCode, 'runId': activity.runId}) }}" class="active-run-activity-run">{{ activity.runId }}</a>
+                    {% if activity.errorMessage %}
+                        <span class="active-run-activity-error" title="{{ activity.errorMessage|e('html_attr') }}">{{ activity.errorMessage|slice(0, 90) }}{% if activity.errorMessage|length > 90 %}…{% endif %}</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</div>

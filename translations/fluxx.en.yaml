@@ -5,6 +5,7 @@ navigation:
     workflows: Workflows
     statistics: Statistics
     runs: Runs
+    active_runs: Active runs
     runtime: Runtime
     health: Health
     troubleshooting: Troubleshooting
@@ -254,6 +255,36 @@ run_index:
     synchronous: Synchronous
     synchronous_title: 'Workflow launched synchronously (in-process, no worker)'
     asynchronous_title: 'Workflow launched asynchronously (worker via Messenger)'
+
+runs_active:
+    title: Active runs
+    heading: Active runs
+    subtitle: What the application is executing right now. The view refreshes automatically.
+    empty: No run is currently in progress.
+    loading: Loading
+    pause_polling: Pause polling
+    resume_polling: Resume polling
+    polling: Refreshing
+    refresh_failed: Refresh failed
+    state_live: Live
+    state_error: Error
+    state_offline: Offline
+    waiting: Waiting
+    summary_runs: Active runs
+    summary_steps: Steps executing
+    summary_workers: Busy workers
+    duration: Time since the run started
+    current_step_since: Time since the step started
+    worker: Workers currently executing this run
+    progress: '%completed% of %total% steps completed'
+    progress_failed: '%count% failed'
+    feed_title: Latest activity
+    feed_empty: No step activity recorded in the last 15 minutes.
+    feed_pending: Queued
+    feed_running: Running
+    feed_completed: Completed
+    feed_failed: Failed
+    feed_retrying: Retrying
 
 run_show:
     title: Run detail

@@ -26,6 +26,13 @@
                 {{ 'navigation.runs'|trans }}
             </a>
             <a
+                href="{{ path('fluxx_run_active') }}"
+                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_run_active' ? ' is-active' : '' }}"
+            >
+                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('activity') }}</span>
+                {{ 'navigation.active_runs'|trans }}
+            </a>
+            <a
                 href="{{ path('fluxx_statistics_index') }}"
                 class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_statistics_index' ? ' is-active' : '' }}"
             >

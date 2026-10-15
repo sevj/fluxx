@@ -19,6 +19,7 @@ final class ScriptAssetController extends AbstractController
         'runtime-monitor' => 'runtime-monitor.js',
         'workflow-groups' => 'workflow-groups.js',
         'run-catalog' => 'run-catalog.js',
+        'run-active' => 'run-active.js',
     ];
 
     public function __invoke(string $script): BinaryFileResponse

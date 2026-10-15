@@ -7,6 +7,7 @@ Fluxx is a Symfony bundle for orchestrating operational synchronization workflow
 - workflow definition registry discovered from the host application
 - asynchronous step execution through Symfony Messenger
 - runtime monitoring for workers, locks, backlog, and in-flight messages
+- an "active runs" live view of what is executing right now (current step per run, progress, latest activity)
 - run relaunch flows from the full run or a specific step
 - retry metadata, error classification, and lock/idempotence visibility
 - an operator UI for workflows, runtime, users, and step-run details

@@ -1,0 +1,75 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ 'runs_active.title'|trans }}</title>
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: '20260616-js-split'}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'run-active', v: '20261015-active'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20261015-active'}) }}">
+</head>
+<body>
+    <main class="page">
+        {% include '@Fluxx/_navigation.html.twig' %}
+
+        <div class="page-stack">
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <section class="section-card">
+                        <div class="status-badge status-badge-{{ type == 'error' ? 'failed' : 'completed' }}">{{ message }}</div>
+                    </section>
+                {% endfor %}
+            {% endfor %}
+
+            <header class="header">
+                <div>
+                    <h1 class="title"><span class="title-icon" aria-hidden="true">{{ icons.icon('activity') }}</span>{{ 'runs_active.heading'|trans }}</h1>
+                    <p class="subtitle">{{ 'runs_active.subtitle'|trans }}</p>
+                </div>
+            </header>
+
+            <section class="section-card">
+                <div class="polling-controls"
+                    data-run-active
+                    data-run-active-poll-url="{{ path('fluxx_run_active_poll') }}"
+                    data-run-active-poll-interval="1000"
+                    data-run-active-poll-pause-label="{{ 'runs_active.pause_polling'|trans }}"
+                    data-run-active-poll-resume-label="{{ 'runs_active.resume_polling'|trans }}"
+                    data-run-active-poll-loading-label="{{ 'runs_active.polling'|trans }}"
+                    data-run-active-poll-state-live-label="{{ 'runs_active.state_live'|trans }}"
+                    data-run-active-poll-state-error-label="{{ 'runs_active.state_error'|trans }}"
+                    data-run-active-poll-state-offline-label="{{ 'runs_active.state_offline'|trans }}"
+                    data-run-active-poll-refresh-failed-label="{{ 'runs_active.refresh_failed'|trans }}"
+                >
+                    <span class="status-badge status-badge-pending" data-run-active-state>{{ 'runs_active.loading'|trans }}</span>
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-run-active-poll-toggle
+                        aria-pressed="true"
+                    >
+                        <span class="button-icon button-icon-toggle" aria-hidden="true">
+                            <span class="icon-when-active">{{ icons.icon('pause') }}</span>
+                            <span class="icon-when-inactive">{{ icons.icon('play') }}</span>
+                        </span>
+                        <span class="button-label" data-run-active-button-label>{{ 'runs_active.pause_polling'|trans }}</span>
+                    </button>
+                    <span class="polling-indicator" data-run-active-poll-loader hidden>
+                        <span class="polling-spinner" aria-hidden="true"></span>
+                        <span>{{ 'runs_active.polling'|trans }}</span>
+                    </span>
+                    <span class="runtime-refresh" data-run-active-refresh>{{ 'runs_active.waiting'|trans }}</span>
+                </div>
+
+                <div data-run-active-content>
+                    {% include '@Fluxx/runs/_active_runs_content.html.twig' %}
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

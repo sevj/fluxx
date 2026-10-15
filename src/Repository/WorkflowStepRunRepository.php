@@ -131,6 +131,23 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
         return $grouped;
     }
 
+    /**
+     * @return list<WorkflowStepRun>
+     */
+    public function findRecentActivity(int $limit = 40): array
+    {
+        /** @var list<WorkflowStepRun> $stepRuns */
+        $stepRuns = $this->createQueryBuilder('workflow_step_run')
+            ->innerJoin('workflow_step_run.workflowRun', 'workflow_run')
+            ->addSelect('workflow_run')
+            ->orderBy('workflow_step_run.id', 'DESC')
+            ->setMaxResults(max($limit, 1))
+            ->getQuery()
+            ->getResult();
+
+        return $stepRuns;
+    }
+
     public function findOneByWorkflowNameRunIdAndStepName(string $workflowName, string $runId, string $stepName): ?WorkflowStepRun
     {
         /** @var WorkflowStepRun|null $stepRun */
