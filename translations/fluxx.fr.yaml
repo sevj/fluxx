@@ -285,6 +285,8 @@ runs_active:
     feed_completed: Terminée
     feed_failed: Échec
     feed_retrying: Nouvel essai
+    orphaned: Orphelin
+    orphaned_help: "Aucune activité worker dans la fenêtre de staleness : le run ne peut plus progresser et sera clôturé automatiquement. Utilisez l'auto-réparation pour le clôturer maintenant."
 
 run_show:
     title: Détail de l'exécution
@@ -575,6 +577,7 @@ runtime_index:
         purge_dead_consumers: Purger les consommateurs morts
         reclaim_pending: Récupérer les messages en attente
         release_stale_locks: Libérer les verrous périmés
+        finish_orphan_runs: Clôturer les runs orphelins
     lock_actions: Actions
     release_lock: Libérer
     release_lock_confirm: 'Libérer le verrou actif de cette exécution ? Les exécutions en aval bloquées pourront ensuite reprendre.'

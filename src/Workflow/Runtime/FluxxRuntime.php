@@ -432,6 +432,15 @@ final class FluxxRuntime
             return;
         }
 
+        if (in_array($workflowRun->status(), [
+            WorkflowRunStatus::Completed,
+            WorkflowRunStatus::Failed,
+            WorkflowRunStatus::PartiallyFailed,
+            WorkflowRunStatus::Cancelled,
+        ], true)) {
+            return;
+        }
+
         $latestStepRunsByCode = $this->latestStepRunsByCode($workflowRun);
         $decision = $this->workflowRunCompletionDecider->decide(
             $definition,

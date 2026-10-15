@@ -132,6 +132,15 @@
                         <span class="button-label">{{ 'runtime_index.self_heal.release_stale_locks'|trans }}</span>
                     </button>
                 </form>
+                <form method="post" action="{{ path('fluxx_runtime_self_heal') }}" class="inline-form">
+                    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.runtime.self_heal.finish_orphan_runs') }}">
+                    <input type="hidden" name="action" value="finish_orphan_runs">
+                    <input type="hidden" name="_redirect" value="{{ path('fluxx_runtime_index') }}">
+                    <button type="submit" class="secondary-button">
+                        <span class="button-icon" aria-hidden="true">{{ icons.icon('alert-triangle') }}</span>
+                        <span class="button-label">{{ 'runtime_index.self_heal.finish_orphan_runs'|trans }}</span>
+                    </button>
+                </form>
             </div>
         </section>
 

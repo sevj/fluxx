@@ -7,6 +7,7 @@ namespace Fluxx\Command;
 use Fluxx\Operations\DeadConsumerPurger;
 use Fluxx\Operations\PendingMessageReclaimer;
 use Fluxx\Operations\StaleLockReleaser;
+use Fluxx\Operations\OrphanRunFinisher;
 use Fluxx\Operations\StaleWorkerPruner;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -15,7 +16,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'fluxx:runtime:self-heal', description: 'Run all Fluxx runtime self-healing steps (prune workers, release stale locks, purge dead consumers, reclaim pending).')]
+#[AsCommand(name: 'fluxx:runtime:self-heal', description: 'Run all Fluxx runtime self-healing steps (prune workers, release stale locks, purge dead consumers, reclaim pending, finish orphan runs).')]
 final class SelfHealCommand extends Command
 {
     public function __construct(
@@ -23,6 +24,7 @@ final class SelfHealCommand extends Command
         private readonly DeadConsumerPurger $consumerPurger,
         private readonly PendingMessageReclaimer $messageReclaimer,
         private readonly StaleLockReleaser $lockReleaser,
+        private readonly OrphanRunFinisher $orphanRunFinisher,
     ) {
         parent::__construct();
     }
@@ -33,8 +35,10 @@ final class SelfHealCommand extends Command
         $this->addOption('stale-heartbeat', null, InputOption::VALUE_REQUIRED, 'Mark rows with no heartbeat for this many seconds as stopped.', 120);
         $this->addOption('min-idle', null, InputOption::VALUE_REQUIRED, 'Dead consumer / reclaim threshold in seconds.', 60);
         $this->addOption('count', null, InputOption::VALUE_REQUIRED, 'Maximum pending entries to reclaim.', 100);
+        $this->addOption('orphan-threshold', null, InputOption::VALUE_REQUIRED, 'Finish runs with no worker activity for this many seconds. 0 uses the stale lock timeout setting.', 0);
         $this->addOption('skip-reclaim', null, InputOption::VALUE_NONE, 'Do not reclaim pending messages.');
         $this->addOption('skip-locks', null, InputOption::VALUE_NONE, 'Do not release stale locks.');
+        $this->addOption('skip-orphans', null, InputOption::VALUE_NONE, 'Do not finish orphaned runs.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -79,6 +83,18 @@ final class SelfHealCommand extends Command
             try {
                 $locks = $this->lockReleaser->releaseStale(staleHeartbeatSeconds: (int) $input->getOption('stale-heartbeat'));
                 $io->text(sprintf('%d stale lock(s) released.', count($locks)));
+            } catch (\Throwable $exception) {
+                $io->error($exception->getMessage());
+                ++$failures;
+            }
+        }
+
+        if (!$input->getOption('skip-orphans')) {
+            $io->section('Finishing orphaned runs');
+            try {
+                $orphanThreshold = (int) $input->getOption('orphan-threshold');
+                $finished = $this->orphanRunFinisher->finishOrphanRuns($orphanThreshold > 0 ? $orphanThreshold : null);
+                $io->text(sprintf('%d orphaned run(s) finalized as failed.', count($finished)));
             } catch (\Throwable $exception) {
                 $io->error($exception->getMessage());
                 ++$failures;

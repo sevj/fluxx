@@ -8,6 +8,36 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-15
+
+### Added
+- Self-healing for orphaned runs. A run whose worker died (crash, OOM, container
+  loss) used to stay `running`/`retrying`/`pending` forever:
+  - `Fluxx\Operations\OrphanRunFinisher` finalizes runs with no live claim from a
+    processing worker and no recorded activity within the stale-lock window as
+    `failed`, marks their unfinished step runs failed with the same message, and
+    releases their execution lock. Synchronous (in-process) runs are excluded.
+  - `Fluxx\Runtime\WorkerState\OrphanRunWatchdog` listens to worker idle ticks
+    (fluxx transport only) and invokes the finisher at most every 60 seconds,
+    using the `stale_lock_timeout_seconds` setting as the staleness window.
+    Healing is now automatic: any live worker closes orphaned runs within a
+    minute, with no operator action.
+- `fluxx:runtime:self-heal` gains `--orphan-threshold` (0 = setting value) and
+  `--skip-orphans`, and now finishes orphaned runs as its final step.
+- Runtime dashboard self-healing panel and `RuntimeSelfHealController` gain a
+  "Close orphaned runs" action (admin).
+- The "Active runs" live view flags suspected orphaned runs (no worker claim and
+  no activity within the staleness window) with an explanatory badge.
+- `RuntimeWorkerStateRepository::findProcessingRunIds` distinguishes workers
+  claiming a run between two dispatched steps from mid-step processing where no
+  heartbeat is emitted.
+
+### Fixed
+- `FluxxRuntime` no longer recomputes a run status when it reached a terminal
+  state between the step dispatch and the completion check, preventing a
+  watchdog-or operator-finalized run from being resurrected (`completed`,
+  `running` or `retaining`) by a step that was still executing.
+
 ## [1.9.0] - 2026-10-15
 
 ### Added

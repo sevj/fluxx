@@ -30,6 +30,9 @@
                         </a>
                         <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="run-id">{{ run.runId }}</a>
                         <span class="status-badge status-badge-{{ run.status|replace({'_': '-'}) }}">{{ ('workflow_status.' ~ run.status)|trans }}</span>
+                        {% if run.isOrphaned %}
+                            <span class="status-badge status-badge-failed" title="{{ 'runs_active.orphaned_help'|trans }}">{{ 'runs_active.orphaned'|trans }}</span>
+                        {% endif %}
                     </div>
                     <div class="active-run-meta">
                         <span class="system-chip system-chip-source">{{ run.sourceSystem }}</span>

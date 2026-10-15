@@ -62,4 +62,46 @@ final class RuntimeWorkerStateRepository extends ServiceEntityRepository impleme
             ->getQuery()
             ->getSingleScalarResult() > 0;
     }
+
+    /**
+     * Returns the distinct run identifiers from the provided list that a worker
+     * is still claiming: either a fresh processing heartbeat (between two
+     * dispatched steps) or a processing slot started recently (mid-step, where
+     * no heartbeat is emitted until the handler returns).
+     *
+     * @param list<string> $runIds
+     * @return list<string>
+     */
+    public function findProcessingRunIds(
+        array $runIds,
+        DateTimeImmutable $heartbeatThreshold,
+        DateTimeImmutable $processingStartedThreshold,
+    ): array {
+        if ($runIds === []) {
+            return [];
+        }
+
+        /** @var list<RuntimeWorkerState> $workerStates */
+        $workerStates = $this->createQueryBuilder('runtime_worker_state')
+            ->andWhere('runtime_worker_state.runId IN (:runIds)')
+            ->andWhere('runtime_worker_state.status = :status')
+            ->setParameter('runIds', array_values(array_unique($runIds)))
+            ->setParameter('status', 'processing')
+            ->getQuery()
+            ->getResult();
+
+        $liveRunIds = [];
+
+        foreach ($workerStates as $workerState) {
+            $hasFreshHeartbeat = $workerState->lastHeartbeatAt() >= $heartbeatThreshold;
+            $hasRecentProcessingStart = $workerState->startedProcessingAt() !== null
+                && $workerState->startedProcessingAt() >= $processingStartedThreshold;
+
+            if ($hasFreshHeartbeat || $hasRecentProcessingStart) {
+                $liveRunIds[$workerState->runId()] = true;
+            }
+        }
+
+        return array_keys($liveRunIds);
+    }
 }

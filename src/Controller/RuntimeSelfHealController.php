@@ -6,6 +6,7 @@ namespace Fluxx\Controller;
 
 use Fluxx\Http\InternalRedirectTarget;
 use Fluxx\Operations\DeadConsumerPurger;
+use Fluxx\Operations\OrphanRunFinisher;
 use Fluxx\Operations\PendingMessageReclaimer;
 use Fluxx\Operations\StaleLockReleaser;
 use Fluxx\Operations\StaleWorkerPruner;
@@ -24,6 +25,7 @@ final class RuntimeSelfHealController extends AbstractController
         private readonly DeadConsumerPurger $consumerPurger,
         private readonly PendingMessageReclaimer $messageReclaimer,
         private readonly StaleLockReleaser $lockReleaser,
+        private readonly OrphanRunFinisher $orphanRunFinisher,
     ) {
     }
 
@@ -41,7 +43,7 @@ final class RuntimeSelfHealController extends AbstractController
                 'prune_workers' => $this->pruneWorkers(),
                 'purge_dead_consumers' => $this->purgeDeadConsumers(),
                 'reclaim_pending' => $this->reclaimPending(),
-                'release_stale_locks' => $this->releaseStaleLocks(),
+                'finish_orphan_runs' => $this->finishOrphanRuns(),
                 default => throw new \InvalidArgumentException(sprintf('Unknown self-healing action "%s".', $action)),
             };
 
@@ -105,5 +107,16 @@ final class RuntimeSelfHealController extends AbstractController
         }
 
         return sprintf('Released %d stale lock(s).', count($released));
+    }
+
+    private function finishOrphanRuns(): string
+    {
+        $finished = $this->orphanRunFinisher->finishOrphanRuns();
+
+        if ($finished === []) {
+            return 'No orphaned run was found.';
+        }
+
+        return sprintf('Finalized %d orphaned run(s) as failed.', count($finished));
     }
 }

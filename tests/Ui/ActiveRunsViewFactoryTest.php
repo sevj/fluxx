@@ -33,7 +33,7 @@ final class ActiveRunsViewFactoryTest extends TestCase
         $write = $this->createStepRun($run, 'write', 1);
         $write->markRunning($start->modify('+1 second'));
 
-        $row = $this->factory()->row($run, [$read, $write], ['worker-1'], $now);
+        $row = $this->factory()->row(run: $run, stepRuns: [$read, $write], workerNames: ['worker-1'], hasLiveWorker: true, staleSeconds: 1800, now: $now);
 
         self::assertSame(1, $row->completedSteps());
         self::assertSame(3, $row->totalSteps());
@@ -59,7 +59,7 @@ final class ActiveRunsViewFactoryTest extends TestCase
         $write->markRunning($start->modify('+1 second'));
         $write->markFailed('Writing to target failed.');
 
-        $row = $this->factory()->row($run, [$read, $write], [], $now);
+        $row = $this->factory()->row(run: $run, stepRuns: [$read, $write], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now);
 
         self::assertSame(1, $row->failedSteps());
         self::assertSame(0, count($row->currentSteps()));
@@ -75,7 +75,7 @@ final class ActiveRunsViewFactoryTest extends TestCase
         $read = $this->createStepRun($run, 'read', 0);
         $read->markCompleted(processedCount: 1, successCount: 1, errorCount: 0, durationMs: 100);
 
-        $row = $this->factory()->row($run, [$read], [], $now);
+        $row = $this->factory()->row(run: $run, stepRuns: [$read], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now);
 
         self::assertSame(1, $row->totalSteps());
         self::assertNull($row->workflowName());
@@ -138,6 +138,47 @@ final class ActiveRunsViewFactoryTest extends TestCase
 
         self::assertNotNull($activity);
         self::assertSame('retrying', $activity->kind());
+    }
+
+    #[Test]
+    public function it_flags_stale_runs_without_live_worker_as_orphaned(): void
+    {
+        $now = new DateTimeImmutable(self::NOW);
+        $run = $this->createRun(startedAt: $now->modify('-45 minutes'));
+        $read = $this->createStepRun($run, 'read', 0);
+        $read->markRunning($now->modify('-45 minutes'));
+        $read->markCompleted(processedCount: 1, successCount: 1, errorCount: 0, durationMs: 1000, finishedAt: $now->modify('-44 minutes'));
+
+        $row = $this->factory()->row(run: $run, stepRuns: [$read], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now);
+
+        self::assertTrue($row->isOrphaned());
+    }
+
+    #[Test]
+    public function it_does_not_flag_runs_with_recent_activity_or_live_worker(): void
+    {
+        $now = new DateTimeImmutable(self::NOW);
+        $run = $this->createRun(startedAt: $now->modify('-45 minutes'));
+        $read = $this->createStepRun($run, 'read', 0);
+        $read->markRunning($now->modify('-45 minutes'));
+        $read->markCompleted(processedCount: 1, successCount: 1, errorCount: 0, durationMs: 1000, finishedAt: $now->modify('-44 minutes'));
+
+        self::assertFalse($this->factory()->row(run: $run, stepRuns: [$read], workerNames: [], hasLiveWorker: true, staleSeconds: 1800, now: $now)->isOrphaned());
+
+        $freshRun = $this->createRun(startedAt: $now->modify('-2 minutes'));
+        self::assertFalse($this->factory()->row(run: $freshRun, stepRuns: [], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now)->isOrphaned());
+    }
+
+    #[Test]
+    public function it_never_flags_synchronous_runs_as_orphaned(): void
+    {
+        $now = new DateTimeImmutable(self::NOW);
+        $run = $this->createRun(startedAt: $now->modify('-2 hours'));
+        $run->markSynchronous();
+
+        $row = $this->factory()->row(run: $run, stepRuns: [], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now);
+
+        self::assertFalse($row->isOrphaned());
     }
 
     private function factory(): ActiveRunsViewFactory

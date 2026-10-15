@@ -285,6 +285,8 @@ runs_active:
     feed_completed: Completed
     feed_failed: Failed
     feed_retrying: Retrying
+    orphaned: Orphaned
+    orphaned_help: 'No worker activity within the staleness window: the run can no longer make progress and will be closed automatically. Use self-healing to close it now.'
 
 run_show:
     title: Run detail
@@ -575,6 +577,7 @@ runtime_index:
         purge_dead_consumers: Purge dead consumers
         reclaim_pending: Reclaim pending
         release_stale_locks: Release stale locks
+        finish_orphan_runs: Close orphaned runs
     lock_actions: Actions
     release_lock: Release
     release_lock_confirm: 'Release the active lock for this run? Downstream runs blocked by it will be able to proceed.'

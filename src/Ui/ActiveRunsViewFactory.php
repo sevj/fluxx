@@ -30,6 +30,8 @@ final readonly class ActiveRunsViewFactory
         WorkflowRun $run,
         array $stepRuns,
         array $workerNames,
+        bool $hasLiveWorker,
+        int $staleSeconds,
         DateTimeImmutable $now,
     ): ActiveRunRowView {
         $definition = $this->registry->has($run->workflowName())
@@ -64,6 +66,10 @@ final readonly class ActiveRunsViewFactory
             ? min(100.0, round(($completedSteps / $totalSteps) * 100.0, 1))
             : 0.0;
 
+        $isOrphaned = !$hasLiveWorker
+            && !$run->isSynchronous()
+            && $this->resolveLastActivityAt($run, $stepRuns) < $now->modify(sprintf('-%d seconds', max($staleSeconds, 1)));
+
         return new ActiveRunRowView(
             runId: $run->runId(),
             workflowCode: $run->workflowName(),
@@ -81,6 +87,7 @@ final readonly class ActiveRunsViewFactory
             progressPercent: $progressPercent,
             currentSteps: $currentSteps,
             workerNames: $workerNames,
+            isOrphaned: $isOrphaned,
         );
     }
 
@@ -167,6 +174,24 @@ final readonly class ActiveRunsViewFactory
         }
 
         return $stepCode;
+    }
+
+    /**
+     * @param list<WorkflowStepRun> $stepRuns
+     */
+    private function resolveLastActivityAt(WorkflowRun $run, array $stepRuns): DateTimeImmutable
+    {
+        $lastActivityAt = $run->startedAt() ?? $run->createdAt();
+
+        foreach ($stepRuns as $stepRun) {
+            $activityAt = $stepRun->finishedAt() ?? $stepRun->startedAt() ?? $stepRun->createdAt();
+
+            if ($activityAt > $lastActivityAt) {
+                $lastActivityAt = $activityAt;
+            }
+        }
+
+        return $lastActivityAt;
     }
 
     private function elapsedMs(DateTimeImmutable $from, DateTimeImmutable $to): int

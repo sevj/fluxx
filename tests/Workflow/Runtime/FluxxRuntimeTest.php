@@ -14,6 +14,7 @@ use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\FluxxSettingLookupInterface;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
+use Fluxx\Tests\Fixture\RunInterruptingStep;
 use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Tests\Fixture\InMemoryStepRunLookup;
 use Fluxx\Tests\Fixture\StubIdempotentStep;
@@ -163,6 +164,20 @@ final class FluxxRuntimeTest extends TestCase
         $result = $this->runtime->runStep('run-1', 'fetch');
 
         self::assertSame([], $result);
+    }
+
+    #[Test]
+    public function it_does_not_resurrect_a_run_marked_terminal_during_step_execution(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->workflowExecutionLockManager->expects(self::never())->method('releaseForRun');
+
+        $this->registryWithHandler(new RunInterruptingStep($workflowRun));
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame(WorkflowRunStatus::Failed, $workflowRun->status());
     }
 
     #[Test]

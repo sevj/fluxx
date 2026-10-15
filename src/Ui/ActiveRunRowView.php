@@ -25,6 +25,7 @@ final readonly class ActiveRunRowView
         private float $progressPercent,
         private array $currentSteps,
         private array $workerNames,
+        private bool $isOrphaned,
     ) {
     }
 
@@ -112,5 +113,10 @@ final readonly class ActiveRunRowView
     public function workerNames(): array
     {
         return $this->workerNames;
+    }
+
+    public function isOrphaned(): bool
+    {
+        return $this->isOrphaned;
     }
 }
