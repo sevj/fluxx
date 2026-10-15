@@ -59,6 +59,13 @@ final readonly class ActiveRunBoard
             $runningStepCount += count($row->currentSteps());
         }
 
+        usort($rows, static function (ActiveRunRowView $a, ActiveRunRowView $b): int {
+            $aStarted = $a->startedAt() ?? $a->createdAt();
+            $bStarted = $b->startedAt() ?? $b->createdAt();
+
+            return $bStarted <=> $aStarted;
+        });
+
         $activities = [];
 
         foreach ($recentStepRuns as $stepRun) {
