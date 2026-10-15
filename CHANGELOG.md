@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.10.5] - 2026-10-15
+
+### Removed
+- Dropped the redundant "Active runs" subtitle ("What the application is
+  executing right now. The view refreshes automatically.") below the page
+  heading; the `runs_active.subtitle` translation key was removed.
+
 ## [1.10.4] - 2026-10-15
 
 ### Fixed
