@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.10.6] - 2026-10-19
+
+### Added
+- Runtime dashboard: new "Rate limiters" panel. Every `limiter.*` service
+  registered by the host application (tag `rate_limiter`) is listed with its
+  remaining tokens, usage bar and next availability. Limiters are peeked with
+  `consume(0)` and therefore unkeyed: host applications must consume limiters
+  without a custom key (or accept that per-key budgets stay invisible).
+  Compound limiters are omitted: they hold no state of their own, the limiter
+  rows of their children already carry the full picture.
+
+### Fixed
+- `WorkflowRun::stepRuns` ordered its collection with string directions in
+  `#[ORM\OrderBy]`, which emits a `doctrine/orm` deprecation on every metadata
+  load (`Using "ASC" as an order by direction is deprecated in favor of passing
+  a SortDirection instance`). The mapping now passes `SortDirection::Ascending`
+  instances; the enum is provided transitively by `doctrine/orm` via
+  `symfony/polyfill-php86`.
+- Workflow graph on the run detail page: lanes for parallel fan-outs were
+  emitted in an arbitrary order (array spaceship comparison puts shorter
+  paths first), the fan-in collision resolver demoted wide split parents to a
+  single random free lane, and single-lane columns were re-spread evenly
+  across the full graph height, detaching children from their parent's lane
+  window. Concretely, wide workflows (e.g. many parallel Battle.net sync
+  branches feeding a merge) rendered with the parent block parked at a
+  pseudo-random row and long edges criss-crossing the picture. Terminal lanes
+  now follow the definition's reading order, spanners keep their lane window
+  (shifted only on a real conflict, demoted as a last resort), and children
+  stay nested inside their parent's span. Edges entering a merge node anchor
+  at the source's own lane so fan-ins render as a straight horizontal bus
+  instead of S-curves sweeping through unrelated cards.
+
 ## [1.10.5] - 2026-10-15
 
 ### Removed
