@@ -324,6 +324,7 @@ final readonly class WorkflowDetails
         $laneCoverage = $this->resolveFanInLaneCollisions($steps, $laneCoverage);
         $maxLane = $this->computeMaxLane($laneCoverage);
         [$laneCoverage, $rowCount] = $this->resolveLaneSpans($steps, $stepMap, $laneCoverage, $maxLane);
+        [$laneCoverage, $rowCount] = $this->compactLaneCoverage($laneCoverage);
         $graphRows = [];
 
         ksort($rows);
@@ -648,21 +649,27 @@ final readonly class WorkflowDetails
             return $coverage[$code] = $covered;
         }
 
-        $union = [];
+        // A multi-dependency step (branch join, shared "users" dependency...)
+        // must not inherit the union of its parents' lanes: joining one broad
+        // root-covering dependency with a branch-local one would blow the step
+        // up to a full-graph spanner and force the collision resolver to
+        // scatter whole columns. The step keeps the narrowest dependency
+        // window (its branch lane); fan-in convergence is restored afterwards
+        // by the merge widening in resolveLaneSpans().
+        $primary = null;
+        $primarySize = 0;
 
         foreach ($step->dependsOn() as $dependencyCode) {
             $parentCoverage = $this->resolveStepLaneCoverage($dependencyCode, $stepMap, $lanePaths, $branchPaths, $coverage);
+            $size = max($parentCoverage) - min($parentCoverage) + 1;
 
-            foreach ($parentCoverage as $lane) {
-                if (!in_array($lane, $union, true)) {
-                    $union[] = $lane;
-                }
+            if ($primary === null || $size < $primarySize) {
+                $primary = $parentCoverage;
+                $primarySize = $size;
             }
         }
 
-        sort($union);
-
-        return $coverage[$code] = $union;
+        return $coverage[$code] = $primary;
     }
 
     /**
@@ -875,6 +882,44 @@ final readonly class WorkflowDetails
         }
 
         return $highest;
+    }
+
+    /**
+     * Collisions are resolved by shifting and demoting steps to free lanes,
+     * which can leave fully unoccupied lanes between occupied ones: the graph
+     * would render those as dead vertical bands. Renumbering every lane while
+     * preserving the relative order (and therefore the contiguous windows of
+     * multi-lane spans) collapses the gaps without touching the topology.
+     *
+     * @param array<string, list<int>> $laneCoverage
+     * @return array{0: array<string, list<int>>, 1: int}
+     */
+    private function compactLaneCoverage(array $laneCoverage): array
+    {
+        $used = [];
+
+        foreach ($laneCoverage as $lanes) {
+            foreach ($lanes as $lane) {
+                $used[$lane] = true;
+            }
+        }
+
+        if ($used === []) {
+            return [$laneCoverage, 1];
+        }
+
+        $used = array_keys($used);
+        sort($used);
+        $remapping = array_flip($used);
+        $compacted = [];
+
+        foreach ($laneCoverage as $code => $lanes) {
+            $remapped = array_map(static fn (int $lane): int => $remapping[$lane] + 1, $lanes);
+            sort($remapped);
+            $compacted[$code] = $remapped;
+        }
+
+        return [$compacted, count($used)];
     }
 
     /**
