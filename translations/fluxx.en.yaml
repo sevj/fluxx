@@ -580,6 +580,12 @@ runtime_index:
     lock_actions: Actions
     release_lock: Release
     release_lock_confirm: 'Release the active lock for this run? Downstream runs blocked by it will be able to proceed.'
+    rate_limiters_title: Rate limiters
+    rate_limiter_name: Limiter
+    rate_limiter_remaining: Remaining
+    rate_limiter_usage: Usage
+    rate_limiter_retry: Next availability
+    rate_limiters_error: Rate limiter monitoring is unavailable.
 
 system_health:
     title: System health

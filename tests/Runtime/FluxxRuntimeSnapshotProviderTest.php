@@ -12,6 +12,7 @@ use Fluxx\Repository\RuntimeWorkerStateRepository;
 use Fluxx\Repository\WorkflowExecutionLockRepository;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Runtime\FluxxRuntimeSnapshotProvider;
+use Fluxx\Runtime\RateLimiter\RateLimiterSnapshotProvider;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\Message\RunWorkflowStepMessage;
 use Fluxx\Workflow\SynchronizationRegistry;
@@ -169,6 +170,7 @@ final class FluxxRuntimeSnapshotProviderTest extends TestCase
             workflowStepRunStatistics: new WorkflowStepRunStatistics($registry),
             registry: new SynchronizationRegistry([]),
             stepTypeRegistry: new StepTypeRegistry([]),
+            rateLimiterSnapshotProvider: new RateLimiterSnapshotProvider([]),
         );
     }
 

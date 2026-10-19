@@ -6,6 +6,7 @@ namespace Fluxx\Runtime;
 
 use DateTimeImmutable;
 use Fluxx\Entity\RuntimeWorkerState;
+use Fluxx\Runtime\RateLimiter\RateLimiterSnapshotProvider;
 use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\RuntimeWorkerStateRepository;
 use Fluxx\Repository\WorkflowExecutionLockRepository;
@@ -39,6 +40,7 @@ final readonly class FluxxRuntimeSnapshotProvider
         private WorkflowStepRunStatistics $workflowStepRunStatistics,
         private SynchronizationRegistry $registry,
         private StepTypeRegistry $stepTypeRegistry,
+        private RateLimiterSnapshotProvider $rateLimiterSnapshotProvider,
         #[Autowire('%fluxx.runtime.transport_name%')]
         private string $transportName = 'fluxx',
     ) {
@@ -75,6 +77,7 @@ final readonly class FluxxRuntimeSnapshotProvider
                 'workers' => [],
                 'activeLocks' => [],
                 'messages' => [],
+                'rateLimiters' => ['ok' => false, 'error' => null, 'limiters' => []],
             ];
         }
     }
@@ -115,6 +118,7 @@ final readonly class FluxxRuntimeSnapshotProvider
             'workers' => $workerRows,
             'activeLocks' => $activeLocks,
             'messages' => $messages,
+            'rateLimiters' => $this->rateLimiterSnapshotProvider->snapshot($refreshedAt),
         ];
     }
 

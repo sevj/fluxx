@@ -37,6 +37,11 @@
             workerCurrent: runtimeMonitor.dataset.runtimeLabelWorkerCurrent || 'Current message',
             workerRuntime: runtimeMonitor.dataset.runtimeLabelWorkerRuntime || 'Runtime',
             noLocks: runtimeMonitor.dataset.runtimeLabelNoLocks || 'No active workflow lock was detected.',
+            rateLimitName: runtimeMonitor.dataset.runtimeLabelRatelimitName || 'Limiter',
+            rateLimitRemaining: runtimeMonitor.dataset.runtimeLabelRatelimitRemaining || 'Remaining',
+            rateLimitUsage: runtimeMonitor.dataset.runtimeLabelRatelimitUsage || 'Usage',
+            rateLimitRetry: runtimeMonitor.dataset.runtimeLabelRatelimitRetry || 'Next availability',
+            rateLimitError: runtimeMonitor.dataset.runtimeLabelRatelimitError || 'Rate limiter monitoring is unavailable.',
             lockWorkflow: runtimeMonitor.dataset.runtimeLabelLockWorkflow || 'Workflow',
             lockRun: runtimeMonitor.dataset.runtimeLabelLockRun || 'Run',
             lockScope: runtimeMonitor.dataset.runtimeLabelLockScope || 'Scope',
@@ -51,6 +56,8 @@
         const queueTarget = runtimeMonitor.querySelector('[data-runtime-queue]');
         const workersTarget = runtimeMonitor.querySelector('[data-runtime-workers]');
         const locksTarget = runtimeMonitor.querySelector('[data-runtime-locks]');
+        const rateLimitSection = runtimeMonitor.querySelector('[data-runtime-ratelimit-section]');
+        const rateLimitTarget = runtimeMonitor.querySelector('[data-runtime-ratelimit]');
         const messagesTarget = runtimeMonitor.querySelector('[data-runtime-messages]');
         const stateTarget = runtimeMonitor.querySelector('[data-runtime-state]');
         const refreshTarget = runtimeMonitor.querySelector('[data-runtime-refresh]');
@@ -243,6 +250,59 @@
             }).join('');
         };
 
+        const renderRateLimiters = function (rateLimiters) {
+            if (!rateLimitTarget || !rateLimitSection) {
+                return;
+            }
+
+            const rows = (rateLimiters && rateLimiters.limiters) || [];
+            const monitoringFailed = !rateLimiters || rateLimiters.ok === false;
+
+            if (!rows.length && !monitoringFailed) {
+                rateLimitSection.hidden = true;
+
+                return;
+            }
+
+            rateLimitSection.hidden = false;
+
+            if (monitoringFailed) {
+                rateLimitTarget.innerHTML = '<tr><td colspan="4" class="runtime-table-empty">'
+                    + escapeHtml(rateLimiters.error || labels.rateLimitError)
+                    + '</td></tr>';
+                return;
+            }
+
+            rateLimitTarget.innerHTML = rows.map(function (limiter) {
+                if (!limiter.ok) {
+                    return '<tr>'
+                        + '<td data-label="' + escapeHtml(labels.rateLimitName) + '"><span class="run-id">' + escapeHtml(limiter.name) + '</span></td>'
+                        + '<td colspan="3" data-label="' + escapeHtml(labels.rateLimitUsage) + '"><div class="table-note metric-error">' + escapeHtml(limiter.error || labels.rateLimitError) + '</div></td>'
+                        + '</tr>';
+                }
+
+                const remaining = limiter.remaining ?? 0;
+                const limit = limiter.limit ?? 0;
+                const used = Math.min(Math.max(limiter.usedPercent ?? 0, 0), 100);
+                const toneClass = used >= 90 ? ' runtime-limiter-fill-danger' : used >= 70 ? ' runtime-limiter-fill-warn' : '';
+                const usage = '<div class="active-run-progress">'
+                    + '<div class="active-run-progress-bar"><div class="active-run-progress-fill' + toneClass + '" style="width: ' + used + '%;"></div></div>'
+                    + '<span class="active-run-progress-label metric-value">' + used + '%</span>'
+                    + '</div>';
+                const retry = limiter.accepted
+                    ? '-'
+                    : '<span class="metric-value">' + escapeHtml(formatDuration(limiter.retryAfterMs)) + '</span>'
+                        + '<div class="table-note table-note-compact">' + escapeHtml(formatDateTime(limiter.retryAfterAt)) + '</div>';
+
+                return '<tr>'
+                    + '<td data-label="' + escapeHtml(labels.rateLimitName) + '"><span class="run-id">' + escapeHtml(limiter.name) + '</span></td>'
+                    + '<td data-label="' + escapeHtml(labels.rateLimitRemaining) + '"><span class="metric-value">' + escapeHtml(remaining + ' / ' + limit) + '</span></td>'
+                    + '<td data-label="' + escapeHtml(labels.rateLimitUsage) + '">' + usage + '</td>'
+                    + '<td data-label="' + escapeHtml(labels.rateLimitRetry) + '">' + retry + '</td>'
+                    + '</tr>';
+            }).join('');
+        };
+
         const renderQueue = function (queue) {
             if (!queueTarget) {
                 return;
@@ -381,6 +441,7 @@
         const renderSnapshot = function (snapshot) {
             renderSummary(snapshot.summary || {});
             renderQueue(snapshot.queue || {});
+            renderRateLimiters(snapshot.rateLimiters);
             renderWorkers(snapshot.workers || []);
             renderLocks(snapshot.activeLocks || []);
             renderMessages(snapshot.messages || []);

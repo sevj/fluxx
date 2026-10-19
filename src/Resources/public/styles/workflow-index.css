@@ -3791,3 +3791,11 @@ a.run-id:hover {
         align-items: flex-start;
     }
 }
+
+.runtime-limiter-fill-warn {
+    background: color-mix(in srgb, var(--splitter-text) 55%, var(--surface-strong));
+}
+
+.runtime-limiter-fill-danger {
+    background: color-mix(in srgb, var(--error-text) 55%, var(--surface-strong));
+}

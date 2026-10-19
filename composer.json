@@ -21,7 +21,8 @@
         "symfony/security-http": "^7.3 || ^8.0",
         "symfony/twig-bundle": "^7.3 || ^8.0",
         "symfony/translation": "^7.3 || ^8.0",
-        "symfony/yaml": "^7.3 || ^8.0"
+        "symfony/yaml": "^7.3 || ^8.0",
+        "symfony/rate-limiter": "^7.3 || ^8.0"
     },
     "autoload": {
         "psr-4": {
@@ -42,7 +43,8 @@
         }
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.5 || ^12.4 || ^13.0"
+        "phpunit/phpunit": "^11.5 || ^12.4 || ^13.0",
+        "symfony/validator": "^7.3 || ^8.0"
     },
     "minimum-stability": "stable",
     "prefer-stable": true

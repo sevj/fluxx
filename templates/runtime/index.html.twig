@@ -8,8 +8,8 @@
     <title>{{ 'runtime_index.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: '20260616-js-lock-release'}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20260616-self-heal-lock'}) }}">
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: '20261017-ratelimits'}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20261017-ratelimits'}) }}">
 </head>
 <body>
     <main
@@ -45,6 +45,11 @@
         data-runtime-label-worker-current="{{ 'runtime_index.worker_current'|trans }}"
         data-runtime-label-worker-runtime="{{ 'runtime_index.worker_runtime'|trans }}"
         data-runtime-label-no-locks="{{ 'runtime_index.active_locks_empty'|trans }}"
+        data-runtime-label-ratelimit-name="{{ 'runtime_index.rate_limiter_name'|trans }}"
+        data-runtime-label-ratelimit-remaining="{{ 'runtime_index.rate_limiter_remaining'|trans }}"
+        data-runtime-label-ratelimit-usage="{{ 'runtime_index.rate_limiter_usage'|trans }}"
+        data-runtime-label-ratelimit-retry="{{ 'runtime_index.rate_limiter_retry'|trans }}"
+        data-runtime-label-ratelimit-error="{{ 'runtime_index.rate_limiters_error'|trans }}"
         data-runtime-label-lock-workflow="{{ 'runtime_index.lock_workflow'|trans }}"
         data-runtime-label-lock-run="{{ 'runtime_index.lock_run'|trans }}"
         data-runtime-label-lock-scope="{{ 'runtime_index.lock_scope'|trans }}"
@@ -167,6 +172,38 @@
                 <div class="runtime-overview-label">{{ 'runtime_index.oldest_pending_age'|trans }}</div>
                 <div class="runtime-overview-value">-</div>
             </article>
+        </section>
+
+        <section class="section-card" data-runtime-ratelimit-section hidden>
+            <div class="section-heading">
+                <div>
+                    <h2 class="section-title">{{ 'runtime_index.rate_limiters_title'|trans }}</h2>
+                </div>
+            </div>
+
+            <section class="workflow-list">
+                <table>
+                    <colgroup>
+                        <col style="width: 24%">
+                        <col style="width: 18%">
+                        <col style="width: 34%">
+                        <col style="width: 24%">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>{{ 'runtime_index.rate_limiter_name'|trans }}</th>
+                            <th>{{ 'runtime_index.rate_limiter_remaining'|trans }}</th>
+                            <th>{{ 'runtime_index.rate_limiter_usage'|trans }}</th>
+                            <th>{{ 'runtime_index.rate_limiter_retry'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody data-runtime-ratelimit>
+                        <tr>
+                            <td colspan="4" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
         </section>
 
         <section class="section-card">

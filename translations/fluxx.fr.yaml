@@ -580,6 +580,12 @@ runtime_index:
     lock_actions: Actions
     release_lock: Libérer
     release_lock_confirm: 'Libérer le verrou actif de cette exécution ? Les exécutions en aval bloquées pourront ensuite reprendre.'
+    rate_limiters_title: Limites de débit
+    rate_limiter_name: Limiteur
+    rate_limiter_remaining: Restant
+    rate_limiter_usage: Utilisation
+    rate_limiter_retry: Prochaine disponibilité
+    rate_limiters_error: Le suivi des limiteurs de débit est indisponible.
 
 system_health:
     title: Santé du système
