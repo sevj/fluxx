@@ -323,7 +323,6 @@ final readonly class WorkflowDetails
         $laneCoverage = $this->computeStepLaneCoverage($steps, $stepMap, $lanePaths, $branchPaths);
         $laneCoverage = $this->resolveFanInLaneCollisions($steps, $laneCoverage);
         $maxLane = $this->computeMaxLane($laneCoverage);
-        $laneCoverage = $this->centerColumnLanes($steps, $laneCoverage, $maxLane);
         [$laneCoverage, $rowCount] = $this->resolveLaneSpans($steps, $stepMap, $laneCoverage, $maxLane);
         $graphRows = [];
 
@@ -372,7 +371,7 @@ final readonly class WorkflowDetails
      */
     private function buildGraphEdges(array $steps, array $nodeMap): array
     {
-        $edges = [];
+        $pending = [];
 
         foreach ($steps as $step) {
             foreach ($step->dependsOn() as $dependencyCode) {
@@ -380,14 +379,64 @@ final readonly class WorkflowDetails
                     continue;
                 }
 
-                $edges[] = new WorkflowGraphEdgeView(
-                    from: $nodeMap[$dependencyCode],
-                    to: $nodeMap[$step->code()],
-                );
+                $pending[] = [$nodeMap[$dependencyCode], $nodeMap[$step->code()]];
             }
         }
 
+        $targetYs = $this->distributeFanInTargetYs($pending);
+        $edges = [];
+
+        foreach ($pending as $index => [$from, $to]) {
+            $edges[] = new WorkflowGraphEdgeView(
+                from: $from,
+                to: $to,
+                targetY: $targetYs[$index] ?? null,
+            );
+        }
+
         return $edges;
+    }
+
+    /**
+     * Merge cards render as a single centered card, so incoming fan-in edges
+     * must converge onto that card instead of stopping at each source lane.
+     * Entry points are spread across the card's height and ordered by source
+     * position so edges arriving from above connect above lower ones.
+     *
+     * @param list<array{0: WorkflowGraphNodeView, 1: WorkflowGraphNodeView}> $pending
+     * @return array<int, float>
+     */
+    private function distributeFanInTargetYs(array $pending): array
+    {
+        $groups = [];
+        $targetYs = [];
+
+        foreach ($pending as $index => [, $to]) {
+            if (count($to->step()->dependsOn()) < 2) {
+                continue;
+            }
+
+            $groups[$to->step()->code()][] = $index;
+        }
+
+        foreach ($groups as $indexes) {
+            usort(
+                $indexes,
+                fn (int $left, int $right): int => WorkflowGraphEdgeView::laneCenter($pending[$left][0])
+                    <=> WorkflowGraphEdgeView::laneCenter($pending[$right][0]),
+            );
+
+            $count = count($indexes);
+            $centerY = WorkflowGraphEdgeView::laneCenter($pending[$indexes[0]][1]);
+            $cardTop = $centerY - WorkflowGraphEdgeView::CARD_HEIGHT / 2 + WorkflowGraphEdgeView::CARD_END_INSET;
+            $cardBottom = $centerY + WorkflowGraphEdgeView::CARD_HEIGHT / 2 - WorkflowGraphEdgeView::CARD_END_INSET;
+
+            foreach ($indexes as $slot => $index) {
+                $targetYs[$index] = $cardTop + ($cardBottom - $cardTop) * ($count > 1 ? $slot / ($count - 1) : 0.5);
+            }
+        }
+
+        return $targetYs;
     }
 
     /**
@@ -500,9 +549,30 @@ final readonly class WorkflowDetails
             }
         }
 
-        usort($terminalPaths, static fn (array $left, array $right): int => $left <=> $right);
+        usort($terminalPaths, [$this, 'comparePaths']);
 
         return $terminalPaths;
+    }
+
+    /**
+     * Lexicographic branch-path comparison following the definition's reading
+     * order: element-wise from the left, a prefix sorts before its extensions
+     * so sibling branches keep their declared order across levels.
+     *
+     * @param list<int> $left
+     * @param list<int> $right
+     */
+    private function comparePaths(array $left, array $right): int
+    {
+        $length = min(count($left), count($right));
+
+        for ($index = 0; $index < $length; ++$index) {
+            if ($left[$index] !== $right[$index]) {
+                return $left[$index] <=> $right[$index];
+            }
+        }
+
+        return count($left) <=> count($right);
     }
 
     /**
@@ -596,6 +666,12 @@ final readonly class WorkflowDetails
     }
 
     /**
+     * Resolves lane conflicts inside each column without dismantling the
+     * branch structure: multi-lane spanners keep their (possibly shifted)
+     * lane window so parent boxes stay centered over their children, and
+     * single-lane steps move to the nearest free lane only when theirs is
+     * taken. Demotion to a fresh lane is the last resort.
+     *
      * @param list<WorkflowStepDefinitionView> $steps
      * @param array<string, list<int>> $laneCoverage
      * @return array<string, list<int>>
@@ -615,77 +691,190 @@ final readonly class WorkflowDetails
                 continue;
             }
 
-            $hasMultiLane = false;
+            $spanners = [];
+            $singles = [];
 
             foreach ($columnSteps as $step) {
-                if (count($laneCoverage[$step->code()] ?? [1]) > 1) {
-                    $hasMultiLane = true;
-                    break;
-                }
-            }
-
-            if (!$hasMultiLane) {
-                continue;
-            }
-
-            $sorted = $columnSteps;
-            usort(
-                $sorted,
-                static function (WorkflowStepDefinitionView $a, WorkflowStepDefinitionView $b) use ($laneCoverage): int {
-                    $lanesA = $laneCoverage[$a->code()] ?? [1];
-                    $lanesB = $laneCoverage[$b->code()] ?? [1];
-                    $cmp = count($lanesA) <=> count($lanesB);
-
-                    if ($cmp !== 0) {
-                        return $cmp;
-                    }
-
-                    $cmp = min($lanesA) <=> min($lanesB);
-
-                    if ($cmp !== 0) {
-                        return $cmp;
-                    }
-
-                    return $a->code() <=> $b->code();
-                },
-            );
-
-            $occupied = [];
-
-            foreach ($sorted as $step) {
                 $lanes = $laneCoverage[$step->code()] ?? [1];
 
                 if (count($lanes) > 1) {
-                    $chosen = null;
-
-                    foreach ($lanes as $lane) {
-                        if (!in_array($lane, $occupied, true)) {
-                            $chosen = $lane;
-                            break;
-                        }
-                    }
-
-                    if ($chosen === null) {
-                        $chosen = max(array_merge($occupied, $lanes)) + 1;
-                    }
-
-                    $laneCoverage[$step->code()] = [$chosen];
-                    $occupied[] = $chosen;
+                    $spanners[] = $step;
                 } else {
-                    $lane = $lanes[0];
+                    $singles[] = $step;
+                }
+            }
 
-                    if (in_array($lane, $occupied, true)) {
-                        $next = max(array_merge($occupied, [$lane])) + 1;
-                        $laneCoverage[$step->code()] = [$next];
-                        $occupied[] = $next;
-                    } else {
-                        $occupied[] = $lane;
+            if ($spanners === [] && $singles === []) {
+                continue;
+            }
+
+            usort(
+                $spanners,
+                static function (WorkflowStepDefinitionView $a, WorkflowStepDefinitionView $b) use ($laneCoverage): int {
+                    $lanesA = $laneCoverage[$a->code()] ?? [1];
+                    $lanesB = $laneCoverage[$b->code()] ?? [1];
+
+                    return [count($lanesB), min($lanesA), $a->code()] <=> [count($lanesA), min($lanesB), $b->code()];
+                },
+            );
+
+            usort(
+                $singles,
+                static function (WorkflowStepDefinitionView $a, WorkflowStepDefinitionView $b) use ($laneCoverage): int {
+                    $laneA = ($laneCoverage[$a->code()] ?? [1])[0] ?? 1;
+                    $laneB = ($laneCoverage[$b->code()] ?? [1])[0] ?? 1;
+
+                    return [$laneA, $a->code()] <=> [$laneB, $b->code()];
+                },
+            );
+
+            $spannerWindows = [];
+            $singleClaims = [];
+
+            foreach ($spanners as $step) {
+                $lanes = $laneCoverage[$step->code()] ?? [1];
+                $windowStart = min($lanes);
+                $windowEnd = max($lanes);
+                $size = $windowEnd - $windowStart + 1;
+
+                if (!$this->windowConflicts($windowStart, $windowEnd, $spannerWindows, $singleClaims)) {
+                    $spannerWindows[] = [$windowStart, $windowEnd];
+                    continue;
+                }
+
+                $shifted = $this->findFreeWindow($windowStart, $size, $spannerWindows, $singleClaims);
+
+                if ($shifted !== null) {
+                    $spannerWindows[] = $shifted;
+                    $laneCoverage[$step->code()] = range($shifted[0], $shifted[1]);
+
+                    continue;
+                }
+
+                $lane = $this->nearestFreeLane(range($windowStart, $windowEnd), $spannerWindows, $singleClaims)
+                    ?? ($this->highestClaim($spannerWindows, $singleClaims) + 1);
+                $spannerWindows[] = [$lane, $lane];
+                $laneCoverage[$step->code()] = [$lane];
+            }
+
+            foreach ($singles as $step) {
+                $lane = ($laneCoverage[$step->code()] ?? [1])[0] ?? 1;
+
+                if (!$this->laneClaimed($lane, $spannerWindows, $singleClaims)) {
+                    $singleClaims[$lane] = $step->code();
+
+                    continue;
+                }
+
+                $moved = $this->nearestFreeLane([$lane], $spannerWindows, $singleClaims)
+                    ?? ($this->highestClaim($spannerWindows, $singleClaims) + 1);
+                $singleClaims[$moved] = $step->code();
+                $laneCoverage[$step->code()] = [$moved];
+            }
+        }
+
+        return $laneCoverage;
+    }
+
+    /**
+     * @param array<int, array{0: int, 1: int}> $spannerWindows
+     * @param array<int, string> $singleClaims
+     */
+    private function windowConflicts(int $start, int $end, array $spannerWindows, array $singleClaims): bool
+    {
+        foreach ($spannerWindows as [$otherStart, $otherEnd]) {
+            if ($start <= $otherEnd && $otherStart <= $end) {
+                return true;
+            }
+        }
+
+        foreach (array_keys($singleClaims) as $lane) {
+            if ($lane >= $start && $lane <= $end) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Searches for the nearest fully free window of the requested size,
+     * probing outward from the original position so a spanner keeps its
+     * neighbours when it has to move.
+     *
+     * @param array<int, array{0: int, 1: int}> $spannerWindows
+     * @param array<int, string> $singleClaims
+     * @return array{0: int, 1: int}|null
+     */
+    private function findFreeWindow(int $preferredStart, int $size, array $spannerWindows, array $singleClaims): ?array
+    {
+        for ($offset = 0; $offset <= 32; ++$offset) {
+            foreach ([$preferredStart - $offset, $preferredStart + $offset] as $start) {
+                if ($start < 1) {
+                    continue;
+                }
+
+                if (!$this->windowConflicts($start, $start + $size - 1, $spannerWindows, $singleClaims)) {
+                    return [$start, $start + $size - 1];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param list<int> $preferences
+     * @param array<int, array{0: int, 1: int}> $spannerWindows
+     * @param array<int, string> $singleClaims
+     */
+    private function nearestFreeLane(array $preferences, array $spannerWindows, array $singleClaims): ?int
+    {
+        for ($offset = 0; $offset <= 32; ++$offset) {
+            foreach ($preferences as $lane) {
+                foreach ([$lane - $offset, $lane + $offset] as $candidate) {
+                    if ($candidate < 1) {
+                        continue;
+                    }
+
+                    if (!$this->laneClaimed($candidate, $spannerWindows, $singleClaims)) {
+                        return $candidate;
                     }
                 }
             }
         }
 
-        return $laneCoverage;
+        return null;
+    }
+
+    private function laneClaimed(int $lane, array $spannerWindows, array $singleClaims): bool
+    {
+        foreach ($spannerWindows as [$start, $end]) {
+            if ($lane >= $start && $lane <= $end) {
+                return true;
+            }
+        }
+
+        return isset($singleClaims[$lane]);
+    }
+
+    /**
+     * @param array<int, array{0: int, 1: int}> $spannerWindows
+     * @param array<int, string> $singleClaims
+     */
+    private function highestClaim(array $spannerWindows, array $singleClaims): int
+    {
+        $highest = 0;
+
+        foreach ($spannerWindows as [, $end]) {
+            $highest = max($highest, $end);
+        }
+
+        foreach (array_keys($singleClaims) as $lane) {
+            $highest = max($highest, $lane);
+        }
+
+        return $highest;
     }
 
     /**
@@ -772,81 +961,6 @@ final readonly class WorkflowDetails
         }
 
         return [$laneCoverage, $this->computeMaxLane($laneCoverage)];
-    }
-
-    /**
-     * Vertically centers each column's single-lane nodes across the full row
-     * count so that every level is centered relative to the total graph
-     * height. Multi-lane spanners (roots, merges, propagated only-children)
-     * already cover the right lanes and are left untouched.
-     *
-     * Single-lane nodes are distributed evenly across [1, rowCount] using
-     * the formula: lane[i] = round(1 + i * (rowCount - 1) / (N - 1)).
-     * This places items at the extremes for N > 1 (maximising spread while
-     * keeping the column centroid aligned with the graph center) and at the
-     * middle lane for N = 1. Relative order is preserved by sorting on each
-     * node's current lane before reassignment.
-     *
-     * @param list<WorkflowStepDefinitionView> $steps
-     * @param array<string, list<int>> $laneCoverage
-     * @return array<string, list<int>>
-     */
-    private function centerColumnLanes(array $steps, array $laneCoverage, int $rowCount): array
-    {
-        if ($rowCount <= 1) {
-            return $laneCoverage;
-        }
-
-        $byLevel = [];
-
-        foreach ($steps as $step) {
-            $byLevel[$step->level()][] = $step;
-        }
-
-        ksort($byLevel);
-
-        foreach ($byLevel as $levelSteps) {
-            $singleLane = [];
-            $hasSpanner = false;
-
-            foreach ($levelSteps as $step) {
-                $lanes = $laneCoverage[$step->code()] ?? [1];
-
-                if (count($lanes) > 1) {
-                    $hasSpanner = true;
-                } else {
-                    $singleLane[] = $step;
-                }
-            }
-
-            if ($hasSpanner || $singleLane === []) {
-                continue;
-            }
-
-            usort(
-                $singleLane,
-                static function (WorkflowStepDefinitionView $a, WorkflowStepDefinitionView $b) use ($laneCoverage): int {
-                    $laneA = ($laneCoverage[$a->code()] ?? [1])[0] ?? 1;
-                    $laneB = ($laneCoverage[$b->code()] ?? [1])[0] ?? 1;
-
-                    return $laneA <=> $laneB;
-                },
-            );
-
-            $n = count($singleLane);
-
-            if ($n === 1) {
-                $laneCoverage[$singleLane[0]->code()] = [(int) ceil($rowCount / 2)];
-                continue;
-            }
-
-            for ($i = 0; $i < $n; ++$i) {
-                $lane = (int) round(1 + ($i * ($rowCount - 1) / ($n - 1)));
-                $laneCoverage[$singleLane[$i]->code()] = [$lane];
-            }
-        }
-
-        return $laneCoverage;
     }
 
     /**

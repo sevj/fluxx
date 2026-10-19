@@ -10,10 +10,13 @@ final readonly class WorkflowGraphEdgeView
     private const ROW_HEIGHT = 120;
     private const NODE_LEFT_OFFSET = 20;
     private const NODE_RIGHT_OFFSET = 200;
+    public const CARD_HEIGHT = 86;
+    public const CARD_END_INSET = 12;
 
     public function __construct(
         private WorkflowGraphNodeView $from,
         private WorkflowGraphNodeView $to,
+        private ?float $targetY = null,
     ) {
     }
 
@@ -21,8 +24,9 @@ final readonly class WorkflowGraphEdgeView
     {
         $fromX = (($this->from->columnStart() - 1) * self::COLUMN_WIDTH) + self::NODE_RIGHT_OFFSET;
         $toX = (($this->to->columnStart() - 1) * self::COLUMN_WIDTH) + self::NODE_LEFT_OFFSET;
-        $fromY = $this->centerY($this->from);
-        $toY = $this->centerY($this->to);
+        $fromY = self::laneCenter($this->from);
+        $toY = $this->targetY ?? self::laneCenter($this->to);
+
         $midX = $fromX + (($toX - $fromX) / 2);
 
         return sprintf(
@@ -38,7 +42,7 @@ final readonly class WorkflowGraphEdgeView
         );
     }
 
-    private function centerY(WorkflowGraphNodeView $node): float
+    public static function laneCenter(WorkflowGraphNodeView $node): float
     {
         return (($node->rowStart() - 1) * self::ROW_HEIGHT) + (($node->rowSpan() * self::ROW_HEIGHT) / 2);
     }
