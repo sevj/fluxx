@@ -11,6 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\Enum\WorkflowExecutionLockScope;
 use Fluxx\Repository\WorkflowRunRepository;
+use SortDirection;
 
 #[ORM\Entity(repositoryClass: WorkflowRunRepository::class)]
 #[ORM\Table(name: 'fluxx_workflow_run')]
@@ -22,7 +23,7 @@ class WorkflowRun
      * @var Collection<int, WorkflowStepRun>
      */
     #[ORM\OneToMany(mappedBy: 'workflowRun', targetEntity: WorkflowStepRun::class, cascade: ['persist'], orphanRemoval: true)]
-    #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
+    #[ORM\OrderBy(['position' => SortDirection::Ascending, 'id' => SortDirection::Ascending])]
     private Collection $stepRuns;
 
     #[ORM\Id]
