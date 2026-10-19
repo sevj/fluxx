@@ -9,6 +9,7 @@ use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\SynchronizationRegistry;
+use DateTimeImmutable;
 use InvalidArgumentException;
 
 final readonly class RunDetails
