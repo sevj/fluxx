@@ -26,6 +26,7 @@ final readonly class ActiveRunRowView
         private array $currentSteps,
         private array $workerNames,
         private bool $isOrphaned,
+        private ?string $lockKey = null,
     ) {
     }
 
@@ -118,5 +119,10 @@ final readonly class ActiveRunRowView
     public function isOrphaned(): bool
     {
         return $this->isOrphaned;
+    }
+
+    public function lockKey(): ?string
+    {
+        return $this->lockKey;
     }
 }

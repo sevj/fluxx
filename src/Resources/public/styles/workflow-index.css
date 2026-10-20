@@ -1154,6 +1154,15 @@ tbody tr:hover {
     color: var(--sync-text);
 }
 
+.system-chip-lock {
+    gap: 6px;
+    border: 1px solid color-mix(in srgb, var(--border-strong) 70%, transparent);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+
 .metric-value {
     display: inline-flex;
     font-weight: 600;

@@ -87,6 +87,7 @@ final readonly class ActiveRunsViewFactory
             currentSteps: $currentSteps,
             workerNames: $workerNames,
             isOrphaned: $isOrphaned,
+            lockKey: $run->lockKey(),
         );
     }
 

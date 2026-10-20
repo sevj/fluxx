@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Tests\Ui;
 
 use DateTimeImmutable;
+use Fluxx\Entity\Enum\WorkflowExecutionLockScope;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\StepType\StepTypeRegistry;
@@ -180,6 +181,29 @@ final class ActiveRunsViewFactoryTest extends TestCase
         $row = $this->factory()->row(run: $run, stepRuns: [], workerNames: [], hasLiveWorker: false, staleSeconds: 1800, now: $now);
 
         self::assertTrue($row->isOrphaned());
+    }
+
+    #[Test]
+    public function it_exposes_the_executed_lock_key_of_the_run(): void
+    {
+        $now = new DateTimeImmutable(self::NOW);
+        $run = $this->createRun(startedAt: $now->modify('-2 minutes'));
+        $run->attachExecutionLock('contacts:CSV:Hubspot', WorkflowExecutionLockScope::WorkflowSourceTarget);
+
+        $row = $this->factory()->row(run: $run, stepRuns: [], workerNames: [], hasLiveWorker: true, staleSeconds: 1800, now: $now);
+
+        self::assertSame('contacts:CSV:Hubspot', $row->lockKey());
+    }
+
+    #[Test]
+    public function it_leaves_the_lock_key_null_when_the_run_holds_no_lock(): void
+    {
+        $now = new DateTimeImmutable(self::NOW);
+        $run = $this->createRun(startedAt: $now->modify('-2 minutes'));
+
+        $row = $this->factory()->row(run: $run, stepRuns: [], workerNames: [], hasLiveWorker: true, staleSeconds: 1800, now: $now);
+
+        self::assertNull($row->lockKey());
     }
 
     private function factory(): ActiveRunsViewFactory

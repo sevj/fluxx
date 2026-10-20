@@ -39,6 +39,11 @@
                         <span class="active-run-arrow" aria-hidden="true">{{ icons.icon('arrow-right') }}</span>
                         <span class="system-chip system-chip-target">{{ run.targetSystem }}</span>
                         <span class="system-chip">{{ run.trigger }}</span>
+                        {% if run.lockKey is not empty %}
+                            <span class="system-chip system-chip-lock" title="{{ 'runs_active.locked'|trans({'%key%': run.lockKey}) }}" aria-label="{{ 'runs_active.locked'|trans({'%key%': run.lockKey}) }}">
+                                {{ icons.icon('lock') }}<span class="item-code">{{ run.lockKey }}</span>
+                            </span>
+                        {% endif %}
                         <span class="active-run-duration" title="{{ 'runs_active.duration'|trans }}">{{ run.durationLabel }}</span>
                     </div>
                 </header>

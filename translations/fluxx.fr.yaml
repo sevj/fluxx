@@ -275,6 +275,7 @@ runs_active:
     duration: Temps depuis le démarrage du run
     current_step_since: Temps depuis le début de l'étape
     worker: Workers exécutant actuellement ce run
+    locked: 'Verrouillé : %key%'
     progress: '%completed% étape(s) terminée(s) sur %total%'
     progress_failed: '%count% en échec'
     feed_title: Activité récente
