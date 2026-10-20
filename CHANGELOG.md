@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.10.9] - 2026-10-20
+
+### Fixed
+- Step failures no longer leave runs stuck in `running` when the failure itself
+  comes from the Doctrine layer. When an error occurs during `flush()`/`commit()`
+  (unique constraint violation, lost connection, recompiled DI container under a
+  live worker), Doctrine permanently closes the entity manager, so the previous
+  error-recording path (`markFailed` + finalize + flush inside `handleStepError`)
+  could no longer persist anything: the step kept its `running` status with no
+  error message, the run kept its `running` status and held its execution lock
+  forever, and Messenger's `max_retries: 0` configuration dropped the message.
+  `handleStepError` now wraps `beginTransaction()` inside the try (a closed
+  manager no longer escapes unrecorded), guards `rollbackIfActive()` with a
+  connection-level `rollBack()` fallback, and on bookkeeping failure persists
+  the definitive failure state via raw `UPDATE` statements issued directly on
+  the DBAL connection (step run marked `failed` with error message and
+  durations when known, run marked `failed` or `partially_failed` depending on
+  whether other step runs completed, `finished_at` stamped, execution lock
+  released). Messenger still sees the original exception and drops the
+  message; the run is never resumable-via-message but its persisted state is
+  now consistent and relaunchable from the UI or `fluxx:workflow:relaunch`.
+
 ## [1.10.8] - 2026-10-20
 
 ### Added
