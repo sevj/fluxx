@@ -16,6 +16,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Ui\WorkflowRunFilters;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<WorkflowRun>
@@ -91,7 +92,7 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
         return $this->createQueryBuilder('workflow_run')
             ->andWhere('workflow_run.workflowName = :workflowName')
             ->setParameter('workflowName', $workflowName)
-            ->orderBy('workflow_run.createdAt', 'DESC')
+            ->orderBy('workflow_run.createdAt', SortDirection::Descending)
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
@@ -113,7 +114,7 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
         $workflowRun = $this->createQueryBuilder('workflow_run')
             ->andWhere('workflow_run.workflowName = :workflowName')
             ->setParameter('workflowName', $workflowName)
-            ->orderBy('workflow_run.createdAt', 'DESC')
+            ->orderBy('workflow_run.createdAt', SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -129,8 +130,8 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
         return $this->createQueryBuilder('workflow_run')
             ->andWhere('workflow_run.workflowName = :workflowName')
             ->setParameter('workflowName', $workflowName)
-            ->orderBy('workflow_run.createdAt', 'DESC')
-            ->addOrderBy('workflow_run.id', 'DESC')
+            ->orderBy('workflow_run.createdAt', SortDirection::Descending)
+            ->addOrderBy('workflow_run.id', SortDirection::Descending)
             ->setFirstResult(max($offset, 0))
             ->setMaxResults(max($limit, 1))
             ->getQuery()
@@ -150,8 +151,8 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
                 WorkflowRunStatus::Retrying,
                 WorkflowRunStatus::Running,
             ])
-            ->orderBy('workflow_run.createdAt', 'ASC')
-            ->addOrderBy('workflow_run.id', 'ASC')
+            ->orderBy('workflow_run.createdAt', SortDirection::Ascending)
+            ->addOrderBy('workflow_run.id', SortDirection::Ascending)
             ->setFirstResult(0)
             ->setMaxResults(max($limit, 1))
             ->getQuery()
@@ -184,8 +185,8 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
                 WorkflowRunStatus::Failed,
                 WorkflowRunStatus::PartiallyFailed,
             ])
-            ->orderBy('workflow_run.finishedAt', 'DESC')
-            ->addOrderBy('workflow_run.createdAt', 'DESC')
+            ->orderBy('workflow_run.finishedAt', SortDirection::Descending)
+            ->addOrderBy('workflow_run.createdAt', SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -203,8 +204,8 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
             ->andWhere('workflow_run.createdAt >= :startAt')
             ->setParameter('workflowName', $workflowName)
             ->setParameter('startAt', $startAt)
-            ->orderBy('workflow_run.createdAt', 'ASC')
-            ->addOrderBy('workflow_run.id', 'ASC')
+            ->orderBy('workflow_run.createdAt', SortDirection::Ascending)
+            ->addOrderBy('workflow_run.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -219,8 +220,8 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
             ->andWhere('workflow_run.createdAt <= :to')
             ->setParameter('from', $from)
             ->setParameter('to', $to)
-            ->orderBy('workflow_run.createdAt', 'ASC')
-            ->addOrderBy('workflow_run.id', 'ASC')
+            ->orderBy('workflow_run.createdAt', SortDirection::Ascending)
+            ->addOrderBy('workflow_run.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -528,8 +529,8 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
     public function findPaginatedByFilters(WorkflowRunFilters $filters, int $limit, int $offset): array
     {
         return $this->createFilteredQueryBuilder($filters)
-            ->orderBy('workflow_run.createdAt', 'DESC')
-            ->addOrderBy('workflow_run.id', 'DESC')
+            ->orderBy('workflow_run.createdAt', SortDirection::Descending)
+            ->addOrderBy('workflow_run.id', SortDirection::Descending)
             ->setFirstResult(max($offset, 0))
             ->setMaxResults(max($limit, 1))
             ->getQuery()

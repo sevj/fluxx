@@ -7,6 +7,7 @@ namespace Fluxx\Repository;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\WorkflowExecutionLock;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<WorkflowExecutionLock>
@@ -53,8 +54,8 @@ final class WorkflowExecutionLockRepository extends ServiceEntityRepository impl
     {
         return $this->createQueryBuilder('workflow_execution_lock')
             ->andWhere('workflow_execution_lock.releasedAt IS NULL')
-            ->orderBy('workflow_execution_lock.acquiredAt', 'DESC')
-            ->addOrderBy('workflow_execution_lock.id', 'DESC')
+            ->orderBy('workflow_execution_lock.acquiredAt', SortDirection::Descending)
+            ->addOrderBy('workflow_execution_lock.id', SortDirection::Descending)
             ->getQuery()
             ->getResult();
     }

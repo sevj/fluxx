@@ -11,6 +11,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<WorkflowPayload>
@@ -30,8 +31,8 @@ final class WorkflowPayloadRepository extends ServiceEntityRepository implements
         return $this->createQueryBuilder('workflow_payload')
             ->andWhere('workflow_payload.sourceStepRun = :stepRun')
             ->setParameter('stepRun', $stepRun)
-            ->orderBy('workflow_payload.sequence', 'ASC')
-            ->addOrderBy('workflow_payload.id', 'ASC')
+            ->orderBy('workflow_payload.sequence', SortDirection::Ascending)
+            ->addOrderBy('workflow_payload.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -46,7 +47,7 @@ final class WorkflowPayloadRepository extends ServiceEntityRepository implements
             ->andWhere('workflow_payload.targetStepType = :targetStepType')
             ->setParameter('workflowRun', $workflowRun)
             ->setParameter('targetStepType', $targetStepType)
-            ->orderBy('workflow_payload.id', 'DESC')
+            ->orderBy('workflow_payload.id', SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -66,8 +67,8 @@ final class WorkflowPayloadRepository extends ServiceEntityRepository implements
             ->andWhere('workflow_payload.targetStepType = :targetStepType')
             ->setParameter('workflowRun', $workflowRun)
             ->setParameter('targetStepType', $targetStepType)
-            ->orderBy('workflow_payload.sequence', 'ASC')
-            ->addOrderBy('workflow_payload.id', 'ASC')
+            ->orderBy('workflow_payload.sequence', SortDirection::Ascending)
+            ->addOrderBy('workflow_payload.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -84,8 +85,8 @@ final class WorkflowPayloadRepository extends ServiceEntityRepository implements
             ->andWhere('workflow_payload.targetStepName = :targetStepName')
             ->setParameter('workflowRun', $workflowRun)
             ->setParameter('targetStepName', $targetStepName)
-            ->orderBy('workflow_payload.sequence', 'ASC')
-            ->addOrderBy('workflow_payload.id', 'ASC')
+            ->orderBy('workflow_payload.sequence', SortDirection::Ascending)
+            ->addOrderBy('workflow_payload.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }

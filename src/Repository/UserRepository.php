@@ -7,6 +7,7 @@ namespace Fluxx\Repository;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\User;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<User>
@@ -39,7 +40,7 @@ final class UserRepository extends ServiceEntityRepository
     public function findAllOrdered(): array
     {
         return $this->createQueryBuilder('user')
-            ->orderBy('user.email', 'ASC')
+            ->orderBy('user.email', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -60,7 +61,7 @@ final class UserRepository extends ServiceEntityRepository
     public function findPaginatedBySearch(string $searchQuery, int $limit, int $offset): array
     {
         $queryBuilder = $this->createQueryBuilder('user')
-            ->orderBy('user.email', 'ASC')
+            ->orderBy('user.email', SortDirection::Ascending)
             ->setFirstResult($offset)
             ->setMaxResults($limit);
 

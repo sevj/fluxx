@@ -13,6 +13,7 @@ use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<WorkflowStepRun>
@@ -32,8 +33,8 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
         return $this->createQueryBuilder('workflow_step_run')
             ->andWhere('workflow_step_run.workflowRun = :workflowRun')
             ->setParameter('workflowRun', $workflowRun)
-            ->orderBy('workflow_step_run.position', 'ASC')
-            ->addOrderBy('workflow_step_run.id', 'ASC')
+            ->orderBy('workflow_step_run.position', SortDirection::Ascending)
+            ->addOrderBy('workflow_step_run.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
     }
@@ -48,7 +49,7 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
             ->andWhere('workflow_step_run.stepType = :stepType')
             ->setParameter('workflowRun', $workflowRun)
             ->setParameter('stepType', $stepType)
-            ->orderBy('workflow_step_run.id', 'DESC')
+            ->orderBy('workflow_step_run.id', SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -64,7 +65,7 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
             ->andWhere('workflow_step_run.stepName = :stepName')
             ->setParameter('workflowRun', $workflowRun)
             ->setParameter('stepName', $stepName)
-            ->orderBy('workflow_step_run.id', 'DESC')
+            ->orderBy('workflow_step_run.id', SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -90,7 +91,7 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
             ->setParameter('workflowRun', $workflowRun)
             ->setParameter('stepNames', $stepNames)
             ->setParameter('status', WorkflowStepRunStatus::Completed)
-            ->orderBy('workflow_step_run.id', 'DESC')
+            ->orderBy('workflow_step_run.id', SortDirection::Descending)
             ->getQuery()
             ->getResult();
 
@@ -117,8 +118,8 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
         $stepRuns = $this->createQueryBuilder('workflow_step_run')
             ->andWhere('workflow_step_run.workflowRun IN (:workflowRuns)')
             ->setParameter('workflowRuns', $workflowRuns)
-            ->orderBy('workflow_step_run.position', 'ASC')
-            ->addOrderBy('workflow_step_run.id', 'ASC')
+            ->orderBy('workflow_step_run.position', SortDirection::Ascending)
+            ->addOrderBy('workflow_step_run.id', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -140,7 +141,7 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
         $stepRuns = $this->createQueryBuilder('workflow_step_run')
             ->innerJoin('workflow_step_run.workflowRun', 'workflow_run')
             ->addSelect('workflow_run')
-            ->orderBy('workflow_step_run.id', 'DESC')
+            ->orderBy('workflow_step_run.id', SortDirection::Descending)
             ->setMaxResults(max($limit, 1))
             ->getQuery()
             ->getResult();
@@ -184,7 +185,7 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
             ->setParameter('stepName', $stepName)
             ->setParameter('idempotenceKey', $idempotenceKey)
             ->setParameter('status', WorkflowStepRunStatus::Completed)
-            ->orderBy('workflow_step_run.id', 'DESC')
+            ->orderBy('workflow_step_run.id', SortDirection::Descending)
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
@@ -215,10 +216,10 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
                 WorkflowRunStatus::Failed,
                 WorkflowRunStatus::PartiallyFailed,
             ])
-            ->orderBy('workflow_run.workflowName', 'ASC')
-            ->addOrderBy('workflow_step_run.finishedAt', 'DESC')
-            ->addOrderBy('workflow_run.createdAt', 'DESC')
-            ->addOrderBy('workflow_step_run.id', 'DESC')
+            ->orderBy('workflow_run.workflowName', SortDirection::Ascending)
+            ->addOrderBy('workflow_step_run.finishedAt', SortDirection::Descending)
+            ->addOrderBy('workflow_run.createdAt', SortDirection::Descending)
+            ->addOrderBy('workflow_step_run.id', SortDirection::Descending)
             ->getQuery()
             ->getResult();
     }

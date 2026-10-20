@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\RuntimeWorkerState;
+use SortDirection;
 
 /**
  * @extends ServiceEntityRepository<RuntimeWorkerState>
@@ -36,7 +37,7 @@ final class RuntimeWorkerStateRepository extends ServiceEntityRepository impleme
         $workerStates = $this->createQueryBuilder('runtime_worker_state')
             ->andWhere('runtime_worker_state.transportName = :transportName')
             ->setParameter('transportName', $transportName)
-            ->orderBy('runtime_worker_state.workerName', 'ASC')
+            ->orderBy('runtime_worker_state.workerName', SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
