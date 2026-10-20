@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.10.8] - 2026-10-20
+
+### Added
+- Active runs live view: each active run card shows the execution lock key the
+  run holds as a lock chip in its meta row (tooltip "Locked: %key%"). The key
+  is only shown when the workflow actually read it from the database, i.e. when
+  the run acquired an execution lock.
+
 ## [1.10.7] - 2026-10-20
 
 ### Fixed
