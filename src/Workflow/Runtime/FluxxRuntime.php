@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow\Runtime;
 
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowRun;
@@ -215,9 +216,9 @@ final class FluxxRuntime
         $durationMs = $this->computeDurationMs($stepStartedAt);
         $memoryPeakBytes = $this->measurePeakMemoryBytes();
 
-        $this->entityManager->beginTransaction();
-
         try {
+            $this->entityManager->beginTransaction();
+
             if ($this->retryScheduler->scheduleIfNeeded($workflowRun, $stepRun, $retryPolicy, $throwable->getMessage(), $errorPayload, $durationMs, $memoryPeakBytes)) {
                 $this->entityManager->flush();
                 $this->entityManager->commit();
@@ -235,21 +236,91 @@ final class FluxxRuntime
             $this->finalizeWorkflowRunState($workflowRun, $definition, $throwable->getMessage(), $errorPayload);
             $this->entityManager->flush();
             $this->entityManager->commit();
-
-            throw $throwable;
         } catch (Throwable $errorHandlingThrowable) {
             $this->rollbackIfActive();
+            $this->recordFailureAgainstConnection(
+                workflowRun: $workflowRun,
+                stepRunId: $stepRun->id(),
+                message: $throwable->getMessage(),
+                durationMs: $durationMs,
+                memoryPeakBytes: $memoryPeakBytes,
+            );
 
             throw $errorHandlingThrowable;
         }
+
+        throw $throwable;
     }
 
     private function rollbackIfActive(): void
     {
-        $connection = $this->entityManager->getConnection();
+        try {
+            $connection = $this->entityManager->getConnection();
 
-        if ($connection->isTransactionActive()) {
-            $this->entityManager->rollback();
+            if (!$connection->isTransactionActive()) {
+                return;
+            }
+
+            try {
+                $this->entityManager->rollback();
+            } catch (Throwable) {
+                $connection->rollBack();
+            }
+        } catch (Throwable) {
+        }
+    }
+
+    private function recordFailureAgainstConnection(
+        WorkflowRun $workflowRun,
+        ?int $stepRunId,
+        string $message,
+        ?int $durationMs,
+        ?int $memoryPeakBytes,
+    ): void {
+        $workflowRunId = $workflowRun->id();
+
+        if ($workflowRunId === null) {
+            return;
+        }
+
+        try {
+            $connection = $this->entityManager->getConnection();
+
+            if ($stepRunId !== null) {
+                $connection->executeStatement(
+                    'UPDATE fluxx_workflow_step_run SET status = :step_status, error_message = :error_message, error_count = error_count + 1, duration_ms = COALESCE(duration_ms, :duration_ms), memory_peak_bytes = COALESCE(memory_peak_bytes, :memory_peak_bytes) WHERE id = :step_run_id AND status IN (:running_status, :retrying_status)',
+                    [
+                        'step_status' => WorkflowStepRunStatus::Failed->value,
+                        'running_status' => WorkflowStepRunStatus::Running->value,
+                        'retrying_status' => WorkflowStepRunStatus::Retrying->value,
+                        'error_message' => $message,
+                        'duration_ms' => $durationMs,
+                        'memory_peak_bytes' => $memoryPeakBytes,
+                        'step_run_id' => $stepRunId,
+                    ],
+                );
+            }
+
+            $hasCompletedStepRun = (bool) $connection->fetchOne(
+                'SELECT 1 FROM fluxx_workflow_step_run WHERE workflow_run_id = :workflow_run_id AND status = :completed_status LIMIT 1',
+                [
+                    'workflow_run_id' => $workflowRunId,
+                    'completed_status' => WorkflowStepRunStatus::Completed->value,
+                ],
+            );
+
+            $connection->executeStatement(
+                'UPDATE fluxx_workflow_run SET status = :run_status, error_message = :error_message, finished_at = :finished_at WHERE id = :workflow_run_id',
+                [
+                    'run_status' => $hasCompletedStepRun ? WorkflowRunStatus::PartiallyFailed->value : WorkflowRunStatus::Failed->value,
+                    'error_message' => $message,
+                    'finished_at' => (new DateTimeImmutable())->format('Y-m-d H:i:s'),
+                    'workflow_run_id' => $workflowRunId,
+                ],
+            );
+
+            $this->workflowExecutionLockManager->releaseForRun($workflowRun, $hasCompletedStepRun ? 'partially_failed' : 'failed');
+        } catch (Throwable) {
         }
     }
 

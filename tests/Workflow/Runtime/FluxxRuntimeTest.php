@@ -6,6 +6,7 @@ namespace Fluxx\Tests\Workflow\Runtime;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Exception\EntityManagerClosed;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowPayloadContent;
@@ -40,6 +41,7 @@ use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowInterface;
 use Fluxx\Workflow\WorkflowStepDefinition;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use ReflectionProperty;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -67,6 +69,8 @@ final class FluxxRuntimeTest extends TestCase
 
     private int $maxGlobalRetries = 10;
     private int $maxPayloadRecords = 1000;
+    private ?\Closure $flushOverride = null;
+    private ?\Closure $rollbackOverride = null;
     private FluxxRuntime $runtime;
 
     protected function setUp(): void
@@ -86,7 +90,13 @@ final class FluxxRuntimeTest extends TestCase
                 $persistedStepRuns[] = $entity;
             }
         });
-        $this->entityManager->method('flush')->willReturnCallback(static function (): void {});
+        $this->entityManager->method('flush')->willReturnCallback(function (?object $entity = null) use (&$txActive): void {
+            if ($this->flushOverride !== null) {
+                ($this->flushOverride)();
+
+                return;
+            }
+        });
 
         $txActive = false;
         $this->entityManager->method('beginTransaction')->willReturnCallback(function () use (&$txActive): void {
@@ -98,6 +108,12 @@ final class FluxxRuntimeTest extends TestCase
             $this->transactionSequence[] = 'commit';
         });
         $this->entityManager->method('rollback')->willReturnCallback(function () use (&$txActive): void {
+            if ($this->rollbackOverride !== null) {
+                ($this->rollbackOverride)();
+
+                return;
+            }
+
             $txActive = false;
             $this->transactionSequence[] = 'rollback';
         });
@@ -486,6 +502,57 @@ final class FluxxRuntimeTest extends TestCase
 
         self::assertSame(['begin', 'rollback', 'begin', 'commit'], $this->transactionSequence);
         self::assertSame(WorkflowRunStatus::Retrying, $workflowRun->status());
+    }
+
+    #[Test]
+    public function it_records_the_step_and_run_failures_against_the_connection_when_the_entity_manager_is_closed(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        (new ReflectionProperty(WorkflowRun::class, 'id'))->setValue($workflowRun, 42);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->flushOverride = function (): void {
+            static $flushCount = 0;
+
+            if (++$flushCount >= 2) {
+                throw new EntityManagerClosed('The EntityManager is closed.');
+            }
+        };
+        $this->rollbackOverride = function (): void {
+            throw new EntityManagerClosed('The EntityManager is closed.');
+        };
+
+        $statements = [];
+        $connection = $this->entityManager->getConnection();
+        $connection->method('executeStatement')->willReturnCallback(function (string $sql, array $parameters) use (&$statements): int {
+            $statements[] = [$sql, $parameters];
+
+            return 1;
+        });
+        $connection->method('fetchOne')->willReturn(null);
+        $connection->method('rollBack')->willReturnCallback(static function (): void {});
+
+        $releaseCalls = [];
+        $this->workflowExecutionLockManager
+            ->method('releaseForRun')
+            ->willReturnCallback(function (WorkflowRun $run, string $reason) use (&$releaseCalls): void {
+                $releaseCalls[] = [$run->status(), $reason];
+            });
+
+        $this->registryWithHandler(new FailingStepHandler(new TechnicalStepFailure('boom')));
+
+        try {
+            $this->runtime->runStep('run-1', 'fetch');
+            self::fail('Expected the runtime to rethrow the bookkeeping error.');
+        } catch (EntityManagerClosed $exception) {
+            self::assertSame('The EntityManager is closed.', $exception->getMessage());
+        }
+
+        self::assertCount(1, $statements);
+        self::assertStringStartsWith('UPDATE fluxx_workflow_run', $statements[0][0]);
+        self::assertSame(WorkflowRunStatus::Failed->value, $statements[0][1]['run_status']);
+        self::assertSame('boom', $statements[0][1]['error_message']);
+        self::assertContains('failed', array_column($releaseCalls, 1));
     }
 
     private function createRegistry(): SynchronizationRegistry
