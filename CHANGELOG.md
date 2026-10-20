@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.10.7] - 2026-10-20
+
+### Fixed
+- Repository queries passed the sort direction as a string (`'ASC'`/`'DESC'`) to
+  `Doctrine\ORM\QueryBuilder::orderBy()`/`addOrderBy()`, emitting a
+  `doctrine/orm` deprecation on every query build
+  (https://github.com/doctrine/orm/issues/11313). All 24 call sites in
+  `src/Repository/` now pass `SortDirection::Ascending`/`SortDirection::Descending`
+  instances; the enum is provided transitively by `doctrine/orm` via
+  `symfony/polyfill-php86` (native since PHP 8.6).
+
 ## [1.10.6] - 2026-10-19
 
 ### Added
