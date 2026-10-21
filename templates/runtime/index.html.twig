@@ -8,7 +8,7 @@
     <title>{{ 'runtime_index.title'|trans }}</title>
     <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
     <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: '20260616-js-split'}) }}"></script>
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: '20261017-ratelimits'}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: '20261021-loadmore'}) }}"></script>
     <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: '20261017-ratelimits'}) }}">
 </head>
 <body>
@@ -62,6 +62,8 @@
         data-runtime-lock-release-token="{{ csrf_token('fluxx.runtime.lock_release') }}"
         data-runtime-label-release-lock="{{ 'runtime_index.release_lock'|trans }}"
         data-runtime-label-release-lock-confirm="{{ 'runtime_index.release_lock_confirm'|trans|e('js') }}"
+        data-runtime-label-load-more-locks="{{ 'runtime_index.load_more_locks'|trans }}"
+        data-runtime-label-load-more-messages="{{ 'runtime_index.load_more_messages'|trans }}"
     >
         {% include '@Fluxx/_navigation.html.twig' %}
 

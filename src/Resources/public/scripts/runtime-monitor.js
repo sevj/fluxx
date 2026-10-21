@@ -49,6 +49,8 @@
             lockAcquired: runtimeMonitor.dataset.runtimeLabelLockAcquired || 'Acquired',
             releaseLock: runtimeMonitor.dataset.runtimeLabelReleaseLock || 'Release lock',
             releaseLockConfirm: runtimeMonitor.dataset.runtimeLabelReleaseLockConfirm || 'Release the lock owned by this run?',
+            loadMoreLocks: runtimeMonitor.dataset.runtimeLabelLoadMoreLocks || 'Load %count% more locks',
+            loadMoreMessages: runtimeMonitor.dataset.runtimeLabelLoadMoreMessages || 'Load %count% more messages',
             pausePolling: runtimeMonitor.dataset.runtimeLabelPausePolling || 'Pause polling',
             resumePolling: runtimeMonitor.dataset.runtimeLabelResumePolling || 'Resume polling',
         };
@@ -68,10 +70,15 @@
             ? runtimePollingToggle.querySelector('[data-button-label]')
             : null;
         const runtimePollingStorageKey = 'fluxx-runtime-polling-enabled:' + window.location.pathname;
+        const LOAD_MORE_PAGE_SIZE = 10;
         let requestInFlight = false;
         let runtimePollingEnabled = true;
         let runtimeRefreshTimer = null;
         let runtimePollingGeneration = 0;
+        let latestLocks = [];
+        let latestMessages = [];
+        let locksVisibleCount = LOAD_MORE_PAGE_SIZE;
+        let messagesVisibleCount = LOAD_MORE_PAGE_SIZE;
 
         try {
             const storedRuntimePollingState = sessionStorage.getItem(runtimePollingStorageKey);
@@ -212,15 +219,19 @@
                 return;
             }
 
+            latestLocks = locks;
+
             if (!locks.length) {
+                locksVisibleCount = LOAD_MORE_PAGE_SIZE;
                 locksTarget.innerHTML = '<tr><td colspan="6" class="runtime-table-empty">' + escapeHtml(labels.noLocks) + '</td></tr>';
                 return;
             }
 
             const lockReleaseUrlTemplate = runtimeMonitor.dataset.runtimeLockReleaseUrl || '';
             const lockReleaseToken = runtimeMonitor.dataset.runtimeLockReleaseToken || '';
-
-            locksTarget.innerHTML = locks.map(function (lock) {
+            const visibleLocks = locks.slice(0, locksVisibleCount);
+            const hiddenLockCount = locks.length - visibleLocks.length;
+            let lockRows = visibleLocks.map(function (lock) {
                 const workflow = escapeHtml(lock.workflowName || lock.workflowCode || '-')
                     + '<div class="item-code">' + escapeHtml(lock.workflowCode || '-') + '</div>';
                 const runStatus = lock.status
@@ -248,6 +259,14 @@
                     + '<td data-label="' + escapeHtml(labels.releaseLock) + '">' + releaseAction + '</td>'
                     + '</tr>';
             }).join('');
+
+            if (hiddenLockCount > 0) {
+                lockRows += '<tr><td colspan="6" class="runtime-table-empty"><button type="button" class="secondary-button" data-runtime-load-more-locks>'
+                    + escapeHtml(labels.loadMoreLocks.replace('%count%', String(Math.min(hiddenLockCount, LOAD_MORE_PAGE_SIZE))))
+                    + '</button></td></tr>';
+            }
+
+            locksTarget.innerHTML = lockRows;
         };
 
         const renderRateLimiters = function (rateLimiters) {
@@ -402,12 +421,17 @@
                 return;
             }
 
+            latestMessages = messages;
+
             if (!messages.length) {
+                messagesVisibleCount = LOAD_MORE_PAGE_SIZE;
                 messagesTarget.innerHTML = '<tr><td colspan="7" class="runtime-table-empty">' + escapeHtml(labels.noMessages) + '</td></tr>';
                 return;
             }
 
-            messagesTarget.innerHTML = messages.map(function (message) {
+            const visibleMessages = messages.slice(0, messagesVisibleCount);
+            const hiddenMessageCount = messages.length - visibleMessages.length;
+            let messageRows = visibleMessages.map(function (message) {
                 const stateClass = message.state === 'in_flight' ? 'status-badge-running' : 'status-badge-pending';
                 const consumer = message.consumerName || '-';
                 const delivery = message.deliveryCount === null ? '-' : message.deliveryCount;
@@ -436,6 +460,14 @@
                     + '<td><span class="metric-value">' + escapeHtml(formatDuration(message.ageMs)) + '</span><div class="table-note table-note-compact">' + escapeHtml(formatDateTime(message.enqueuedAt)) + '</div></td>'
                     + '</tr>';
             }).join('');
+
+            if (hiddenMessageCount > 0) {
+                messageRows += '<tr><td colspan="7" class="runtime-table-empty"><button type="button" class="secondary-button" data-runtime-load-more-messages>'
+                    + escapeHtml(labels.loadMoreMessages.replace('%count%', String(Math.min(hiddenMessageCount, LOAD_MORE_PAGE_SIZE))))
+                    + '</button></td></tr>';
+            }
+
+            messagesTarget.innerHTML = messageRows;
         };
 
         const renderSnapshot = function (snapshot) {
@@ -504,6 +536,28 @@
                 }, 1000);
             }
         };
+
+        if (locksTarget) {
+            locksTarget.addEventListener('click', function (event) {
+                if (!event.target.closest('[data-runtime-load-more-locks]')) {
+                    return;
+                }
+
+                locksVisibleCount += LOAD_MORE_PAGE_SIZE;
+                renderLocks(latestLocks);
+            });
+        }
+
+        if (messagesTarget) {
+            messagesTarget.addEventListener('click', function (event) {
+                if (!event.target.closest('[data-runtime-load-more-messages]')) {
+                    return;
+                }
+
+                messagesVisibleCount += LOAD_MORE_PAGE_SIZE;
+                renderMessages(latestMessages);
+            });
+        }
 
         if (runtimePollingToggle) {
             runtimePollingToggle.addEventListener('click', function () {

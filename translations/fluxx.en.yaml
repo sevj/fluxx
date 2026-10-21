@@ -581,6 +581,8 @@ runtime_index:
     lock_actions: Actions
     release_lock: Release
     release_lock_confirm: 'Release the active lock for this run? Downstream runs blocked by it will be able to proceed.'
+    load_more_locks: 'Load %count% more locks'
+    load_more_messages: 'Load %count% more messages'
     rate_limiters_title: Rate limiters
     rate_limiter_name: Limiter
     rate_limiter_remaining: Remaining

@@ -581,6 +581,8 @@ runtime_index:
     lock_actions: Actions
     release_lock: Libérer
     release_lock_confirm: 'Libérer le verrou actif de cette exécution ? Les exécutions en aval bloquées pourront ensuite reprendre.'
+    load_more_locks: 'Afficher %count% verrous de plus'
+    load_more_messages: 'Afficher %count% messages de plus'
     rate_limiters_title: Limites de débit
     rate_limiter_name: Limiteur
     rate_limiter_remaining: Restant
