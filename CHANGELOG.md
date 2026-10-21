@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.10.10] - 2026-10-21
+
+### Changed
+- Runtime dashboard: the active locks and live messages tables render only the
+  first 10 rows of each snapshot. A "Load %count% more ..." button is appended
+  after the visible rows and reveals the next batch of 10 on every click, so a
+  large backlog no longer forces the browser to rebuild hundreds of table rows
+  on every one-second polling refresh. The visible choice survives re-renders
+  and the summary counters keep reporting the real totals. Buttons and labels
+  go through the `runtime_index.load_more_locks` / `runtime_index.load_more_messages`
+  translation keys.
+
 ## [1.10.9] - 2026-10-20
 
 ### Fixed
