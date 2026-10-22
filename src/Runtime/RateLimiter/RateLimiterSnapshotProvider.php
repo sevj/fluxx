@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Fluxx\Runtime\RateLimiter;
 
 use DateTimeImmutable;
+use Symfony\Component\RateLimiter\Policy\Window;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\RateLimiter\CompoundRateLimiterFactory;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Component\RateLimiter\Storage\StorageInterface;
 
 final readonly class RateLimiterSnapshotProvider
 {
@@ -52,6 +55,7 @@ final readonly class RateLimiterSnapshotProvider
             $limit = $rateLimit->getLimit();
             $remaining = max($rateLimit->getRemainingTokens(), 0);
             $usedPercent = $limit > 0 ? (int) round((($limit - $remaining) / $limit) * 100) : null;
+            $resetInSeconds = $this->resetInSeconds($name, $limiterFactory, $limit, $refreshedAt);
 
             return [
                 'name' => $name,
@@ -63,6 +67,8 @@ final readonly class RateLimiterSnapshotProvider
                 'accepted' => $rateLimit->isAccepted(),
                 'retryAfterAt' => $retryAfter->format(DATE_ATOM),
                 'retryAfterMs' => max(0, ((int) $retryAfter->format('Uv')) - ((int) $refreshedAt->format('Uv'))),
+                'resetAt' => $resetInSeconds !== null ? $refreshedAt->modify(sprintf('+%d seconds', $resetInSeconds))->format(DATE_ATOM) : null,
+                'resetMs' => $resetInSeconds !== null ? $resetInSeconds * 1000 : null,
             ];
         } catch (\Throwable $exception) {
             return [
@@ -75,7 +81,43 @@ final readonly class RateLimiterSnapshotProvider
                 'accepted' => null,
                 'retryAfterAt' => null,
                 'retryAfterMs' => null,
+                'resetAt' => null,
+                'resetMs' => null,
             ];
         }
+    }
+
+    private function resetInSeconds(string $name, RateLimiterFactoryInterface $limiterFactory, int $limit, DateTimeImmutable $refreshedAt): ?int
+    {
+        $storage = $this->storageOf($limiterFactory);
+
+        if ($storage === null || $limit < 1) {
+            return null;
+        }
+
+        $window = $storage->fetch($name . '-');
+
+        if (!$window instanceof Window || $window->getHitCount() < 1) {
+            return null;
+        }
+
+        $seconds = $window->calculateTimeForTokens($limit, (float) $refreshedAt->format('U.u'));
+
+        return $seconds > 0 ? $seconds : null;
+    }
+
+    private function storageOf(RateLimiterFactoryInterface $limiterFactory): ?StorageInterface
+    {
+        if (!$limiterFactory instanceof RateLimiterFactory) {
+            return null;
+        }
+
+        try {
+            $storage = (new \ReflectionProperty(RateLimiterFactory::class, 'storage'))->getValue($limiterFactory);
+        } catch (\ReflectionException) {
+            return null;
+        }
+
+        return $storage instanceof StorageInterface ? $storage : null;
     }
 }

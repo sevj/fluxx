@@ -588,6 +588,7 @@ runtime_index:
     rate_limiter_remaining: Remaining
     rate_limiter_usage: Usage
     rate_limiter_retry: Next availability
+    rate_limiter_reset: Resets in
     rate_limiters_error: Rate limiter monitoring is unavailable.
 
 system_health:

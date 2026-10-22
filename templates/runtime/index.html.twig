@@ -49,6 +49,7 @@
         data-runtime-label-ratelimit-remaining="{{ 'runtime_index.rate_limiter_remaining'|trans }}"
         data-runtime-label-ratelimit-usage="{{ 'runtime_index.rate_limiter_usage'|trans }}"
         data-runtime-label-ratelimit-retry="{{ 'runtime_index.rate_limiter_retry'|trans }}"
+        data-runtime-label-ratelimit-reset="{{ 'runtime_index.rate_limiter_reset'|trans }}"
         data-runtime-label-ratelimit-error="{{ 'runtime_index.rate_limiters_error'|trans }}"
         data-runtime-label-lock-workflow="{{ 'runtime_index.lock_workflow'|trans }}"
         data-runtime-label-lock-run="{{ 'runtime_index.lock_run'|trans }}"
@@ -186,10 +187,11 @@
             <section class="workflow-list">
                 <table>
                     <colgroup>
-                        <col style="width: 24%">
-                        <col style="width: 18%">
-                        <col style="width: 34%">
-                        <col style="width: 24%">
+                        <col style="width: 20%">
+                        <col style="width: 15%">
+                        <col style="width: 25%">
+                        <col style="width: 20%">
+                        <col style="width: 20%">
                     </colgroup>
                     <thead>
                         <tr>
@@ -197,11 +199,12 @@
                             <th>{{ 'runtime_index.rate_limiter_remaining'|trans }}</th>
                             <th>{{ 'runtime_index.rate_limiter_usage'|trans }}</th>
                             <th>{{ 'runtime_index.rate_limiter_retry'|trans }}</th>
+                            <th>{{ 'runtime_index.rate_limiter_reset'|trans }}</th>
                         </tr>
                     </thead>
                     <tbody data-runtime-ratelimit>
                         <tr>
-                            <td colspan="4" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
+                            <td colspan="5" class="runtime-table-empty">{{ 'runtime_index.loading'|trans }}</td>
                         </tr>
                     </tbody>
                 </table>

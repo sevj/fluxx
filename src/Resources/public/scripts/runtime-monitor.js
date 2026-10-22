@@ -41,6 +41,7 @@
             rateLimitRemaining: runtimeMonitor.dataset.runtimeLabelRatelimitRemaining || 'Remaining',
             rateLimitUsage: runtimeMonitor.dataset.runtimeLabelRatelimitUsage || 'Usage',
             rateLimitRetry: runtimeMonitor.dataset.runtimeLabelRatelimitRetry || 'Next availability',
+            rateLimitReset: runtimeMonitor.dataset.runtimeLabelRatelimitReset || 'Resets in',
             rateLimitError: runtimeMonitor.dataset.runtimeLabelRatelimitError || 'Rate limiter monitoring is unavailable.',
             lockWorkflow: runtimeMonitor.dataset.runtimeLabelLockWorkflow || 'Workflow',
             lockRun: runtimeMonitor.dataset.runtimeLabelLockRun || 'Run',
@@ -286,7 +287,7 @@
             rateLimitSection.hidden = false;
 
             if (monitoringFailed) {
-                rateLimitTarget.innerHTML = '<tr><td colspan="4" class="runtime-table-empty">'
+                rateLimitTarget.innerHTML = '<tr><td colspan="5" class="runtime-table-empty">'
                     + escapeHtml(rateLimiters.error || labels.rateLimitError)
                     + '</td></tr>';
                 return;
@@ -296,7 +297,7 @@
                 if (!limiter.ok) {
                     return '<tr>'
                         + '<td data-label="' + escapeHtml(labels.rateLimitName) + '"><span class="run-id">' + escapeHtml(limiter.name) + '</span></td>'
-                        + '<td colspan="3" data-label="' + escapeHtml(labels.rateLimitUsage) + '"><div class="table-note metric-error">' + escapeHtml(limiter.error || labels.rateLimitError) + '</div></td>'
+                        + '<td colspan="4" data-label="' + escapeHtml(labels.rateLimitUsage) + '"><div class="table-note metric-error">' + escapeHtml(limiter.error || labels.rateLimitError) + '</div></td>'
                         + '</tr>';
                 }
 
@@ -313,11 +314,17 @@
                     : '<span class="metric-value">' + escapeHtml(formatDuration(limiter.retryAfterMs)) + '</span>'
                         + '<div class="table-note table-note-compact">' + escapeHtml(formatDateTime(limiter.retryAfterAt)) + '</div>';
 
+                const reset = limiter.resetMs === null || limiter.resetMs === undefined
+                    ? '-'
+                    : '<span class="metric-value">' + escapeHtml(formatDuration(limiter.resetMs)) + '</span>'
+                        + '<div class="table-note table-note-compact">' + escapeHtml(formatDateTime(limiter.resetAt)) + '</div>';
+
                 return '<tr>'
                     + '<td data-label="' + escapeHtml(labels.rateLimitName) + '"><span class="run-id">' + escapeHtml(limiter.name) + '</span></td>'
                     + '<td data-label="' + escapeHtml(labels.rateLimitRemaining) + '"><span class="metric-value">' + escapeHtml(remaining + ' / ' + limit) + '</span></td>'
                     + '<td data-label="' + escapeHtml(labels.rateLimitUsage) + '">' + usage + '</td>'
                     + '<td data-label="' + escapeHtml(labels.rateLimitRetry) + '">' + retry + '</td>'
+                    + '<td data-label="' + escapeHtml(labels.rateLimitReset) + '">' + reset + '</td>'
                     + '</tr>';
             }).join('');
         };

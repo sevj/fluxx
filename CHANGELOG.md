@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.11.0] - 2026-10-22
+
+### Added
+- Runtime dashboard: the rate limiters table has a "Resets in" column showing the
+  time left before each fixed-window limiter renews its budget, with the exact
+  renewal date below. The snapshot exposes it as `resetAt` and `resetMs`, read
+  from the limiter's stored window, and both are `null` when the window is unused
+  or the policy has no single renewal moment (sliding window, token bucket).
+  Compound limiters remain ignored. The new `runtime_index.rate_limiter_reset`
+  translation key is provided in English and French.
+
 ## [1.10.10] - 2026-10-21
 
 ### Changed
