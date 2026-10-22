@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Settings\RuntimeSettingsManager;
+use Fluxx\Workflow\Error\WorkflowDeferralInterface;
 use Fluxx\Workflow\Error\WorkflowErrorCategory;
 use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
@@ -28,6 +29,49 @@ final readonly class WorkflowRetryScheduler
         WorkflowStepDefinition $stepDefinition,
     ): ?WorkflowRetryPolicy {
         return $stepDefinition->retryPolicy() ?? $definition->retryPolicy();
+    }
+
+    /**
+     * @param array<string, mixed>|null $errorPayload
+     */
+    public function scheduleDeferral(
+        WorkflowRun $workflowRun,
+        WorkflowStepRun $stepRun,
+        WorkflowDeferralInterface $deferral,
+        ?string $errorMessage,
+        ?array $errorPayload,
+        ?int $durationMs,
+        ?int $memoryPeakBytes,
+    ): void {
+        $deferredAt = new DateTimeImmutable();
+        $nextRetryAt = max($deferral->deferredUntil(), $deferredAt->modify('+1 second'));
+        $delayMilliseconds = max(1000, ($nextRetryAt->getTimestamp() - $deferredAt->getTimestamp()) * 1000);
+
+        $stepRun->scheduleDeferral(
+            deferredAt: $deferredAt,
+            nextRetryAt: $nextRetryAt,
+            errorMessage: $errorMessage,
+            durationMs: $durationMs,
+            memoryPeakBytes: $memoryPeakBytes,
+            errorPayload: $errorPayload,
+        );
+
+        $metadata = $stepRun->metadata();
+        $metadata['deferral'] = [
+            'count' => (int) (($metadata['deferral']['count'] ?? 0) + 1),
+            'last_deferred_at' => $deferredAt->format(DATE_ATOM),
+            'next_retry_at' => $nextRetryAt->format(DATE_ATOM),
+        ];
+        $stepRun->replaceMetadata($metadata);
+
+        $workflowRun->markRetrying();
+
+        StepMessageDispatcher::dispatch(
+            $this->messageBus,
+            $workflowRun->runId(),
+            $stepRun->stepName(),
+            $delayMilliseconds,
+        );
     }
 
     /**

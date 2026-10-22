@@ -14,6 +14,7 @@ use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Repository\WorkflowStepRunLookupInterface;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
+use Fluxx\Workflow\Error\WorkflowDeferralInterface;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
@@ -218,6 +219,14 @@ final class FluxxRuntime
 
         try {
             $this->entityManager->beginTransaction();
+
+            if ($throwable instanceof WorkflowDeferralInterface) {
+                $this->retryScheduler->scheduleDeferral($workflowRun, $stepRun, $throwable, $throwable->getMessage(), $errorPayload, $durationMs, $memoryPeakBytes);
+                $this->entityManager->flush();
+                $this->entityManager->commit();
+
+                return [];
+            }
 
             if ($this->retryScheduler->scheduleIfNeeded($workflowRun, $stepRun, $retryPolicy, $throwable->getMessage(), $errorPayload, $durationMs, $memoryPeakBytes)) {
                 $this->entityManager->flush();

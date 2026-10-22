@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.12.0] - 2026-10-22
+
+### Added
+- Deferred steps: a step that throws an exception implementing the new
+  `Fluxx\Workflow\Error\WorkflowDeferralInterface` (ready-made implementation:
+  `DeferredWorkflowException`) is not counted as a failure. Its step run goes to
+  `retrying` and is re-dispatched with a delay up to `deferredUntil()`, without
+  consuming the retry budget (`retryCount` and `maxGlobalRetries` are untouched),
+  so it can wait as long as needed, for instance while an upstream API rate-limits
+  the application. Other errors keep their current retry and failure behaviour.
+  The step run metadata records a `deferral` entry (count, last deferred date,
+  next retry date).
+
+### Changed
+- A run with a retry scheduled in the future is no longer finalized by the
+  orphan run finisher, and its execution lock is no longer recovered as stale,
+  so long deferrals do not turn into interrupted runs or duplicate runs.
+
 ## [1.11.0] - 2026-10-22
 
 ### Added

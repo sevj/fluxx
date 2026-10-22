@@ -82,6 +82,10 @@ final readonly class OrphanRunFinisher
                 continue;
             }
 
+            if ($this->hasScheduledRetry($stepRuns, $now)) {
+                continue;
+            }
+
             $failedSteps = $this->failPendingStepRuns($stepRuns, $now, $staleSeconds);
             $run->markFailed(
                 sprintf(
@@ -108,6 +112,20 @@ final readonly class OrphanRunFinisher
         }
 
         return $finished;
+    }
+
+    /**
+     * @param list<WorkflowStepRun> $stepRuns
+     */
+    private function hasScheduledRetry(array $stepRuns, DateTimeImmutable $now): bool
+    {
+        foreach ($stepRuns as $stepRun) {
+            if ($stepRun->status() === WorkflowStepRunStatus::Retrying && $stepRun->nextRetryAt() !== null && $stepRun->nextRetryAt() > $now) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

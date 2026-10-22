@@ -293,6 +293,27 @@ class WorkflowStepRun
         $this->storeErrorPayload($errorPayload);
     }
 
+    /**
+     * @param array<string, mixed>|null $errorPayload
+     */
+    public function scheduleDeferral(
+        DateTimeImmutable $deferredAt,
+        DateTimeImmutable $nextRetryAt,
+        ?string $errorMessage = null,
+        ?int $durationMs = null,
+        ?int $memoryPeakBytes = null,
+        ?array $errorPayload = null,
+    ): void {
+        $this->lastRetryAt = $deferredAt;
+        $this->nextRetryAt = $nextRetryAt;
+        $this->status = WorkflowStepRunStatus::Retrying;
+        $this->finishedAt = null;
+        $this->durationMs = $durationMs;
+        $this->memoryPeakBytes = $memoryPeakBytes;
+        $this->errorMessage = $errorMessage;
+        $this->storeErrorPayload($errorPayload);
+    }
+
     public function markIdempotenceApplied(string $idempotenceKey): void
     {
         $this->idempotenceKey = $idempotenceKey;

@@ -9,7 +9,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowExecutionLockScope;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowExecutionLock;
+use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\WorkflowRun;
+use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\RuntimeWorkerStateLookupInterface;
 use Fluxx\Repository\WorkflowExecutionLockStoreInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
@@ -98,6 +100,10 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
             return true;
         }
 
+        if ($this->hasScheduledRetry($ownerRun)) {
+            return false;
+        }
+
         $staleTimeoutSeconds = min(
             $configuration->staleTimeoutSeconds(),
             $this->runtimeSettingsManager->get()->staleLockTimeoutSeconds,
@@ -106,6 +112,21 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
         $heartbeatThreshold = new DateTimeImmutable(sprintf('-%d seconds', $staleTimeoutSeconds));
 
         return !$this->runtimeWorkerStateRepository->hasActiveWorkerForRun($ownerRun->runId(), $heartbeatThreshold);
+    }
+
+    private function hasScheduledRetry(WorkflowRun $run): bool
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(stepRun.id)')
+            ->from(WorkflowStepRun::class, 'stepRun')
+            ->where('stepRun.workflowRun = :run')
+            ->andWhere('stepRun.status = :status')
+            ->andWhere('stepRun.nextRetryAt > :now')
+            ->setParameter('run', $run)
+            ->setParameter('status', WorkflowStepRunStatus::Retrying)
+            ->setParameter('now', new DateTimeImmutable())
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
     }
 
     private function buildLockKey(
