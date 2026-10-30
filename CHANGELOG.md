@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.12.2] - 2026-10-30
+
+### Fixed
+- Require `doctrine/orm` `^3.7`: the repositories pass `SortDirection` instances to
+  `QueryBuilder::orderBy()`, which older 3.x releases reject with a `TypeError`.
+
 ## [1.12.1] - 2026-10-30
 
 ### Fixed

@@ -5,7 +5,7 @@
     "license": "proprietary",
     "require": {
         "doctrine/doctrine-bundle": "^3.2 || ^4.0",
-        "doctrine/orm": "^3.3",
+        "doctrine/orm": "^3.7",
         "doctrine/persistence": "^4.0",
         "php": "^8.3",
         "symfony/console": "^7.3 || ^8.0",
