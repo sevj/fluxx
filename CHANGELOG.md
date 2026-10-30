@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.12.1] - 2026-10-30
+
+### Fixed
+- Declare `symfony/polyfill-php86` as a dependency: repositories use the PHP 8.6
+  `SortDirection` enum, which failed with `Attempted to load class "SortDirection"`
+  in host applications that did not already have the polyfill installed.
+
 ## [1.12.0] - 2026-10-22
 
 ### Added
