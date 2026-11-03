@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [Unreleased]
+
+### Changed
+- New back office design: flat surfaces, monospace labels, one accent colour and bracketed
+  text buttons. Pages now extend a shared `base.html.twig` layout, and the five theme variants
+  are replaced by a dark and a light theme switched from the top bar and remembered in the
+  browser.
+
 ## [1.14.0] - 2026-11-03
 
 ### Added

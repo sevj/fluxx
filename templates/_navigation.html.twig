@@ -1,5 +1,19 @@
 {% trans_default_domain 'fluxx' %}
 {% import '@Fluxx/_icons.html.twig' as icons %}
+{% set current_route = app.request.attributes.get('_route') ?? '' %}
+{% set main_links = [
+    {route: 'fluxx_workflow_index', prefix: 'fluxx_workflow', label: 'navigation.workflows'},
+    {route: 'fluxx_run_index', prefix: 'fluxx_run_index', label: 'navigation.runs'},
+    {route: 'fluxx_run_active', prefix: 'fluxx_run_active', label: 'navigation.active_runs'},
+    {route: 'fluxx_statistics_index', prefix: 'fluxx_statistics', label: 'navigation.statistics'},
+    {route: 'fluxx_troubleshooting_index', prefix: 'fluxx_troubleshooting', label: 'navigation.troubleshooting'},
+] %}
+{% set admin_links = [
+    {route: 'fluxx_runtime_index', prefix: 'fluxx_runtime', label: 'navigation.runtime'},
+    {route: 'fluxx_system_health', prefix: 'fluxx_system_health', label: 'navigation.health'},
+    {route: 'fluxx_user_index', prefix: 'fluxx_user', label: 'navigation.users'},
+    {route: 'fluxx_configuration_index', prefix: 'fluxx_configuration', label: 'navigation.configuration'},
+] %}
 <div class="fluxx-topbar">
     <div class="fluxx-topbar-main">
         <a href="{{ path('fluxx_workflow_index') }}" class="fluxx-brand" aria-label="Fluxx">
@@ -11,82 +25,40 @@
         </a>
 
         <nav class="fluxx-nav" aria-label="{{ 'navigation.label'|trans }}">
-            <a
-                href="{{ path('fluxx_workflow_index') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_workflow_index' ? ' is-active' : '' }}"
-            >
-                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('workflow') }}</span>
-                {{ 'navigation.workflows'|trans }}
-            </a>
-            <a
-                href="{{ path('fluxx_run_index') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_run_index' ? ' is-active' : '' }}"
-            >
-                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('zap') }}</span>
-                {{ 'navigation.runs'|trans }}
-            </a>
-            <a
-                href="{{ path('fluxx_run_active') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_run_active' ? ' is-active' : '' }}"
-            >
-                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('activity') }}</span>
-                {{ 'navigation.active_runs'|trans }}
-            </a>
-            <a
-                href="{{ path('fluxx_statistics_index') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_statistics_index' ? ' is-active' : '' }}"
-            >
-                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('bar-chart-3') }}</span>
-                {{ 'navigation.statistics'|trans }}
-            </a>
-            <a
-                href="{{ path('fluxx_troubleshooting_index') }}"
-                class="fluxx-nav-link{{ app.request.attributes.get('_route') == 'fluxx_troubleshooting_index' ? ' is-active' : '' }}"
-            >
-                <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('alert-triangle') }}</span>
-                {{ 'navigation.troubleshooting'|trans }}
-            </a>
+            {% for link in main_links %}
+                <a
+                    href="{{ path(link.route) }}"
+                    class="fluxx-nav-link{{ current_route starts with link.prefix ? ' is-active' : '' }}"
+                    {%- if current_route starts with link.prefix %} aria-current="page"{% endif %}
+                >{{ link.label|trans }}</a>
+            {% endfor %}
             {% if is_granted('ROLE_ADMIN') %}
                 <span class="fluxx-nav-separator" aria-hidden="true"></span>
-                <a
-                    href="{{ path('fluxx_runtime_index') }}"
-                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_runtime_index' ? ' is-active' : '' }}"
-                >
-                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('server') }}</span>
-                    {{ 'navigation.runtime'|trans }}
-                </a>
-                <a
-                    href="{{ path('fluxx_system_health') }}"
-                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_system_health' ? ' is-active' : '' }}"
-                >
-                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('heart-pulse') }}</span>
-                    {{ 'navigation.health'|trans }}
-                </a>
-                <a
-                    href="{{ path('fluxx_user_index') }}"
-                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_user_index' ? ' is-active' : '' }}"
-                >
-                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('users') }}</span>
-                    {{ 'navigation.users'|trans }}
-                </a>
-                <a
-                    href="{{ path('fluxx_configuration_index') }}"
-                    class="fluxx-nav-link fluxx-nav-link-admin{{ app.request.attributes.get('_route') == 'fluxx_configuration_index' ? ' is-active' : '' }}"
-                >
-                    <span class="fluxx-nav-link-icon" aria-hidden="true">{{ icons.icon('settings') }}</span>
-                    {{ 'navigation.configuration'|trans }}
-                </a>
+                {% for link in admin_links %}
+                    <a
+                        href="{{ path(link.route) }}"
+                        class="fluxx-nav-link fluxx-nav-link-admin{{ current_route starts with link.prefix ? ' is-active' : '' }}"
+                        {%- if current_route starts with link.prefix %} aria-current="page"{% endif %}
+                    >{{ link.label|trans }}</a>
+                {% endfor %}
             {% endif %}
         </nav>
     </div>
 
     <div class="fluxx-topbar-actions">
+        <button
+            type="button"
+            class="fluxx-theme-toggle"
+            data-theme-toggle
+            aria-label="{{ 'navigation.theme_toggle'|trans }}"
+            title="{{ 'navigation.theme_toggle'|trans }}"
+        >
+            <span class="button-icon icon-when-dark" aria-hidden="true">{{ icons.icon('moon') }}</span>
+            <span class="button-icon icon-when-light" aria-hidden="true">{{ icons.icon('sun') }}</span>
+        </button>
         {% if app.user %}
-            <a
-                href="{{ path('fluxx_logout') }}"
-                class="fluxx-logout"
-            >
-                <span class="button-icon" aria-hidden="true">{{ icons.icon('log-out') }}</span>
+            <span class="fluxx-topbar-user" title="{{ app.user.userIdentifier }}">{{ app.user.userIdentifier }}</span>
+            <a href="{{ path('fluxx_logout') }}" class="secondary-button fluxx-logout">
                 <span class="button-label">{{ 'navigation.logout'|trans }}</span>
             </a>
         {% endif %}

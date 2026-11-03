@@ -10,6 +10,7 @@ navigation:
     health: Santé
     troubleshooting: Diagnostic
     logout: Déconnexion
+    theme_toggle: Basculer entre le thème clair et le thème sombre
 
 settings:
     save: Enregistrer

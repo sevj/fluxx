@@ -10,6 +10,7 @@ navigation:
     health: Health
     troubleshooting: Troubleshooting
     logout: Logout
+    theme_toggle: Toggle light and dark theme
 
 settings:
     save: Save
