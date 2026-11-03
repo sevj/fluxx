@@ -15,6 +15,8 @@ use Fluxx\Runtime\FluxxRuntimeSnapshotProvider;
 use Fluxx\Runtime\RateLimiter\RateLimiterSnapshotProvider;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\Message\RunWorkflowStepMessage;
+use Fluxx\Workflow\Progress\StepProgress;
+use Fluxx\Workflow\Progress\StepProgressStoreInterface;
 use Fluxx\Workflow\SynchronizationRegistry;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -157,7 +159,7 @@ final class FluxxRuntimeSnapshotProviderTest extends TestCase
         self::assertNull($row['processingDurationMs']);
     }
 
-    private function createProvider(): FluxxRuntimeSnapshotProvider
+    private function createProvider(?StepProgressStoreInterface $stepProgressStore = null): FluxxRuntimeSnapshotProvider
     {
         $registry = $this->createStub(ManagerRegistry::class);
 
@@ -171,7 +173,52 @@ final class FluxxRuntimeSnapshotProviderTest extends TestCase
             registry: new SynchronizationRegistry([]),
             stepTypeRegistry: new StepTypeRegistry([]),
             rateLimiterSnapshotProvider: new RateLimiterSnapshotProvider([]),
+            stepProgressStore: $stepProgressStore,
         );
+    }
+
+    #[Test]
+    public function it_exposes_the_live_progress_of_the_step_a_worker_is_processing(): void
+    {
+        $store = new class implements StepProgressStoreInterface {
+            public function save(string $runId, string $stepCode, StepProgress $progress): void
+            {
+            }
+
+            public function clear(string $runId, string $stepCode): void
+            {
+            }
+
+            public function forRun(string $runId): array
+            {
+                return $runId === 'run-current' ? ['insee_fetch' => new StepProgress(3, 12, 'lots')] : [];
+            }
+        };
+        $workerState = new RuntimeWorkerState(
+            workerName: 'worker',
+            transportName: 'fluxx',
+            host: 'host',
+            pid: 1,
+            receiverName: 'fluxx',
+        );
+        $workerState->markProcessing(
+            messageClass: RunWorkflowStepMessage::class,
+            transportMessageId: '1-0',
+            workflowCode: 'insee_organisation_webhook',
+            runId: 'run-current',
+            stepCode: 'insee_fetch',
+            startedAt: new DateTimeImmutable('2026-07-22 14:20:40'),
+            memoryBytes: 1024,
+        );
+
+        $row = $this->buildWorkerRow(
+            $this->createProvider($store),
+            ['name' => 'worker', 'state' => 'active', 'pendingCount' => 1, 'idleMs' => 1000],
+            $workerState,
+            new DateTimeImmutable('2026-07-22 14:20:45'),
+        );
+
+        self::assertSame(['done' => 3, 'total' => 12, 'label' => 'lots', 'percent' => 25], $row['stepProgress']);
     }
 
     private function buildWorkerRow(

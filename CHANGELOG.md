@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.14.0] - 2026-11-03
+
+### Added
+- The runtime dashboard shows the live progress of the step each worker is processing.
+
+### Fixed
+- The active runs page loads the stylesheet that styles step progress, instead of a version
+  still cached by the browser.
+
 ## [1.13.0] - 2026-11-03
 
 ### Added

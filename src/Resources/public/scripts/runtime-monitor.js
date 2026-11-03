@@ -387,6 +387,13 @@
                             ? '<span class="step-tone-pill">' + escapeHtml(worker.stepTypeLabel) + '</span>'
                             : '')
                         + '<div class="runtime-step-name">' + escapeHtml(worker.stepName || worker.stepCode || labels.workerMessage) + '</div>'
+                        + (worker.stepProgress
+                            ? '<div class="active-run-step-progress">'
+                                + '<span class="active-run-step-progress-bar" role="progressbar" aria-valuenow="' + escapeHtml(worker.stepProgress.percent) + '" aria-valuemin="0" aria-valuemax="100"><span class="active-run-step-progress-fill" style="width: ' + escapeHtml(worker.stepProgress.percent) + '%"></span></span>'
+                                + (worker.stepProgress.label ? '<span>' + escapeHtml(worker.stepProgress.label) + '</span>' : '')
+                                + '<span>' + escapeHtml(worker.stepProgress.done) + ' / ' + escapeHtml(worker.stepProgress.total) + '</span>'
+                                + '</div>'
+                            : '')
                         + (worker.workflowName || worker.workflowCode
                             ? '<div class="table-note table-note-compact">' + escapeHtml(worker.workflowName || worker.workflowCode || '-') + '</div>'
                             : '')

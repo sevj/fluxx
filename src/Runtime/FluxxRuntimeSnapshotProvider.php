@@ -13,6 +13,7 @@ use Fluxx\Repository\WorkflowExecutionLockRepository;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Workflow\Message\RunWorkflowStepMessage;
+use Fluxx\Workflow\Progress\StepProgressStoreInterface;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Redis;
 use RuntimeException;
@@ -43,6 +44,7 @@ final readonly class FluxxRuntimeSnapshotProvider
         private RateLimiterSnapshotProvider $rateLimiterSnapshotProvider,
         #[Autowire('%fluxx.runtime.transport_name%')]
         private string $transportName = 'fluxx',
+        private ?StepProgressStoreInterface $stepProgressStore = null,
     ) {
     }
 
@@ -589,6 +591,26 @@ final readonly class FluxxRuntimeSnapshotProvider
             'processingDurationMs' => $isProcessing && $workerState?->startedProcessingAt() !== null
                 ? $this->resolveDateAgeMs($workerState->startedProcessingAt(), $refreshedAt)
                 : null,
+            'stepProgress' => $isProcessing ? $this->resolveStepProgress($workerState?->runId(), $stepCode) : null,
+        ];
+    }
+
+    /**
+     * @return array{done: int, total: int, label: string, percent: int}|null
+     */
+    private function resolveStepProgress(?string $runId, ?string $stepCode): ?array
+    {
+        if ($this->stepProgressStore === null || $runId === null || $stepCode === null) {
+            return null;
+        }
+
+        $progress = $this->stepProgressStore->forRun($runId)[$stepCode] ?? null;
+
+        return $progress === null ? null : [
+            'done' => $progress->done(),
+            'total' => $progress->total(),
+            'label' => $progress->label(),
+            'percent' => $progress->percent(),
         ];
     }
 
