@@ -43,8 +43,25 @@ final readonly class RunTimeline
 
         $indexed = $this->indexStepRuns($stepRuns);
         $widthMs = $this->resolveWidthMs($indexed, $isTerminal, $now);
+        $dependencies = $this->resolveDependencies($indexed, $definition);
+        $levels = $this->resolveLevels($dependencies);
 
-        $startOffsetMs = $this->resolveStartOffsets($indexed, $definition, $widthMs);
+        // Real start times when the steps have them; otherwise the position a step would
+        // have if it started as soon as its dependencies finished.
+        $origin = $windowStart;
+        foreach ($indexed as $stepRun) {
+            if ($stepRun->startedAt() !== null && $stepRun->startedAt() < $origin) {
+                $origin = $stepRun->startedAt();
+            }
+        }
+
+        $simulatedOffsetMs = $this->resolveStartOffsets($indexed, $dependencies, $widthMs);
+        $startOffsetMs = [];
+        foreach ($indexed as $code => $stepRun) {
+            $startOffsetMs[$code] = $stepRun->startedAt() !== null
+                ? $this->dateDiffMs($stepRun->startedAt(), $origin)
+                : ($simulatedOffsetMs[$code] ?? 0);
+        }
 
         $totalMs = 1;
         foreach ($widthMs as $code => $width) {
@@ -98,8 +115,15 @@ final readonly class RunTimeline
                 leftPercent: $leftPercent,
                 widthPercent: $widthPercent,
                 isRunning: $isRunning,
+                level: $levels[$code] ?? 0,
             );
         }
+
+        // Chronological order: parallel branches end up as neighbouring rows with overlapping bars.
+        usort($stepViews, static function (RunTimelineStepView $a, RunTimelineStepView $b) use ($startOffsetMs): int {
+            return [$startOffsetMs[$a->code()] ?? 0, $a->level(), $a->position()]
+                <=> [$startOffsetMs[$b->code()] ?? 0, $b->level(), $b->position()];
+        });
 
         return new RunTimelineView(
             windowStart: $windowStart,
@@ -159,13 +183,45 @@ final readonly class RunTimeline
     }
 
     /**
+     * @param array<string, list<string>> $dependencies
+     * @return array<string, int>
+     */
+    private function resolveLevels(array $dependencies): array
+    {
+        $levels = [];
+
+        $resolve = function (string $code, array $trail) use (&$resolve, &$levels, $dependencies): int {
+            if (isset($levels[$code])) {
+                return $levels[$code];
+            }
+
+            $level = 0;
+            foreach ($dependencies[$code] ?? [] as $depCode) {
+                if (isset($trail[$depCode]) || !isset($dependencies[$depCode])) {
+                    continue;
+                }
+
+                $level = max($level, $resolve($depCode, $trail + [$code => true]) + 1);
+            }
+
+            return $levels[$code] = $level;
+        };
+
+        foreach (array_keys($dependencies) as $code) {
+            $resolve($code, []);
+        }
+
+        return $levels;
+    }
+
+    /**
      * @param array<string, WorkflowStepRun> $indexed
+     * @param array<string, list<string>> $dependencies
      * @param array<string, ?int> $widthMs
      * @return array<string, int>
      */
-    private function resolveStartOffsets(array $indexed, ?WorkflowDefinition $definition, array $widthMs): array
+    private function resolveStartOffsets(array $indexed, array $dependencies, array $widthMs): array
     {
-        $dependencies = $this->resolveDependencies($indexed, $definition);
         $offsets = [];
         $pending = array_keys($indexed);
 

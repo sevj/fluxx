@@ -25,13 +25,11 @@
     {% else %}
         <div class="run-timeline">
             {% for step in timeline.steps %}
+                {% set stepUrl = path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) %}
                 <div class="run-timeline-row">
-                    <div class="run-timeline-label">
+                    <div class="run-timeline-label" style="--run-timeline-level: {{ min(step.level, 10) }};">
                         <span class="step-status-dot step-status-dot-{{ step.status|replace({'_': '-'}) }}" aria-hidden="true"></span>
-                        <a
-                            href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) }}"
-                            class="workflow-link"
-                        >
+                        <a href="{{ stepUrl }}" class="workflow-link">
                             <div class="run-timeline-name">{{ step.name }}</div>
                             <div class="item-code">{{ step.code }}</div>
                         </a>
@@ -40,20 +38,28 @@
                         {% if step.isPending %}
                             <span class="run-timeline-pending">{{ 'run_show.timeline_not_started'|trans }}</span>
                         {% else %}
+                            {% set barLabel = step.durationMs is not null ? step.durationMs|fluxx_duration : (step.isRunning ? 'run_show.timeline_running'|trans : '') %}
+                            {% set left = step.leftPercent|number_format(3, '.', '') %}
+                            {% set width = step.widthPercent|number_format(3, '.', '') %}
+                            {% set labelOutside = step.widthPercent < 8 %}
+                            {% set labelBefore = step.leftPercent + step.widthPercent > 88 %}
                             <a
-                                href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) }}"
+                                href="{{ stepUrl }}"
                                 class="run-timeline-bar step-tone-{{ step.typeTone }} step-tone-surface step-status-bar-{{ step.status|replace({'_': '-'}) }}{% if step.isRunning %} is-running{% endif %}"
-                                style="left: {{ step.leftPercent }}%; width: {{ step.widthPercent }}%;{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}"
+                                style="left: {{ left }}%; width: {{ width }}%;{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}"
                                 title="{{ step.name }} — {{ ('workflow_status.' ~ step.status)|trans }}{% if step.durationMs is not null %} — {{ step.durationMs|fluxx_duration }}{% endif %}"
                             >
-                                <span class="run-timeline-bar-meta">
-                                    {% if step.durationMs is not null %}
-                                        {{ step.durationMs|fluxx_duration }}
-                                    {% elseif step.isRunning %}
-                                        {{ 'run_show.timeline_running'|trans }}
-                                    {% endif %}
-                                </span>
+                                {% if not labelOutside %}
+                                    <span class="run-timeline-bar-meta">{{ barLabel }}</span>
+                                {% endif %}
                             </a>
+                            {% if labelOutside and barLabel != '' %}
+                                <span
+                                    class="run-timeline-bar-label{% if labelBefore %} is-before{% endif %}"
+                                    style="{% if labelBefore %}right: calc({{ (100 - step.leftPercent)|number_format(3, '.', '') }}% + 6px);{% else %}left: calc({{ (step.leftPercent + step.widthPercent)|number_format(3, '.', '') }}% + 6px);{% endif %}"
+                                    aria-hidden="true"
+                                >{{ barLabel }}</span>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>

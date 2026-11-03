@@ -115,6 +115,40 @@ final class RunTimelineTest extends TestCase
     }
 
     #[Test]
+    public function it_positions_steps_on_their_real_start_time_and_orders_them_chronologically(): void
+    {
+        $definition = $this->fanOutDefinition();
+        $timeline = $this->timeline($definition);
+        $start = new \DateTimeImmutable('2026-09-30 10:00:00');
+        $run = $this->createRun($definition->code(), $start);
+
+        $read = $this->createStepRun($run, 'read', 0);
+        $read->markRunning($start);
+        $read->markCompleted(processedCount: 1, successCount: 1, durationMs: 1000, finishedAt: $start->modify('+1 second'));
+
+        // Branch A is declared first but a worker picked branch B up first.
+        $branchA = $this->createStepRun($run, 'branch_a', 1);
+        $branchA->markRunning($start->modify('+3 seconds'));
+        $branchA->markCompleted(processedCount: 1, successCount: 1, durationMs: 1000, finishedAt: $start->modify('+4 seconds'));
+
+        $branchB = $this->createStepRun($run, 'branch_b', 2);
+        $branchB->markRunning($start->modify('+1 second'));
+        $branchB->markCompleted(processedCount: 1, successCount: 1, durationMs: 2000, finishedAt: $start->modify('+3 seconds'));
+
+        $join = $this->createStepRun($run, 'join', 3);
+        $join->markRunning($start->modify('+4 seconds'));
+        $join->markCompleted(processedCount: 1, successCount: 1, durationMs: 1000, finishedAt: $start->modify('+5 seconds'));
+        $run->markCompleted($start->modify('+5 seconds'));
+
+        $view = $timeline->for($run, [$read, $branchA, $branchB, $join]);
+
+        self::assertSame(['read', 'branch_b', 'branch_a', 'join'], array_map(static fn($step) => $step->code(), $view->steps()));
+        self::assertSame([0, 1, 1, 2], array_map(static fn($step) => $step->level(), $view->steps()));
+        self::assertEqualsWithDelta(3000 / 5000 * 100.0, $view->steps()[2]->leftPercent(), 0.001);
+        self::assertSame(5000, $view->totalDurationMs());
+    }
+
+    #[Test]
     public function it_marks_an_in_flight_step_as_running_on_a_live_run(): void
     {
         $timeline = $this->timeline($this->linearDefinition());

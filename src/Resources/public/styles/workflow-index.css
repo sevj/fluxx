@@ -2227,6 +2227,7 @@ tbody tr:hover > td {
     align-items: center;
     gap: 8px;
     min-width: 0;
+    padding-left: calc(var(--run-timeline-level, 0) * 8px);
 }
 
 .run-timeline-label .step-status-dot {
@@ -2262,7 +2263,7 @@ tbody tr:hover > td {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 2px;
+    min-width: 5px;
     padding: 0 6px;
     border: 1px solid color-mix(in srgb, var(--step-tone-text) 45%, transparent);
     background: color-mix(in srgb, var(--step-tone-text) 16%, var(--surface));
@@ -2279,6 +2280,22 @@ tbody tr:hover > td {
 }
 
 .run-timeline-bar-meta {
+    pointer-events: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.run-timeline-bar-label {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
     pointer-events: none;
 }
 

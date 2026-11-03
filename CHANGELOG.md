@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.15.2] - 2026-11-03
+
+### Changed
+- The run timeline places each step on its real start time and lists the steps in
+  chronological order, indented by their depth in the dependency graph, so parallel
+  branches show up as neighbouring rows. Durations of narrow bars are written next to the
+  bar instead of being clipped inside it, and zero-length steps stay visible.
+
 ## [1.15.1] - 2026-11-03
 
 ### Changed

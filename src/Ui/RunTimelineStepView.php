@@ -21,7 +21,16 @@ final readonly class RunTimelineStepView
         private ?float $leftPercent,
         private ?float $widthPercent,
         private bool $isRunning,
+        private int $level = 0,
     ) {
+    }
+
+    /**
+     * Depth of the step in the dependency graph: 0 for a root, then one more than its deepest parent.
+     */
+    public function level(): int
+    {
+        return $this->level;
     }
 
     public function code(): string
