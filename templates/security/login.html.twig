@@ -18,7 +18,7 @@
                 <p class="subtitle">{{ 'login.subtitle'|trans }}</p>
 
                 {% if error %}
-                    <div class="login-error">{{ 'login.error'|trans }}</div>
+                    <div class="login-error">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
                 {% endif %}
 
                 <form method="post" class="login-form">

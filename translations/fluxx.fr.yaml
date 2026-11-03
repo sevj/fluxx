@@ -53,7 +53,6 @@ login:
     email: E-mail
     password: Mot de passe
     submit: Se connecter
-    error: Identifiants invalides.
 
 workflow_index:
     title: Workflows

@@ -53,7 +53,6 @@ login:
     email: Email
     password: Password
     submit: Sign in
-    error: Invalid credentials.
 
 workflow_index:
     title: Workflows
