@@ -141,7 +141,7 @@
                         <div class="definition-inline-item">
                             <span class="definition-inline-key">{{ 'step_run_show.duration'|trans }}</span>
                             {% if stepRun.durationMs is not null %}
-                                <span class="definition-inline-value">{{ stepRun.durationMs }} ms</span>
+                                <span class="definition-inline-value">{{ stepRun.durationMs|fluxx_duration }}</span>
                             {% else %}
                                 <span class="metric-empty">{{ 'step_run_show.not_available'|trans }}</span>
                             {% endif %}

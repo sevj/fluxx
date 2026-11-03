@@ -44,11 +44,11 @@
                                 href="{{ path('fluxx_workflow_step_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'stepCode': step.code}) }}"
                                 class="run-timeline-bar step-tone-{{ step.typeTone }} step-tone-surface step-status-bar-{{ step.status|replace({'_': '-'}) }}{% if step.isRunning %} is-running{% endif %}"
                                 style="left: {{ step.leftPercent }}%; width: {{ step.widthPercent }}%;{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}"
-                                title="{{ step.name }} — {{ ('workflow_status.' ~ step.status)|trans }}{% if step.durationMs is not null %} — {{ step.durationMs }} ms{% endif %}"
+                                title="{{ step.name }} — {{ ('workflow_status.' ~ step.status)|trans }}{% if step.durationMs is not null %} — {{ step.durationMs|fluxx_duration }}{% endif %}"
                             >
                                 <span class="run-timeline-bar-meta">
                                     {% if step.durationMs is not null %}
-                                        {{ step.durationMs }} ms
+                                        {{ step.durationMs|fluxx_duration }}
                                     {% elseif step.isRunning %}
                                         {{ 'run_show.timeline_running'|trans }}
                                     {% endif %}

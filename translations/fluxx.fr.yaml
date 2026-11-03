@@ -138,14 +138,14 @@ workflow_show:
     finished_at: Terminée
     step: Étape
     step_counts_compact: '%success% ok / %errors% err'
-    step_runtime_compact: '%duration% ms - %memory% Mo'
+    step_runtime_compact: '%duration% - %memory% Mo'
     lock_scope: Portée du verrou
     step_idempotent: Idempotent
     step_reads: 'Lit aussi : %steps%'
     step_deduplicated: 'Dédupliquée depuis %runId%'
     step_tooltip_status: 'Statut : %status%'
     step_tooltip_counts: '%processed% traités · %success% succès · %errors% erreurs'
-    step_tooltip_duration: 'Durée : %duration% ms'
+    step_tooltip_duration: 'Durée : %duration%'
     step_tooltip_memory: 'Mémoire : %memory% Mo'
     step_tooltip_idempotence: "Clé d'idempotence : %key%"
     relaunch_run: Relancer l'exécution

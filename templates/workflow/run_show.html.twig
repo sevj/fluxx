@@ -305,7 +305,7 @@
                                     </td>
                                     <td data-label="{{ 'run_show.duration'|trans }}">
                                         {% if step.durationMs is not null %}
-                                            <span class="metric-value">{{ step.durationMs }} ms</span>
+                                            <span class="metric-value">{{ step.durationMs|fluxx_duration }}</span>
                                         {% else %}
                                             <span class="metric-empty">{{ 'run_show.not_available'|trans }}</span>
                                         {% endif %}

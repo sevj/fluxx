@@ -97,7 +97,7 @@
                             </td>
                             <td data-label="{{ 'workflow_show.metric_avg_duration'|trans }}">
                                 <span class="metric-value">
-                                    {{ stepMetric.averageDurationMs is not null ? stepMetric.averageDurationMs ~ ' ms' : '-' }}
+                                    {{ stepMetric.averageDurationMs|fluxx_duration }}
                                 </span>
                             </td>
                             <td data-label="{{ 'workflow_show.step_failures'|trans }}">

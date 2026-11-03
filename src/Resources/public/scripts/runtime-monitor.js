@@ -137,7 +137,19 @@
                 return milliseconds + ' ms';
             }
 
-            return (milliseconds / 1000).toFixed(1) + ' s';
+            const seconds = milliseconds / 1000;
+
+            if (seconds < 60) {
+                return seconds.toFixed(1) + ' s';
+            }
+
+            const minutes = Math.floor(seconds / 60);
+
+            if (minutes < 60) {
+                return minutes + ' min ' + String(Math.floor(seconds % 60)).padStart(2, '0') + ' s';
+            }
+
+            return Math.floor(minutes / 60) + ' h ' + String(minutes % 60).padStart(2, '0') + ' min';
         };
 
         const formatMemory = function (bytes) {

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.15.1] - 2026-11-03
+
+### Changed
+- Step durations are displayed in seconds with one decimal above a second, then in minutes
+  and hours, on the run page, the executions tab, the timeline, the statistics and the
+  runtime dashboard. Templates can use the `fluxx_duration` Twig filter.
+
 ## [1.15.0] - 2026-11-03
 
 ### Changed

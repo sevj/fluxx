@@ -155,7 +155,7 @@
                                                 {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_status'|trans({'%status%': ('workflow_status.' ~ step.status)|trans})]) %}
                                                 {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_counts'|trans({'%processed%': step.processedCount, '%success%': step.successCount, '%errors%': step.errorCount})]) %}
                                                 {% if step.durationMs is not null %}
-                                                    {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_duration'|trans({'%duration%': step.durationMs})]) %}
+                                                    {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_duration'|trans({'%duration%': step.durationMs|fluxx_duration})]) %}
                                                 {% endif %}
                                                 {% if step.memoryPeakBytes is not null %}
                                                     {% set tooltipLines = tooltipLines|merge(['workflow_show.step_tooltip_memory'|trans({'%memory%': ((step.memoryPeakBytes / 1048576)|round(1, 'common'))})]) %}
@@ -184,11 +184,11 @@
                                                             <span class="execution-step-meta-item">
                                                                 {% if step.durationMs is not null and step.memoryPeakBytes is not null %}
                                                                     {{ 'workflow_show.step_runtime_compact'|trans({
-                                                                        '%duration%': step.durationMs,
+                                                                        '%duration%': step.durationMs|fluxx_duration,
                                                                         '%memory%': ((step.memoryPeakBytes / 1048576)|round(1, 'common'))
                                                                     }) }}
                                                                 {% elseif step.durationMs is not null %}
-                                                                    {{ step.durationMs }} ms
+                                                                    {{ step.durationMs|fluxx_duration }}
                                                                 {% elseif step.memoryPeakBytes is not null %}
                                                                     {{ ((step.memoryPeakBytes / 1048576)|round(1, 'common')) }} MB
                                                                 {% endif %}

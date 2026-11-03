@@ -138,14 +138,14 @@ workflow_show:
     finished_at: Finished
     step: Step
     step_counts_compact: '%success% ok / %errors% err'
-    step_runtime_compact: '%duration% ms - %memory% MB'
+    step_runtime_compact: '%duration% - %memory% MB'
     lock_scope: Lock scope
     step_idempotent: Idempotent
     step_reads: 'Also reads: %steps%'
     step_deduplicated: 'Deduplicated from %runId%'
     step_tooltip_status: 'Status: %status%'
     step_tooltip_counts: '%processed% processed · %success% success · %errors% errors'
-    step_tooltip_duration: 'Duration: %duration% ms'
+    step_tooltip_duration: 'Duration: %duration%'
     step_tooltip_memory: 'Memory: %memory% MB'
     step_tooltip_idempotence: 'Idempotence key: %key%'
     relaunch_run: Relaunch run
