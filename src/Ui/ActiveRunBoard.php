@@ -10,6 +10,7 @@ use Fluxx\Repository\RuntimeWorkerStateRepository;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\Settings\RuntimeSettingsManager;
+use Fluxx\Workflow\Progress\StepProgressStoreInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class ActiveRunBoard
@@ -24,6 +25,7 @@ final readonly class ActiveRunBoard
         private RuntimeWorkerStateRepository $runtimeWorkerStateRepository,
         private RuntimeSettingsManager $runtimeSettingsManager,
         private ActiveRunsViewFactory $factory,
+        private StepProgressStoreInterface $stepProgressStore,
         #[Autowire('%fluxx.runtime.transport_name%')]
         private string $transportName = 'fluxx',
     ) {
@@ -53,6 +55,7 @@ final readonly class ActiveRunBoard
                 hasLiveWorker: in_array($run->runId(), $processingRunIds, true),
                 staleSeconds: $staleSeconds,
                 now: $now,
+                stepProgress: $this->stepProgressStore->forRun($run->runId()),
             );
 
             $rows[] = $row;

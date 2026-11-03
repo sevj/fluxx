@@ -54,6 +54,13 @@
                             <div class="active-run-step step-tone-{{ step.typeTone }} step-tone-surface"{% if step.typeToneStyle %} style="{{ step.typeToneStyle }}"{% endif %}>
                                 <span class="step-tone-pill" title="{{ step.code }}">{{ icons.icon('activity') }} {{ step.name }}</span>
                                 <span class="active-run-step-elapsed" title="{{ 'runs_active.current_step_since'|trans }}">{{ step.elapsedLabel }}</span>
+                                {% if step.progress %}
+                                    <span class="active-run-step-progress">
+                                        <span class="active-run-step-progress-bar" role="progressbar" aria-valuenow="{{ step.progress.percent }}" aria-valuemin="0" aria-valuemax="100"><span class="active-run-step-progress-fill" style="width: {{ step.progress.percent }}%"></span></span>
+                                        {% if step.progress.label %}<span>{{ step.progress.label }}</span>{% endif %}
+                                        <span>{{ step.progress.done }} / {{ step.progress.total }}</span>
+                                    </span>
+                                {% endif %}
                             </div>
                         {% endfor %}
                         {% if run.workerNames is not empty %}

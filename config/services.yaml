@@ -49,6 +49,8 @@ services:
     Fluxx\Workflow\SynchronousFluxxEngineInterface: '@Fluxx\Workflow\SynchronousFluxxEngine'
 
     Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface: '@Fluxx\Workflow\Lock\WorkflowExecutionLockManager'
+    Fluxx\Workflow\Progress\StepProgressReporterInterface: '@Fluxx\Workflow\Progress\StepProgressReporter'
+    Fluxx\Workflow\Progress\StepProgressStoreInterface: '@Fluxx\Workflow\Progress\RedisStepProgressStore'
     Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface: '@Fluxx\Workflow\Payload\WorkflowPayloadStore'
     Fluxx\Repository\WorkflowExecutionLockStoreInterface: '@Fluxx\Repository\WorkflowExecutionLockRepository'
     Fluxx\Repository\WorkflowRunLookupInterface: '@Fluxx\Repository\WorkflowRunRepository'

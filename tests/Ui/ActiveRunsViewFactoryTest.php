@@ -12,6 +12,7 @@ use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Tests\Fixture\FixtureWorkflow;
 use Fluxx\Tests\Fixture\StubExecutableStep;
 use Fluxx\Ui\ActiveRunsViewFactory;
+use Fluxx\Workflow\Progress\StepProgress;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowStepDefinition;
@@ -45,6 +46,28 @@ final class ActiveRunsViewFactoryTest extends TestCase
         self::assertNotNull($row->currentSteps()[0]->elapsedLabel());
         self::assertSame(['worker-1'], $row->workerNames());
         self::assertSame('running', $row->status());
+    }
+
+    #[Test]
+    public function it_attaches_live_progress_to_the_matching_running_step(): void
+    {
+        $start = new DateTimeImmutable(self::NOW.' - 2 minutes');
+        $run = $this->createRun(startedAt: $start);
+        $write = $this->createStepRun($run, 'write', 1);
+        $write->markRunning($start);
+
+        $row = $this->factory()->row(
+            run: $run,
+            stepRuns: [$write],
+            workerNames: [],
+            hasLiveWorker: true,
+            staleSeconds: 1800,
+            now: new DateTimeImmutable(self::NOW),
+            stepProgress: ['write' => new StepProgress(12, 48, 'contacts'), 'other' => new StepProgress(1, 2)],
+        );
+
+        self::assertSame(12, $row->currentSteps()[0]->progress()?->done());
+        self::assertSame(25, $row->currentSteps()[0]->progress()?->percent());
     }
 
     #[Test]

@@ -187,6 +187,24 @@ Each step handler implements `ExecutableWorkflowStepInterface`. Fluxx passes:
 - `WorkflowStepInput` for upstream payloads
 - `WorkflowStepResult` for produced records, metadata, counters, and branch-specific outputs
 
+### Workflow conventions
+
+Whatever happens in between, a workflow graph should have one way in and one way out:
+
+- **Start with a single step.** Every other step depends on it, directly or not, so nothing runs before it.
+- **End with a single step.** With parallel branches and asynchronous workers, a run with several terminal steps can stay `running` after all its work is done. Running with `--sync` does not reveal this, so test such graphs asynchronously too.
+- **Define guards when needed.** A guard is a virtual step that does no work: it only joins several branches, so that what follows starts once they have all completed. Use one wherever branches need to converge, including as the last step of the workflow.
+
+```php
+steps: [
+    new WorkflowStepDefinition('read', 'Read source', WorkflowStepType::Read, $this->read),
+    new WorkflowStepDefinition('write_contacts', 'Write contacts', WorkflowStepType::Write, $this->writeContacts, ['read']),
+    new WorkflowStepDefinition('write_companies', 'Write companies', WorkflowStepType::Write, $this->writeCompanies, ['read']),
+    // Guard: does no work, only joins the two branches and closes the run.
+    new WorkflowStepDefinition('end_guard', 'All writes done', WorkflowStepType::Write, $this->endGuard, ['write_contacts', 'write_companies']),
+],
+```
+
 ## Versioning
 
 Fluxx follows [Semantic Versioning 2.0.0](https://semver.org/). Given a version
@@ -252,6 +270,14 @@ Use this to:
 - version workflow graphs in code review
 - keep host-specific integration logic out of the bundle
 - compose step handlers from regular Symfony services
+
+### Live step progress
+
+Inject `Fluxx\Workflow\Progress\StepProgressReporterInterface` in a step handler or in a
+service it calls, then call `report($done, $total, $label)` as work advances. The active runs
+page shows the latest value for each running step, whichever worker executes it. Writes are
+throttled, so calling it for every batch is fine, and calls made outside of a running step
+are ignored. No host configuration is needed beyond the Redis fluxx transport.
 
 ### Runtime integration hooks
 

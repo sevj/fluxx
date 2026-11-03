@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.13.0] - 2026-11-03
+
+### Added
+- Live step progress: step handlers can publish their advancement through the new
+  `StepProgressReporterInterface`, and the active runs page shows it for each running step.
+  Progress is kept in the Redis instance of the fluxx transport, outside of the step's
+  database transaction, and a reporting failure never fails the step.
+
+### Fixed
+- The login page shows the actual authentication error from the security component instead
+  of always showing a generic invalid credentials message.
+
+### Documentation
+- Document the workflow conventions: start with a single step, end with a single step, and
+  use guards, virtual steps that only join branches, when needed.
+
 ## [1.12.2] - 2026-10-30
 
 ### Fixed

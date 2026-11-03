@@ -9,6 +9,7 @@ use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\StepType\StepTypeRegistry;
+use Fluxx\Workflow\Progress\StepProgress;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
 
@@ -26,6 +27,9 @@ final readonly class ActiveRunsViewFactory
     ) {
     }
 
+    /**
+     * @param array<string, StepProgress> $stepProgress live progress indexed by step code
+     */
     public function row(
         WorkflowRun $run,
         array $stepRuns,
@@ -33,6 +37,7 @@ final readonly class ActiveRunsViewFactory
         bool $hasLiveWorker,
         int $staleSeconds,
         DateTimeImmutable $now,
+        array $stepProgress = [],
     ): ActiveRunRowView {
         $definition = $this->registry->has($run->workflowName())
             ? $this->registry->get($run->workflowName())->definition()
@@ -58,7 +63,7 @@ final readonly class ActiveRunsViewFactory
             }
 
             if (in_array($status, self::IN_PROGRESS_STEP_STATUSES, true) && $stepRun->finishedAt() === null) {
-                $currentSteps[] = $this->stepView($stepRun, $definition, $now);
+                $currentSteps[] = $this->stepView($stepRun, $definition, $now, $stepProgress[$stepRun->stepName()] ?? null);
             }
         }
 
@@ -138,6 +143,7 @@ final readonly class ActiveRunsViewFactory
         WorkflowStepRun $stepRun,
         WorkflowDefinition|null $definition,
         DateTimeImmutable $now,
+        ?StepProgress $progress,
     ): ActiveRunStepView {
         $startedAt = $stepRun->startedAt();
 
@@ -151,6 +157,7 @@ final readonly class ActiveRunsViewFactory
             elapsedLabel: $startedAt !== null
                 ? $this->formatDuration($this->elapsedMs($startedAt, $now))
                 : null,
+            progress: $progress,
         );
     }
 

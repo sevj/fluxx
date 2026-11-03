@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Ui;
 
 use DateTimeImmutable;
+use Fluxx\Workflow\Progress\StepProgress;
 
 final readonly class ActiveRunStepView
 {
@@ -16,6 +17,7 @@ final readonly class ActiveRunStepView
         private ?string $typeToneStyle,
         private ?DateTimeImmutable $startedAt,
         private ?string $elapsedLabel,
+        private ?StepProgress $progress = null,
     ) {
     }
 
@@ -52,5 +54,10 @@ final readonly class ActiveRunStepView
     public function elapsedLabel(): ?string
     {
         return $this->elapsedLabel;
+    }
+
+    public function progress(): ?StepProgress
+    {
+        return $this->progress;
     }
 }

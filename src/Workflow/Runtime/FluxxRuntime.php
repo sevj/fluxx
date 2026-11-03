@@ -22,6 +22,7 @@ use Fluxx\Workflow\Result\WorkflowStepResult;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowStepDefinition;
+use Fluxx\Workflow\Progress\StepProgressReporter;
 use Fluxx\Workflow\Step\WorkflowStepInput;
 use Fluxx\Workflow\Step\WorkflowStepInputPayload;
 use RuntimeException;
@@ -46,6 +47,7 @@ final class FluxxRuntime
         private WorkflowRetryScheduler $retryScheduler,
         private WorkflowIdempotenceResolver $idempotenceResolver,
         private int $maxPayloadRecords = 1000,
+        private ?StepProgressReporter $stepProgressReporter = null,
     ) {
     }
 
@@ -114,10 +116,16 @@ final class FluxxRuntime
                 return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
             }
 
-            $result = $stepDefinition->handler()->execute(
-                $context,
-                $input,
-            );
+            $this->stepProgressReporter?->start($workflowRun->runId(), $stepCode);
+
+            try {
+                $result = $stepDefinition->handler()->execute(
+                    $context,
+                    $input,
+                );
+            } finally {
+                $this->stepProgressReporter?->finish();
+            }
 
             $this->lastResult = $result;
 

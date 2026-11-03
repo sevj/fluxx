@@ -26,6 +26,9 @@ use Fluxx\Workflow\Error\WorkflowErrorInterface;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
+use Fluxx\Workflow\Progress\StepProgress;
+use Fluxx\Workflow\Progress\StepProgressReporter;
+use Fluxx\Workflow\Progress\StepProgressStoreInterface;
 use Fluxx\Workflow\Retry\WorkflowRetryBackoffStrategy;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
 use Fluxx\Workflow\Runtime\FluxxRuntime;
@@ -54,6 +57,7 @@ use Symfony\Component\Messenger\Stamp\DelayStamp;
 final class FluxxRuntimeTest extends TestCase
 {
     private WorkflowRunLookupInterface&MockObject $workflowRunRepository;
+    private ?StepProgressReporter $stepProgressReporter = null;
     private InMemoryStepRunLookup $stepRunLookup;
 
     /** @var list<string> */
@@ -168,7 +172,53 @@ final class FluxxRuntimeTest extends TestCase
             retryScheduler: $retryScheduler,
             idempotenceResolver: $idempotenceResolver,
             maxPayloadRecords: $this->maxPayloadRecords,
+            stepProgressReporter: $this->stepProgressReporter,
         );
+    }
+
+    #[Test]
+    public function it_binds_progress_reporting_to_the_running_step_and_clears_it_afterwards(): void
+    {
+        $saved = [];
+        $cleared = [];
+        $store = new class($saved, $cleared) implements StepProgressStoreInterface {
+            public function __construct(private array &$saved, private array &$cleared)
+            {
+            }
+
+            public function save(string $runId, string $stepCode, StepProgress $progress): void
+            {
+                $this->saved[] = $stepCode . ':' . $progress->done();
+            }
+
+            public function clear(string $runId, string $stepCode): void
+            {
+                $this->cleared[] = $stepCode;
+            }
+
+            public function forRun(string $runId): array
+            {
+                return [];
+            }
+        };
+        $this->stepProgressReporter = new StepProgressReporter($store);
+        $reporter = $this->stepProgressReporter;
+
+        $handler = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $handler->method('execute')->willReturnCallback(static function () use ($reporter): WorkflowStepResult {
+            $reporter->report(3, 9);
+
+            return new WorkflowStepResult();
+        });
+
+        $this->registryWithHandler($handler);
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame(['fetch:3'], $saved);
+        self::assertSame(['fetch'], $cleared);
     }
 
     #[Test]
