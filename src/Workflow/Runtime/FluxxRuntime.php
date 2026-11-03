@@ -7,6 +7,7 @@ namespace Fluxx\Workflow\Runtime;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
+use Fluxx\Entity\Enum\WorkflowStepType;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
@@ -91,7 +92,7 @@ final class FluxxRuntime
 
         $context = $this->workflowContextFactory->createFromRun($workflowRun, $definition);
         $workflowRun->markRunning();
-        $input = $this->buildStepInput($workflowRun, $stepCode);
+        $input = $this->buildStepInput($workflowRun, $definition, $stepDefinition);
 
         $stepRun = $this->prepareStepRun(
             workflowRun: $workflowRun,
@@ -417,8 +418,16 @@ final class FluxxRuntime
         return true;
     }
 
-    private function buildStepInput(WorkflowRun $workflowRun, string $stepCode): WorkflowStepInput
-    {
+    private function buildStepInput(
+        WorkflowRun $workflowRun,
+        WorkflowDefinition $definition,
+        WorkflowStepDefinition $stepDefinition,
+    ): WorkflowStepInput {
+        if ($stepDefinition->typeEnum() === WorkflowStepType::Join) {
+            return new WorkflowStepInput();
+        }
+
+        $stepCode = $stepDefinition->code();
         $payloads = $this->workflowPayloadRepository->findByWorkflowRunAndTargetStepNameOrdered($workflowRun, $stepCode);
 
         $inputs = [];
@@ -435,7 +444,45 @@ final class FluxxRuntime
             );
         }
 
-        return new WorkflowStepInput($inputs);
+        return new WorkflowStepInput(
+            payloads: $inputs,
+            declaredReads: $stepDefinition->reads(),
+            ancestorRecordsLoader: fn (string $ancestorCode): array => $this->loadAncestorRecords($workflowRun, $definition, $stepCode, $ancestorCode),
+        );
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function loadAncestorRecords(
+        WorkflowRun $workflowRun,
+        WorkflowDefinition $definition,
+        string $stepCode,
+        string $ancestorCode,
+    ): array {
+        $ancestorStepRun = $this->workflowStepRunRepository->findLatestByWorkflowRunAndStepName($workflowRun, $ancestorCode);
+        $payloads = $ancestorStepRun === null
+            ? []
+            : AncestorPayloadSelector::select($definition, $stepCode, $this->workflowPayloadRepository->findBySourceStepRunOrdered($ancestorStepRun));
+
+        if ($payloads === []) {
+            throw new RuntimeException(sprintf(
+                'Step "%s" could not find the output of its ancestor "%s" in run "%s".',
+                $stepCode,
+                $ancestorCode,
+                $workflowRun->runId(),
+            ));
+        }
+
+        $records = [];
+
+        foreach ($payloads as $payload) {
+            foreach ($this->extractRecordsFromSnapshot($this->workflowPayloadStore->load($payload)) as $record) {
+                $records[] = $record;
+            }
+        }
+
+        return $records;
     }
 
     /**

@@ -140,6 +140,7 @@ workflow_show:
     step_runtime_compact: '%duration% ms - %memory% Mo'
     lock_scope: Portée du verrou
     step_idempotent: Idempotent
+    step_reads: 'Lit aussi : %steps%'
     step_deduplicated: 'Dédupliquée depuis %runId%'
     step_tooltip_status: 'Statut : %status%'
     step_tooltip_counts: '%processed% traités · %success% succès · %errors% erreurs'
@@ -381,6 +382,7 @@ step_type:
     transform: Transformation
     write: Écriture
     linker: Association
+    join: Jonction
 
 step_run_show:
     title: Détail de l'étape

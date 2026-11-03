@@ -8,6 +8,7 @@ final readonly class WorkflowStepDefinitionView
 {
     /**
      * @param list<string> $dependsOn
+     * @param list<string> $reads
      */
     public function __construct(
         private string $type,
@@ -18,6 +19,7 @@ final readonly class WorkflowStepDefinitionView
         private string $name,
         private array $dependsOn,
         private int $level,
+        private array $reads = [],
     ) {
     }
 
@@ -57,6 +59,14 @@ final readonly class WorkflowStepDefinitionView
     public function dependsOn(): array
     {
         return $this->dependsOn;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function reads(): array
+    {
+        return $this->reads;
     }
 
     public function level(): int

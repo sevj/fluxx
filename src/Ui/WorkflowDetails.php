@@ -270,6 +270,7 @@ final readonly class WorkflowDetails
                     $step->name(),
                     $step->dependsOn(),
                     $levels[$step->code()],
+                    $step->reads(),
                 );
             },
             $definition->steps(),

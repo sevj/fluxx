@@ -8,10 +8,12 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\EntityManagerClosed;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
+use Fluxx\Entity\Enum\WorkflowStepType;
 use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowPayloadContent;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Repository\FluxxSettingLookupInterface;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
@@ -58,6 +60,9 @@ final class FluxxRuntimeTest extends TestCase
 {
     private WorkflowRunLookupInterface&MockObject $workflowRunRepository;
     private ?StepProgressReporter $stepProgressReporter = null;
+
+    /** @var list<WorkflowPayload> */
+    private array $sourcePayloads = [];
     private InMemoryStepRunLookup $stepRunLookup;
 
     /** @var list<string> */
@@ -129,7 +134,7 @@ final class FluxxRuntimeTest extends TestCase
         $this->entityManager->method('getConnection')->willReturn($connection);
 
         $this->workflowPayloadRepository->method('findByWorkflowRunAndTargetStepNameOrdered')->willReturn([]);
-        $this->workflowPayloadRepository->method('findBySourceStepRunOrdered')->willReturn([]);
+        $this->workflowPayloadRepository->method('findBySourceStepRunOrdered')->willReturnCallback(fn (): array => $this->sourcePayloads);
 
         $this->runtime = $this->buildRuntime($this->createRegistry());
     }
@@ -219,6 +224,93 @@ final class FluxxRuntimeTest extends TestCase
 
         self::assertSame(['fetch:3'], $saved);
         self::assertSame(['fetch'], $cleared);
+    }
+
+    #[Test]
+    public function it_lets_a_step_read_the_output_of_a_declared_ancestor(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->stepRunLookup->add($this->completedStep($workflowRun, 'first'));
+        $this->stepRunLookup->add($this->completedStep($workflowRun, 'second'));
+
+        $payload = $this->createStub(WorkflowPayload::class);
+        $payload->method('targetStepName')->willReturn('second');
+        $this->sourcePayloads = [$payload];
+        $this->workflowPayloadStore->method('load')->willReturnCallback(static fn (WorkflowPayload $loaded): array => $loaded === $payload ? ['records' => [['id' => 7]]] : []);
+
+        $read = null;
+        $handler = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $handler->method('execute')->willReturnCallback(static function (WorkflowContext $context, WorkflowStepInput $input) use (&$read): WorkflowStepResult {
+            $read = $input->recordsFromAncestor('first');
+
+            return new WorkflowStepResult();
+        });
+
+        $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$this->lineageWorkflow(new WorkflowStepDefinition('third', 'Third', WorkflowStepType::Read, $handler, ['second'], reads: ['first']))]));
+        $this->runtime->runStep('run-1', 'third');
+
+        self::assertSame([['id' => 7]], $read);
+    }
+
+    #[Test]
+    public function it_fails_the_step_when_an_ancestor_output_cannot_be_found(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->stepRunLookup->add($this->completedStep($workflowRun, 'first'));
+        $this->stepRunLookup->add($this->completedStep($workflowRun, 'second'));
+
+        $handler = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $handler->method('execute')->willReturnCallback(static function (WorkflowContext $context, WorkflowStepInput $input): WorkflowStepResult {
+            $input->recordsFromAncestor('first');
+
+            return new WorkflowStepResult();
+        });
+
+        $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$this->lineageWorkflow(new WorkflowStepDefinition('third', 'Third', WorkflowStepType::Read, $handler, ['second'], reads: ['first']))]));
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('could not find the output of its ancestor "first"');
+
+        $this->runtime->runStep('run-1', 'third');
+    }
+
+    #[Test]
+    public function it_does_not_load_any_input_for_a_join_step(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->stepRunLookup->add($this->completedStep($workflowRun, 'first'));
+        $this->stepRunLookup->add($this->completedStep($workflowRun, 'second'));
+        $this->workflowPayloadStore->expects(self::never())->method('load');
+
+        $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$this->lineageWorkflow(WorkflowStepDefinition::join('third', 'Third', ['second']))]));
+        $this->runtime->runStep('run-1', 'third');
+
+        self::assertSame(WorkflowStepRunStatus::Completed, $this->stepRunLookup->findLatestByWorkflowRunAndStepName($workflowRun, 'third')?->status());
+    }
+
+    private function completedStep(WorkflowRun $workflowRun, string $code): WorkflowStepRun
+    {
+        $stepRun = new WorkflowStepRun($workflowRun, 'read', $code, 1);
+        $stepRun->markRunning();
+        $stepRun->markCompleted(processedCount: 1, successCount: 1, errorCount: 0);
+
+        return $stepRun;
+    }
+
+    private function lineageWorkflow(WorkflowStepDefinition $third): WorkflowInterface
+    {
+        $noop = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $workflow = $this->createMock(WorkflowInterface::class);
+        $workflow->method('definition')->willReturn(new WorkflowDefinition('fixture', 'Fixture', 'a', 'b', [
+            new WorkflowStepDefinition('first', 'First', WorkflowStepType::Read, $noop),
+            new WorkflowStepDefinition('second', 'Second', WorkflowStepType::Read, $noop, ['first']),
+            $third,
+        ]));
+
+        return $workflow;
     }
 
     #[Test]

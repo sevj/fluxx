@@ -15,7 +15,9 @@ use Fluxx\Repository\WorkflowStepRunLookupInterface;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
+use Fluxx\Workflow\Runtime\AncestorPayloadSelector;
 use Fluxx\Workflow\SynchronizationRegistry;
+use Fluxx\Workflow\WorkflowDefinition;
 use RuntimeException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Throwable;
@@ -91,6 +93,7 @@ final readonly class WorkflowRelaunchService
         $clonedStepRuns = $this->clonePreservedStepRuns($workflowRun, $plan, $originalRun, $originalStepRuns);
         $this->createResetTargetStepRuns($workflowRun, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
         $this->cloneEntryPayloads($workflowRun, $plan, $originalRun, $clonedStepRuns);
+        $this->cloneReadPayloads($workflowRun, $definition, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
         $this->entityManager->flush();
 
         try {
@@ -225,34 +228,106 @@ final readonly class WorkflowRelaunchService
                     ));
                 }
 
-                $snapshot = $this->workflowPayloadStore->load($payload);
-                $metadata = $snapshot['metadata'] ?? $payload->metadata();
-
-                if (!is_array($metadata)) {
-                    $metadata = $payload->metadata();
-                }
-
-                $metadata['relaunch'] = [
+                $this->clonePayload($workflowRun, $sourceStepRun, $originalRun, $payload, [
                     'status' => 'reused_input',
-                    'original_run_id' => $originalRun->runId(),
-                    'original_payload_id' => $payload->id(),
                     'entry_step_code' => $entryStepCode,
-                ];
-
-                $records = $snapshot['records'] ?? [];
-
-                $this->workflowPayloadStore->storeStepInput(
-                    workflowRun: $workflowRun,
-                    sourceStepRun: $sourceStepRun,
-                    targetStepType: $payload->targetStepType(),
-                    targetStepName: $payload->targetStepName(),
-                    records: is_array($records) ? $records : [],
-                    recordCount: $payload->recordCount(),
-                    sequence: $payload->sequence(),
-                    metadata: $metadata,
-                );
+                ]);
             }
         }
+    }
+
+    /**
+     * A relaunched step must find the outputs it reads from preserved ancestors,
+     * which are not regenerated and are not part of its direct input.
+     *
+     * @param array<string, WorkflowStepRun> $originalStepRuns
+     * @param array<string, WorkflowStepRun> $clonedStepRuns
+     */
+    private function cloneReadPayloads(
+        WorkflowRun $workflowRun,
+        WorkflowDefinition $definition,
+        WorkflowRelaunchPlan $plan,
+        WorkflowRun $originalRun,
+        array $originalStepRuns,
+        array $clonedStepRuns,
+    ): void {
+        if ($plan->mode() === WorkflowRelaunchMode::Full) {
+            return;
+        }
+
+        $cloned = [];
+
+        foreach ($plan->targetStepCodes() as $targetStepCode) {
+            foreach ($definition->step($targetStepCode)->reads() as $readCode) {
+                $originalStepRun = $originalStepRuns[$readCode] ?? null;
+                $sourceStepRun = $clonedStepRuns[$readCode] ?? null;
+
+                if (
+                    $originalStepRun === null
+                    || $sourceStepRun === null
+                    || !in_array($readCode, $plan->preservedStepCodes(), true)
+                ) {
+                    continue;
+                }
+
+                $payloads = AncestorPayloadSelector::select(
+                    $definition,
+                    $targetStepCode,
+                    $this->workflowPayloadRepository->findBySourceStepRunOrdered($originalStepRun),
+                );
+
+                foreach ($payloads as $payload) {
+                    $target = $payload->targetStepName();
+
+                    // Entry payloads are already cloned, and several steps may read the same output.
+                    if (in_array($target, $plan->entryStepCodes(), true) || isset($cloned[$readCode . '|' . $target . '|' . $payload->sequence()])) {
+                        continue;
+                    }
+
+                    $cloned[$readCode . '|' . $target . '|' . $payload->sequence()] = true;
+
+                    $this->clonePayload($workflowRun, $sourceStepRun, $originalRun, $payload, [
+                        'status' => 'reused_ancestor_output',
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $relaunchMetadata
+     */
+    private function clonePayload(
+        WorkflowRun $workflowRun,
+        WorkflowStepRun $sourceStepRun,
+        WorkflowRun $originalRun,
+        WorkflowPayload $payload,
+        array $relaunchMetadata,
+    ): void {
+        $snapshot = $this->workflowPayloadStore->load($payload);
+        $metadata = $snapshot['metadata'] ?? $payload->metadata();
+
+        if (!is_array($metadata)) {
+            $metadata = $payload->metadata();
+        }
+
+        $metadata['relaunch'] = $relaunchMetadata + [
+            'original_run_id' => $originalRun->runId(),
+            'original_payload_id' => $payload->id(),
+        ];
+
+        $records = $snapshot['records'] ?? [];
+
+        $this->workflowPayloadStore->storeStepInput(
+            workflowRun: $workflowRun,
+            sourceStepRun: $sourceStepRun,
+            targetStepType: $payload->targetStepType(),
+            targetStepName: $payload->targetStepName(),
+            records: is_array($records) ? $records : [],
+            recordCount: $payload->recordCount(),
+            sequence: $payload->sequence(),
+            metadata: $metadata,
+        );
     }
 
     /**

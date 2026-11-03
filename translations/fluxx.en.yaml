@@ -140,6 +140,7 @@ workflow_show:
     step_runtime_compact: '%duration% ms - %memory% MB'
     lock_scope: Lock scope
     step_idempotent: Idempotent
+    step_reads: 'Also reads: %steps%'
     step_deduplicated: 'Deduplicated from %runId%'
     step_tooltip_status: 'Status: %status%'
     step_tooltip_counts: '%processed% processed · %success% success · %errors% errors'
@@ -381,6 +382,7 @@ step_type:
     transform: Transform
     write: Write
     linker: Linker
+    join: Join
 
 step_run_show:
     title: Step run details

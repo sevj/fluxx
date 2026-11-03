@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow\Step;
 
+use Closure;
+use LogicException;
+
 final readonly class WorkflowStepInput
 {
     /**
@@ -11,6 +14,8 @@ final readonly class WorkflowStepInput
      */
     public function __construct(
         private array $payloads = [],
+        private array $declaredReads = [],
+        private ?Closure $ancestorRecordsLoader = null,
     ) {
     }
 
@@ -94,5 +99,23 @@ final readonly class WorkflowStepInput
         }
 
         return $records;
+    }
+
+    /**
+     * Output of an ancestor declared in the step's `reads`. It is loaded on each
+     * call, and only when asked for, so keep the result instead of calling twice.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function recordsFromAncestor(string $stepCode): array
+    {
+        if (!in_array($stepCode, $this->declaredReads, true) || $this->ancestorRecordsLoader === null) {
+            throw new LogicException(sprintf(
+                'Step "%s" must be declared in the "reads" of the current step to be read as an ancestor.',
+                $stepCode,
+            ));
+        }
+
+        return ($this->ancestorRecordsLoader)($stepCode);
     }
 }

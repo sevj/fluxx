@@ -193,17 +193,42 @@ Whatever happens in between, a workflow graph should have one way in and one way
 
 - **Start with a single step.** Every other step depends on it, directly or not, so nothing runs before it.
 - **End with a single step.** With parallel branches and asynchronous workers, a run with several terminal steps can stay `running` after all its work is done. Running with `--sync` does not reveal this, so test such graphs asynchronously too.
-- **Define guards when needed.** A guard is a virtual step that does no work: it only joins several branches, so that what follows starts once they have all completed. Use one wherever branches need to converge, including as the last step of the workflow.
+- **Use join steps where branches converge.** A join is a virtual step that does no work: what follows it starts once all the joined branches have completed. It loads no input and produces no records, so it stays cheap whatever the volumes.
 
 ```php
 steps: [
     new WorkflowStepDefinition('read', 'Read source', WorkflowStepType::Read, $this->read),
     new WorkflowStepDefinition('write_contacts', 'Write contacts', WorkflowStepType::Write, $this->writeContacts, ['read']),
     new WorkflowStepDefinition('write_companies', 'Write companies', WorkflowStepType::Write, $this->writeCompanies, ['read']),
-    // Guard: does no work, only joins the two branches and closes the run.
-    new WorkflowStepDefinition('end_guard', 'All writes done', WorkflowStepType::Write, $this->endGuard, ['write_contacts', 'write_companies']),
+    WorkflowStepDefinition::join('writes_done', 'All writes done', ['write_contacts', 'write_companies']),
 ],
 ```
+
+### Reading the output of an ancestor
+
+A step can read the output of any of its ancestors, not only of its direct dependencies. Declare it in `reads`, so that graphs can stay simple with join steps while each data dependency remains explicit:
+
+```php
+new WorkflowStepDefinition(
+    code: 'link',
+    name: 'Link contacts to companies',
+    type: WorkflowStepType::Linker,
+    handler: $this->link,
+    dependsOn: ['writes_done'],
+    reads: ['write_contacts', 'write_companies'],
+),
+```
+
+```php
+$contacts = $input->recordsFromAncestor('write_contacts');
+```
+
+- A definition whose `reads` names a step that is not an ancestor is refused when it is built, and reading an undeclared step throws.
+- Records are loaded on each call and only when asked for. Keep the result instead of calling twice.
+- With branch outputs, the step gets the copy sent along its own lineage.
+- Relaunching a step keeps the outputs it reads from preserved ancestors.
+- Records read this way are not part of `WorkflowStepInput::payloads()`. An idempotence key computed from the direct input does not reflect them.
+- The workflow page lists a step's `reads` in the tooltip of its card.
 
 ## Versioning
 
@@ -259,7 +284,7 @@ Use this when you need:
 
 - a domain-specific step label in the UI
 - a dedicated tone/style for a custom step family
-- host-app specific step categories beyond the built-in read/splitter/transform/write/linker set
+- host-app specific step categories beyond the built-in read/splitter/transform/write/linker/join set
 
 ### Custom workflow definitions
 

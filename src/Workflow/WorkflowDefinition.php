@@ -59,6 +59,33 @@ final readonly class WorkflowDefinition
         $this->assertNoCycles($stepMap);
 
         $this->stepMap = $stepMap;
+
+        $this->assertReadsAreAncestors();
+    }
+
+    private function assertReadsAreAncestors(): void
+    {
+        foreach ($this->steps as $step) {
+            if ($step->reads() === []) {
+                continue;
+            }
+
+            $ancestorCodes = array_map(
+                static fn (WorkflowStepDefinition $ancestor): string => $ancestor->code(),
+                $this->ancestorsOf($step->code()),
+            );
+
+            foreach ($step->reads() as $readCode) {
+                if (!in_array($readCode, $ancestorCodes, true)) {
+                    throw new InvalidArgumentException(sprintf(
+                        'Workflow "%s" step "%s" reads "%s", which is not one of its ancestors.',
+                        $this->code,
+                        $step->code(),
+                        $readCode,
+                    ));
+                }
+            }
+        }
     }
 
     public function code(): string

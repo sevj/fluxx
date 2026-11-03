@@ -24,7 +24,7 @@
                 {% endif %}
                 {% for node in row.nodes %}
                     {% set step = node.step %}
-                    <article class="step-definition-card step-definition-card-compact workflow-step-flow-card{{ row.connectsToMergeNext ? ' has-merge-next' : '' }} step-tone-{{ step.typeTone }} step-tone-surface" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}">
+                    <article{% if step.reads is not empty %} title="{{ 'workflow_show.step_reads'|trans({'%steps%': step.reads|join(', ')}) }}"{% endif %} class="step-definition-card step-definition-card-compact workflow-step-flow-card{{ row.connectsToMergeNext ? ' has-merge-next' : '' }} step-tone-{{ step.typeTone }} step-tone-surface" style="grid-column: {{ node.columnStart }} / span {{ node.columnSpan }}; grid-row: {{ node.rowStart }} / span {{ node.rowSpan }};{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}">
                         <div class="step-definition-type">
                             <span class="step-tone-pill" title="{{ step.typeLabel|trans }}">{{ step.typeLabel|trans }}</span>
                         </div>

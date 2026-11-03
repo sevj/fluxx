@@ -11,4 +11,5 @@ enum WorkflowStepType: string
     case Transform = 'transform';
     case Write = 'write';
     case Linker = 'linker';
+    case Join = 'join';
 }

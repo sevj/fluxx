@@ -1777,6 +1777,11 @@ tbody tr:hover {
     --step-tone-text: var(--linker-text);
 }
 
+.step-tone-join {
+    --step-tone-bg: var(--surface-strong);
+    --step-tone-text: var(--muted);
+}
+
 .step-tone-custom {
     --step-tone-bg: var(--surface-strong);
     --step-tone-text: var(--text);

@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.14.0] - 2026-11-03
+
+### Added
+- Ancestor reads: a step declaring `reads` on `WorkflowStepDefinition` can load the output of
+  any of its ancestors with `WorkflowStepInput::recordsFromAncestor()`. Definitions are
+  validated when built, and relaunches keep the outputs read from preserved ancestors.
+- `join` step type and `WorkflowStepDefinition::join()`: a virtual step that only joins
+  branches, loading no input and producing no records.
+
+### Changed
+- The workflow conventions now describe join steps instead of guards.
+
 ## [1.13.1] - 2026-11-03
 
 ### Added

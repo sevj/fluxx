@@ -6,6 +6,7 @@ namespace Fluxx\Workflow;
 
 use Fluxx\Entity\Enum\WorkflowStepType;
 use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
+use Fluxx\Workflow\Step\JoinStep;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
 use Fluxx\Workflow\Step\WorkflowStepIdempotence;
 
@@ -23,7 +24,19 @@ final readonly class WorkflowStepDefinition
         private ?WorkflowStepIdempotence $idempotence = null,
         private ?WorkflowRetryPolicy $retryPolicy = null,
         private ?int $chunkSize = null,
+        private array $reads = [],
     ) {
+    }
+
+    /**
+     * Virtual step that does no work: it only joins several branches, so that
+     * what follows starts once they have all completed.
+     *
+     * @param list<string> $dependsOn
+     */
+    public static function join(string $code, string $name, array $dependsOn): self
+    {
+        return new self($code, $name, WorkflowStepType::Join, new JoinStep($code, $name), $dependsOn);
     }
 
     public function code(): string
@@ -77,5 +90,16 @@ final readonly class WorkflowStepDefinition
     public function chunkSize(): ?int
     {
         return $this->chunkSize;
+    }
+
+    /**
+     * Ancestor steps whose output this step reads with
+     * WorkflowStepInput::recordsFromAncestor().
+     *
+     * @return list<string>
+     */
+    public function reads(): array
+    {
+        return $this->reads;
     }
 }
