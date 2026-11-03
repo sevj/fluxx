@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Ui;
 
 use Fluxx\Entity\WorkflowRun;
+use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
@@ -144,6 +145,14 @@ final readonly class RunDetails
      */
     private function buildStepViews(WorkflowRun $run, array $stepRuns): array
     {
+        // Execution order: steps that started first come first, steps that never started keep
+        // their definition position at the end.
+        $stepRuns = array_values($stepRuns);
+        usort($stepRuns, static function (WorkflowStepRun $a, WorkflowStepRun $b): int {
+            return [$a->startedAt() === null, $a->startedAt(), $a->position()]
+                <=> [$b->startedAt() === null, $b->startedAt(), $b->position()];
+        });
+
         $views = [];
 
         foreach ($stepRuns as $stepRun) {
@@ -165,6 +174,8 @@ final readonly class RunDetails
                 idempotenceKey: $stepRun->idempotenceKey(),
                 deduplicationStatus: $stepRun->deduplicationStatus()->value,
                 deduplicatedFromRunId: $stepRun->deduplicatedFromStepRun()?->workflowRun()->runId(),
+                startedAt: $stepRun->startedAt(),
+                finishedAt: $stepRun->finishedAt(),
             );
         }
 

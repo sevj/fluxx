@@ -22,7 +22,19 @@ final readonly class WorkflowExecutionStepOverview
         private ?string $idempotenceKey,
         private string $deduplicationStatus,
         private ?string $deduplicatedFromRunId,
+        private ?\DateTimeImmutable $startedAt = null,
+        private ?\DateTimeImmutable $finishedAt = null,
     ) {
+    }
+
+    public function startedAt(): ?\DateTimeImmutable
+    {
+        return $this->startedAt;
+    }
+
+    public function finishedAt(): ?\DateTimeImmutable
+    {
+        return $this->finishedAt;
     }
 
     public function type(): string

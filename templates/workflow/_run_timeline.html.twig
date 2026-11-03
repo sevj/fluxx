@@ -45,7 +45,7 @@
                             {% set labelBefore = step.leftPercent + step.widthPercent > 88 %}
                             <a
                                 href="{{ stepUrl }}"
-                                class="run-timeline-bar step-tone-{{ step.typeTone }} step-tone-surface step-status-bar-{{ step.status|replace({'_': '-'}) }}{% if step.isRunning %} is-running{% endif %}"
+                                class="run-timeline-bar step-tone-{{ step.typeTone }} step-tone-surface step-status-bar-{{ step.status|replace({'_': '-'}) }}{% if step.isRunning %} is-running{% endif %}{% if labelOutside %} is-narrow{% endif %}"
                                 style="left: {{ left }}%; width: {{ width }}%;{% if step.typeToneStyle %} {{ step.typeToneStyle }}{% endif %}"
                                 title="{{ step.name }} — {{ ('workflow_status.' ~ step.status)|trans }}{% if step.durationMs is not null %} — {{ step.durationMs|fluxx_duration }}{% endif %}"
                             >
@@ -56,7 +56,7 @@
                             {% if labelOutside and barLabel != '' %}
                                 <span
                                     class="run-timeline-bar-label{% if labelBefore %} is-before{% endif %}"
-                                    style="{% if labelBefore %}right: calc({{ (100 - step.leftPercent)|number_format(3, '.', '') }}% + 6px);{% else %}left: calc({{ (step.leftPercent + step.widthPercent)|number_format(3, '.', '') }}% + 6px);{% endif %}"
+                                    style="{% if labelBefore %}right: calc({{ (100 - step.leftPercent)|number_format(3, '.', '') }}% + 6px);{% else %}left: calc({{ (step.leftPercent + step.widthPercent)|number_format(3, '.', '') }}% + 12px);{% endif %}"
                                     aria-hidden="true"
                                 >{{ barLabel }}</span>
                             {% endif %}

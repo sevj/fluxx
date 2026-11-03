@@ -342,7 +342,7 @@ run_show:
     timeline_not_started: not started
     timeline_empty: No step has started running yet.
     steps_empty: No step has been recorded for this run.
-    position: #
+    position: '#'
     step: Step
     step_type: Type
     step_status: Status

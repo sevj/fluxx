@@ -258,19 +258,21 @@
                 <section class="workflow-list">
                     <table class="workflow-table-compact">
                         <colgroup>
-                            <col style="width: 6%">
-                            <col style="width: 24%">
+                            <col style="width: 5%">
+                            <col style="width: 23%">
+                            <col style="width: 9%">
                             <col style="width: 12%">
+                            <col style="width: 11%">
+                            <col style="width: 9%">
+                            <col style="width: 8%">
+                            <col style="width: 11%">
                             <col style="width: 12%">
-                            <col style="width: 10%">
-                            <col style="width: 10%">
-                            <col style="width: 13%">
-                            <col style="width: 13%">
                         </colgroup>
                         <thead>
                             <tr>
                                 <th>{{ 'run_show.position'|trans }}</th>
                                 <th>{{ 'run_show.step'|trans }}</th>
+                                <th>{{ 'run_show.started_at'|trans }}</th>
                                 <th>{{ 'run_show.step_type'|trans }}</th>
                                 <th>{{ 'run_show.step_status'|trans }}</th>
                                 <th>{{ 'run_show.processed'|trans }}</th>
@@ -290,6 +292,13 @@
                                             <div class="workflow-name">{{ step.name }}</div>
                                             <div class="item-code">{{ step.code }}</div>
                                         </a>
+                                    </td>
+                                    <td data-label="{{ 'run_show.started_at'|trans }}">
+                                        {% if step.startedAt %}
+                                            <span class="metric-value">{{ step.startedAt|date('H:i:s') }}</span>
+                                        {% else %}
+                                            <span class="metric-empty">{{ 'run_show.not_started'|trans }}</span>
+                                        {% endif %}
                                     </td>
                                     <td data-label="{{ 'run_show.step_type'|trans }}">
                                         <span class="step-tone-pill step-tone-{{ step.typeTone }} step-tone-text{% if step.typeToneStyle %}" style="{{ step.typeToneStyle }}{% endif %}">{{ step.typeLabel|trans }}</span>

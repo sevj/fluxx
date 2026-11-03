@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.15.3] - 2026-11-03
+
+### Changed
+- The steps table of a run lists the steps in execution order with their start time, so the
+  numbering reflects what the workers actually did.
+
+### Fixed
+- Long step codes in the run timeline are truncated with an ellipsis instead of wrapping
+  under the bars, and the duration written beside a narrow bar no longer overlaps it.
+- The `#` column header of the run steps table showed its translation key in English.
+
 ## [1.15.2] - 2026-11-03
 
 ### Changed

@@ -2236,7 +2236,15 @@ tbody tr:hover > td {
 }
 
 .run-timeline-label .workflow-link {
+    flex: 1 1 auto;
     min-width: 0;
+    overflow: hidden;
+}
+
+.run-timeline-label .item-code {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .run-timeline-name {
@@ -2272,6 +2280,10 @@ tbody tr:hover > td {
     font-size: 11px;
     overflow: hidden;
     white-space: nowrap;
+}
+
+.run-timeline-bar.is-narrow {
+    padding: 0;
 }
 
 .run-timeline-bar:hover {
