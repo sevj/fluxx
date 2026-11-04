@@ -5,8 +5,8 @@
 {% block title %}{{ 'run_index.title'|trans }}{% endblock %}
 
 {% block scripts %}
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: fluxx_asset_version}) }}"></script>
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'run-catalog', v: fluxx_asset_version}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: fluxx_asset_version()}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'run-catalog', v: fluxx_asset_version()}) }}"></script>
 {% endblock %}
 
 {% block body %}
@@ -16,31 +16,36 @@
                 <h1 class="title">{{ 'run_index.heading'|trans }}</h1>
             </div>
             <div class="header-tools">
-                <form method="get" class="search-form">
-                    <label class="search-label" for="run-search">{{ 'run_index.search_label'|trans }}</label>
-                    <input
-                        id="run-search"
-                        type="search"
-                        name="q"
-                        value="{{ executionFilters.searchQuery }}"
-                        class="search-input"
-                        placeholder="{{ 'run_index.search_placeholder'|trans }}"
+                <div class="polling-controls polling-controls-inline"
+                    data-run-catalog
+                    data-run-catalog-poll-url="{{ path('fluxx_run_index_poll', app.request.query.all) }}"
+                    data-run-catalog-poll-interval="1000"
+                    data-run-catalog-poll-pause-label="{{ 'run_index.pause_polling'|trans }}"
+                    data-run-catalog-poll-resume-label="{{ 'run_index.resume_polling'|trans }}"
+                    data-run-catalog-poll-loading-label="{{ 'run_index.polling'|trans }}"
+                    data-run-catalog-poll-state-live-label="{{ 'run_index.state_live'|trans }}"
+                    data-run-catalog-poll-state-error-label="{{ 'run_index.state_error'|trans }}"
+                    data-run-catalog-poll-state-offline-label="{{ 'run_index.state_offline'|trans }}"
+                    data-run-catalog-poll-refresh-failed-label="{{ 'run_index.refresh_failed'|trans }}"
+                >
+                    <span class="status-badge status-badge-pending" data-run-catalog-state>{{ 'run_index.loading'|trans }}</span>
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-run-catalog-poll-toggle
+                        aria-pressed="true"
                     >
-                    <button type="submit" class="secondary-button">
-                        <span class="button-label">{{ 'run_index.search_submit'|trans }}</span>
+                        <span class="button-icon button-icon-toggle" aria-hidden="true">
+                            <span class="icon-when-active">{{ icons.icon('pause') }}</span>
+                            <span class="icon-when-inactive">{{ icons.icon('play') }}</span>
+                        </span>
+                        <span class="button-label" data-run-catalog-button-label>{{ 'run_index.pause_polling'|trans }}</span>
                     </button>
-                    {% if executionFilters.hasActiveFilters %}
-                        <a href="{{ path('fluxx_run_index') }}" class="secondary-button">
-                            <span class="button-label">{{ 'run_index.search_reset'|trans }}</span>
-                        </a>
-                    {% endif %}
-                </form>
-                <div class="count">
-                    {{ 'run_index.count'|trans({
-                        '%from%': runPage.firstItemNumber,
-                        '%to%': runPage.lastItemNumber,
-                        '%total%': runPage.totalItems
-                    }) }}
+                    <span class="polling-indicator" data-run-catalog-poll-loader hidden>
+                        <span class="polling-spinner" aria-hidden="true"></span>
+                        <span>{{ 'run_index.polling'|trans }}</span>
+                    </span>
+                    <span class="runtime-refresh" data-run-catalog-refresh>{{ 'run_index.waiting'|trans }}</span>
                 </div>
             </div>
         </header>
@@ -48,6 +53,16 @@
         <section class="section-card">
             <form method="get" action="{{ path('fluxx_run_index') }}" class="run-filter-form">
                 <div class="run-filter-grid run-filter-grid-executions">
+                    <label class="run-filter-field">
+                        <span class="run-filter-label">{{ 'run_index.filter_search_label'|trans }}</span>
+                        <input
+                            type="search"
+                            name="q"
+                            value="{{ executionFilters.searchQuery }}"
+                            class="search-input"
+                            placeholder="{{ 'run_index.search_placeholder'|trans }}"
+                        >
+                    </label>
                     <label class="run-filter-field">
                         <span class="run-filter-label">{{ 'run_index.filter_workflow_label'|trans }}</span>
                         <select name="workflow" class="search-input">
@@ -98,38 +113,6 @@
                     {% endif %}
                 </div>
             </form>
-
-            <div class="polling-controls"
-                data-run-catalog
-                data-run-catalog-poll-url="{{ path('fluxx_run_index_poll', app.request.query.all) }}"
-                data-run-catalog-poll-interval="1000"
-                data-run-catalog-poll-pause-label="{{ 'run_index.pause_polling'|trans }}"
-                data-run-catalog-poll-resume-label="{{ 'run_index.resume_polling'|trans }}"
-                data-run-catalog-poll-loading-label="{{ 'run_index.polling'|trans }}"
-                data-run-catalog-poll-state-live-label="{{ 'run_index.state_live'|trans }}"
-                data-run-catalog-poll-state-error-label="{{ 'run_index.state_error'|trans }}"
-                data-run-catalog-poll-state-offline-label="{{ 'run_index.state_offline'|trans }}"
-                data-run-catalog-poll-refresh-failed-label="{{ 'run_index.refresh_failed'|trans }}"
-            >
-                <span class="status-badge status-badge-pending" data-run-catalog-state>{{ 'run_index.loading'|trans }}</span>
-                <button
-                    type="button"
-                    class="secondary-button"
-                    data-run-catalog-poll-toggle
-                    aria-pressed="true"
-                >
-                    <span class="button-icon button-icon-toggle" aria-hidden="true">
-                        <span class="icon-when-active">{{ icons.icon('pause') }}</span>
-                        <span class="icon-when-inactive">{{ icons.icon('play') }}</span>
-                    </span>
-                    <span class="button-label" data-run-catalog-button-label>{{ 'run_index.pause_polling'|trans }}</span>
-                </button>
-                <span class="polling-indicator" data-run-catalog-poll-loader hidden>
-                    <span class="polling-spinner" aria-hidden="true"></span>
-                    <span>{{ 'run_index.polling'|trans }}</span>
-                </span>
-                <span class="runtime-refresh" data-run-catalog-refresh>{{ 'run_index.waiting'|trans }}</span>
-            </div>
 
             <div data-run-catalog-content>
                 {% include '@Fluxx/runs/_run_catalog_content.html.twig' %}

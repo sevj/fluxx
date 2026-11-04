@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Translation\TranslatableMessage;
 
 #[Route('/fluxx/runtime/run/{runId}/lock/release', name: 'fluxx_runtime_lock_release', methods: ['POST'])]
 #[IsGranted('ROLE_ADMIN')]
@@ -33,9 +34,9 @@ final class RuntimeLockReleaseController extends AbstractController
             $released = $this->lockReleaser->releaseForRun($runId);
 
             if ($released) {
-                $this->addFlash('success', sprintf('Released the lock for run "%s".', $runId));
+                $this->addFlash('success', new TranslatableMessage('flash.lock_released', ['%runId%' => $runId], 'fluxx'));
             } else {
-                $this->addFlash('error', sprintf('No active lock was found for run "%s".', $runId));
+                $this->addFlash('error', new TranslatableMessage('flash.lock_not_found', ['%runId%' => $runId], 'fluxx'));
             }
         } catch (\Throwable $exception) {
             $this->addFlash('error', $exception->getMessage());

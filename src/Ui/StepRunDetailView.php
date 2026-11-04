@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Ui;
 
 use DateTimeImmutable;
+use Fluxx\Entity\Enum\WorkflowRunStatus;
 
 final readonly class StepRunDetailView
 {
@@ -67,6 +68,7 @@ final readonly class StepRunDetailView
     public function workflowTargetSystem(): string { return $this->workflowTargetSystem; }
     public function runId(): string { return $this->runId; }
     public function workflowStatus(): string { return $this->workflowStatus; }
+    public function canRelaunch(): bool { return WorkflowRunStatus::from($this->workflowStatus)->isRelaunchable(); }
     public function workflowLockKey(): ?string { return $this->workflowLockKey; }
     public function workflowLockScope(): ?string { return $this->workflowLockScope; }
     public function workflowRelaunchMode(): ?string { return $this->workflowRelaunchMode; }

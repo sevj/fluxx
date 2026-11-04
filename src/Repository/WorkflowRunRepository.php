@@ -652,6 +652,48 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
         throw new \RuntimeException('Unsupported database platform for workflow statistics durations.');
     }
 
+    /**
+     * The runs started by relaunching the given run, oldest first. The reference only exists
+     * in the JSON metadata: the query narrows the candidates, whatever the JSON formatting of
+     * the database, and the exact match is checked on the decoded metadata.
+     *
+     * @return list<WorkflowRun>
+     */
+    public function findRelaunchesOf(WorkflowRun $workflowRun): array
+    {
+        $runIds = $this->getEntityManager()->getConnection()->fetchFirstColumn(
+            sprintf(
+                'SELECT run_id FROM fluxx_workflow_run
+                 WHERE workflow_name = :workflowName
+                   AND created_at >= :createdAt
+                   AND %s LIKE :marker
+                 ORDER BY created_at ASC, id ASC',
+                $this->jsonTextExpression('metadata'),
+            ),
+            [
+                'workflowName' => $workflowRun->workflowName(),
+                'createdAt' => $workflowRun->createdAt(),
+                'marker' => sprintf('%%"original_run_id":%%"%s"%%', $workflowRun->runId()),
+            ],
+            [
+                'createdAt' => Types::DATETIME_IMMUTABLE,
+            ],
+        );
+
+        $runs = $this->findByRunIdsIndexed($runIds);
+        $relaunches = [];
+
+        foreach ($runIds as $runId) {
+            $run = $runs[$runId] ?? null;
+
+            if ($run !== null && ($run->relaunchMetadata()['original_run_id'] ?? null) === $workflowRun->runId()) {
+                $relaunches[] = $run;
+            }
+        }
+
+        return $relaunches;
+    }
+
     private function jsonTextExpression(string $column): string
     {
         $platform = $this->getEntityManager()->getConnection()->getDatabasePlatform();

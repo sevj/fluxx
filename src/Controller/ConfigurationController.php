@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Translation\TranslatableMessage;
 
 #[Route('/fluxx/configuration', name: 'fluxx_configuration_', methods: ['GET', 'POST'])]
 #[IsGranted('ROLE_ADMIN')]
@@ -69,7 +70,7 @@ final class ConfigurationController extends AbstractController
                 ]);
             }
 
-            $this->addFlash('success', 'Configuration saved.');
+            $this->addFlash('success', new TranslatableMessage('flash.configuration_saved', domain: 'fluxx'));
         } catch (InvalidArgumentException $exception) {
             $this->addFlash('error', $exception->getMessage());
         }

@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Translation\TranslatableMessage;
 
 #[Route('/fluxx/runtime/self-heal', name: 'fluxx_runtime_self_heal', methods: ['POST'])]
 #[IsGranted('ROLE_ADMIN')]
@@ -62,62 +63,59 @@ final class RuntimeSelfHealController extends AbstractController
         return $this->redirectToRoute('fluxx_runtime_index');
     }
 
-    private function pruneWorkers(): string
+    private function pruneWorkers(): TranslatableMessage
     {
         $result = $this->workerPruner->prune(stoppedRetentionSeconds: 0, staleHeartbeatSeconds: 120);
 
-        return sprintf(
-            'Pruned %d stopped worker(s) deleted, %d stale ghost(s) marked as stopped.',
-            $result['deletedStopped'],
-            $result['markedStaleAsStopped'],
-        );
+        return new TranslatableMessage('flash.self_heal.workers_pruned', [
+            '%deleted%' => $result['deletedStopped'],
+            '%marked%' => $result['markedStaleAsStopped'],
+        ], 'fluxx');
     }
 
-    private function purgeDeadConsumers(): string
+    private function purgeDeadConsumers(): TranslatableMessage
     {
         $result = $this->consumerPurger->purge(minIdleSeconds: 60);
 
-        return sprintf(
-            'Purged %d dead consumer(s); skipped %d live consumer(s).',
-            count($result['purged']),
-            $result['skipped'],
-        );
+        return new TranslatableMessage('flash.self_heal.consumers_purged', [
+            '%purged%' => count($result['purged']),
+            '%skipped%' => $result['skipped'],
+        ], 'fluxx');
     }
 
-    private function reclaimPending(): string
+    private function reclaimPending(): TranslatableMessage
     {
         $result = $this->messageReclaimer->reclaim(minIdleSeconds: 60, count: 100);
 
         if ($result['claimed'] === 0) {
-            return 'No pending message was eligible for reclaim.';
+            return new TranslatableMessage('flash.self_heal.no_pending_message', domain: 'fluxx');
         }
 
-        return sprintf(
-            'Reclaimed %d pending message(s) onto consumer "%s".',
-            $result['claimed'],
-            $result['targetConsumer'],
-        );
+        return new TranslatableMessage('flash.self_heal.messages_reclaimed', [
+            '%claimed%' => $result['claimed'],
+            '%consumer%' => $result['targetConsumer'],
+        ], 'fluxx');
     }
 
-    private function releaseStaleLocks(): string
+    private function releaseStaleLocks(): TranslatableMessage
     {
         $released = $this->lockReleaser->releaseStale(staleHeartbeatSeconds: 120);
 
         if ($released === []) {
-            return 'No stale lock was found.';
+            return new TranslatableMessage('flash.self_heal.no_stale_lock', domain: 'fluxx');
         }
 
-        return sprintf('Released %d stale lock(s).', count($released));
+        return new TranslatableMessage('flash.self_heal.locks_released', ['%released%' => count($released)], 'fluxx');
     }
 
-    private function finishOrphanRuns(): string
+    private function finishOrphanRuns(): TranslatableMessage
     {
         $finished = $this->orphanRunFinisher->finishOrphanRuns();
 
         if ($finished === []) {
-            return 'No orphaned run was found.';
+            return new TranslatableMessage('flash.self_heal.no_orphan_run', domain: 'fluxx');
         }
 
-        return sprintf('Finalized %d orphaned run(s) as failed.', count($finished));
+        return new TranslatableMessage('flash.self_heal.orphan_runs_finished', ['%finished%' => count($finished)], 'fluxx');
     }
 }

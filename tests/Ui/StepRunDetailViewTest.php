@@ -14,13 +14,47 @@ final class StepRunDetailViewTest extends TestCase
     #[Test]
     public function it_exposes_lock_and_deduplication_fields(): void
     {
-        $view = new StepRunDetailView(
+        $view = $this->view('completed');
+
+        self::assertSame('contacts:CSV:Hubspot', $view->workflowLockKey());
+        self::assertSame('workflow_source_target', $view->workflowLockScope());
+        self::assertSame('step', $view->workflowRelaunchMode());
+        self::assertSame('run-0', $view->workflowOriginalRunId());
+        self::assertSame('write_contacts', $view->workflowRestartStepCode());
+        self::assertSame(2, $view->retryCount());
+        self::assertNotNull($view->lastRetryAt());
+        self::assertNotNull($view->nextRetryAt());
+        self::assertSame('detail-key', $view->idempotenceKey());
+        self::assertSame('deduplicated', $view->deduplicationStatus());
+        self::assertSame('run-0', $view->deduplicatedFromRunId());
+        self::assertSame('write_contacts', $view->deduplicatedFromStepCode());
+        self::assertNull($view->errorCode());
+        self::assertNull($view->errorClass());
+        self::assertNull($view->errorContext());
+        self::assertNull($view->errorOccurredAt());
+    }
+
+    #[Test]
+    public function it_allows_relaunching_a_step_only_when_the_relaunch_service_would_accept_it(): void
+    {
+        foreach (['completed', 'failed', 'partially_failed', 'cancelled'] as $status) {
+            self::assertTrue($this->view($status)->canRelaunch(), $status);
+        }
+
+        foreach (['pending', 'relaunched', 'retrying', 'running', 'payloads_pruned'] as $status) {
+            self::assertFalse($this->view($status)->canRelaunch(), $status);
+        }
+    }
+
+    private function view(string $workflowStatus): StepRunDetailView
+    {
+        return new StepRunDetailView(
             workflowCode: 'contacts',
             workflowName: 'Contacts',
             workflowSourceSystem: 'CSV',
             workflowTargetSystem: 'Hubspot',
             runId: 'run-1',
-            workflowStatus: 'completed',
+            workflowStatus: $workflowStatus,
             workflowLockKey: 'contacts:CSV:Hubspot',
             workflowLockScope: 'workflow_source_target',
             workflowRelaunchMode: 'step',
@@ -59,22 +93,5 @@ final class StepRunDetailViewTest extends TestCase
             inputPayloads: [],
             outputPayloads: [],
         );
-
-        self::assertSame('contacts:CSV:Hubspot', $view->workflowLockKey());
-        self::assertSame('workflow_source_target', $view->workflowLockScope());
-        self::assertSame('step', $view->workflowRelaunchMode());
-        self::assertSame('run-0', $view->workflowOriginalRunId());
-        self::assertSame('write_contacts', $view->workflowRestartStepCode());
-        self::assertSame(2, $view->retryCount());
-        self::assertNotNull($view->lastRetryAt());
-        self::assertNotNull($view->nextRetryAt());
-        self::assertSame('detail-key', $view->idempotenceKey());
-        self::assertSame('deduplicated', $view->deduplicationStatus());
-        self::assertSame('run-0', $view->deduplicatedFromRunId());
-        self::assertSame('write_contacts', $view->deduplicatedFromStepCode());
-        self::assertNull($view->errorCode());
-        self::assertNull($view->errorClass());
-        self::assertNull($view->errorContext());
-        self::assertNull($view->errorOccurredAt());
     }
 }

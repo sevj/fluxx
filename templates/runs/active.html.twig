@@ -5,8 +5,8 @@
 {% block title %}{{ 'runs_active.title'|trans }}{% endblock %}
 
 {% block scripts %}
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: fluxx_asset_version}) }}"></script>
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'run-active', v: fluxx_asset_version}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'clickable-rows', v: fluxx_asset_version()}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'run-active', v: fluxx_asset_version()}) }}"></script>
 {% endblock %}
 
 {% block body %}

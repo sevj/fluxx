@@ -106,6 +106,62 @@ final class WorkflowRelaunchServiceTest extends TestCase
     }
 
     #[Test]
+    public function a_forced_relaunch_makes_the_stuck_run_give_up_its_lock_first(): void
+    {
+        self::assertSame(['release:forced_relaunch', 'flush', 'acquire'], array_slice($this->lockCallsOfForcedRelaunch(WorkflowRunStatus::Running), 0, 3));
+    }
+
+    #[Test]
+    public function a_relaunch_of_a_finished_run_does_not_touch_its_lock_before_acquiring(): void
+    {
+        self::assertSame('acquire', $this->lockCallsOfForcedRelaunch(WorkflowRunStatus::Failed)[0]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function lockCallsOfForcedRelaunch(WorkflowRunStatus $status): array
+    {
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($this->createRun($status));
+
+        $workflow = $this->createStub(WorkflowInterface::class);
+        $workflow->method('definition')->willReturn(new WorkflowDefinition('fixture', 'Fixture', 'a', 'b', [
+            new WorkflowStepDefinition('first', 'First', WorkflowStepType::Read, new JoinStep('h', 'H')),
+        ]));
+
+        $calls = [];
+        $lockManager = $this->createStub(WorkflowExecutionLockManagerInterface::class);
+        $lockManager->method('releaseForRun')->willReturnCallback(function (WorkflowRun $run, string $reason) use (&$calls): void {
+            $calls[] = 'release:' . $reason;
+        });
+        $lockManager->method('acquire')->willReturnCallback(function () use (&$calls): null {
+            $calls[] = 'acquire';
+
+            return null;
+        });
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('flush')->willReturnCallback(function () use (&$calls): void {
+            $calls[] = 'flush';
+        });
+        $messageBus = $this->createStub(MessageBusInterface::class);
+        $messageBus->method('dispatch')->willReturn(new Envelope(new \stdClass()));
+
+        (new WorkflowRelaunchService(
+            registry: new SynchronizationRegistry([$workflow]),
+            entityManager: $entityManager,
+            messageBus: $messageBus,
+            workflowRunRepository: $this->workflowRunRepository,
+            workflowStepRunRepository: $this->createStub(WorkflowStepRunLookupInterface::class),
+            workflowPayloadRepository: $this->createStub(WorkflowPayloadLookupInterface::class),
+            workflowPayloadStore: $this->createStub(WorkflowPayloadStoreInterface::class),
+            workflowExecutionLockManager: $lockManager,
+            workflowRelaunchPlanner: new WorkflowRelaunchPlanner(),
+        ))->relaunch('run-1', force: true);
+
+        return $calls;
+    }
+
+    #[Test]
     public function it_keeps_the_outputs_a_relaunched_step_reads_from_preserved_ancestors(): void
     {
         $original = $this->createRun(WorkflowRunStatus::Completed);

@@ -1,40 +1,31 @@
 (function () {
-    document.addEventListener('DOMContentLoaded', function () {
-        const clickableRows = Array.from(document.querySelectorAll('[data-row-href]'));
+    // Delegated to the document: live refreshes replace the rows.
+    const rowOf = function (target) {
+        if (target.closest('a, button, input, select, textarea, summary, [data-ignore-row-click]')) {
+            return null;
+        }
 
-        clickableRows.forEach(function (row) {
-            const openRow = function () {
-                const href = row.dataset.rowHref;
+        return target.closest('[data-row-href]');
+    };
 
-                if (href) {
-                    window.location.href = href;
-                }
-            };
+    document.addEventListener('click', function (event) {
+        const row = rowOf(event.target);
 
-            const isInteractiveTarget = function (target) {
-                return Boolean(target.closest('a, button, input, select, textarea, summary, [data-ignore-row-click]'));
-            };
+        if (row) {
+            window.location.href = row.dataset.rowHref;
+        }
+    });
 
-            row.addEventListener('click', function (event) {
-                if (isInteractiveTarget(event.target)) {
-                    return;
-                }
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
 
-                openRow();
-            });
+        const row = rowOf(event.target);
 
-            row.addEventListener('keydown', function (event) {
-                if (event.key !== 'Enter' && event.key !== ' ') {
-                    return;
-                }
-
-                if (isInteractiveTarget(event.target)) {
-                    return;
-                }
-
-                event.preventDefault();
-                openRow();
-            });
-        });
+        if (row) {
+            event.preventDefault();
+            window.location.href = row.dataset.rowHref;
+        }
     });
 }());

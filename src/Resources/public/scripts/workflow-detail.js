@@ -26,6 +26,7 @@
         const tabState = {};
         let activeTabName = null;
         let executionRefreshTimer = null;
+        const executionPollingControls = document.querySelector('[data-executions-polling]');
         const executionPollingToggle = document.querySelector('[data-executions-poll-toggle]');
         const executionPollingToggleLabel = executionPollingToggle
             ? executionPollingToggle.querySelector('[data-button-label]')
@@ -48,6 +49,10 @@
         }
 
         const syncExecutionPollingUi = function () {
+            if (executionPollingControls) {
+                executionPollingControls.hidden = activeTabName !== 'executions';
+            }
+
             if (executionPollingToggle && executionPollingToggleLabel) {
                 executionPollingToggleLabel.textContent = executionPollingEnabled ? pausePollingLabel : resumePollingLabel;
                 executionPollingToggle.setAttribute('aria-pressed', String(executionPollingEnabled));
@@ -236,6 +241,8 @@
             panels.forEach(function (panel) {
                 panel.hidden = panel.dataset.tabPanel !== tabName;
             });
+
+            syncExecutionPollingUi();
 
             try {
                 sessionStorage.setItem(pageStorageKey, tabName);

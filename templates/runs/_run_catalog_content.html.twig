@@ -1,5 +1,6 @@
 {% trans_default_domain 'fluxx' %}
 {% import '@Fluxx/_icons.html.twig' as icons %}
+{% set can_operate = is_granted('ROLE_ADMIN') %}
 {% set filter_query = {
     'q': executionFilters.searchQuery,
     'workflow': executionFilters.workflowCode,
@@ -13,6 +14,13 @@
         {{ executionFilters.hasActiveFilters ? 'run_index.empty_search'|trans : 'run_index.empty'|trans }}
     </section>
 {% else %}
+    <div class="count list-count">
+        {{ 'run_index.count'|trans({
+            '%from%': runPage.firstItemNumber,
+            '%to%': runPage.lastItemNumber,
+            '%total%': runPage.totalItems
+        }) }}
+    </div>
     <section class="workflow-list">
         <table class="workflow-table-compact">
             <colgroup>
@@ -25,7 +33,9 @@
                 <col style="width: 7%">
                 <col style="width: 14%">
                 <col style="width: 13%">
-                <col style="width: 17%">
+                {% if can_operate %}
+                    <col style="width: 17%">
+                {% endif %}
             </colgroup>
             <thead>
                 <tr>
@@ -38,7 +48,9 @@
                     <th>{{ 'run_index.status'|trans }}</th>
                     <th>{{ 'run_index.dates'|trans }}</th>
                     <th>{{ 'run_index.error'|trans }}</th>
-                    <th>{{ 'run_index.actions'|trans }}</th>
+                    {% if can_operate %}
+                        <th>{{ 'run_index.actions'|trans }}</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -109,6 +121,7 @@
                                 <span class="metric-empty">-</span>
                             {% endif %}
                         </td>
+                        {% if can_operate %}
                         <td data-label="{{ 'run_index.actions'|trans }}" class="execution-cell-actions">
                             <div class="execution-actions">
                                 {% if run.status in ['failed', 'partially_failed', 'cancelled'] %}
@@ -134,6 +147,7 @@
                                 {% endif %}
                             </div>
                         </td>
+                        {% endif %}
                     </tr>
                 {% endfor %}
             </tbody>

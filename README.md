@@ -26,9 +26,10 @@ The bundle extension already prepends Doctrine mapping, Twig paths, and translat
 
 ## Database schema
 
-Fluxx persists seven tables under the `fluxx_` prefix: `fluxx_user`, `fluxx_setting`,
+Fluxx persists eight tables under the `fluxx_` prefix: `fluxx_user`, `fluxx_setting`,
 `fluxx_workflow_run`, `fluxx_workflow_step_run`, `fluxx_workflow_payload`,
-`fluxx_workflow_execution_lock`, and `fluxx_runtime_worker_state`.
+`fluxx_workflow_payload_content`, `fluxx_workflow_execution_lock`, and
+`fluxx_runtime_worker_state`.
 
 The bundle does not ship Doctrine migrations to avoid forcing `doctrine/migrations`
 as a dependency. Ship your own migrations, or bootstrap from the reference schema:
@@ -41,6 +42,16 @@ as a dependency. Ship your own migrations, or bootstrap from the reference schem
 
 The Doctrine mapping is auto-registered by the bundle extension, so the host
 application does not need to declare the `Fluxx` ORM mapping manually.
+
+### Upgrading to 1.16
+
+Add the `active_lock_key` column before deploying, or every query on execution locks fails:
+
+- PostgreSQL: apply `migrations/upgrade-1.16.0-postgresql.sql`.
+- MySQL or SQLite: add the column and its unique index from
+  `bin/console doctrine:schema:update --dump-sql`, release all but the most recent active lock of
+  each `lock_key`, then run
+  `UPDATE fluxx_workflow_execution_lock SET active_lock_key = lock_key WHERE released_at IS NULL`.
 
 ## Security
 
@@ -194,6 +205,11 @@ Whatever happens in between, a workflow graph should have one way in and one way
 - **Start with a single step.** Every other step depends on it, directly or not, so nothing runs before it.
 - **End with a single step.** With parallel branches and asynchronous workers, a run with several terminal steps can stay `running` after all its work is done. Running with `--sync` does not reveal this, so test such graphs asynchronously too.
 - **Use join steps where branches converge.** A join is a virtual step that does no work: what follows it starts once all the joined branches have completed. It loads no input and produces no records, so it stays cheap whatever the volumes.
+
+Each step can run more than once, and it is not atomic:
+
+- **Make it safe to replay.** A retry or a relaunch executes the whole handler again, including the calls that succeeded before the failure.
+- **Do not count on a rollback.** The handler runs outside any Fluxx transaction: what it writes to the database stays when it fails afterwards. Open your own transaction if several writes must succeed together.
 
 ```php
 steps: [
@@ -382,6 +398,8 @@ Recommended host-application flow:
 - prefer technical retries for transient infrastructure failures
 - classify business failures explicitly to avoid blind replay loops (see [Error classification](#error-classification))
 - keep retry delay/backoff policies conservative for external APIs
+- step retries come from `WorkflowRetryPolicy` only. The `retry_strategy` of the Messenger
+  transport does not replay a step recorded as failed: only a relaunch executes it again
 - `fluxx.runtime.defaults.max_global_retries` caps retries per step regardless of
   the per-workflow policy, acting as a safety guard against infinite retry loops.
   Set it to `0` to disable retries entirely on a step.
@@ -391,3 +409,7 @@ Recommended host-application flow:
 - start with workflow/source or workflow/source-target lock scopes
 - use business-partition locks only when the partition key is stable and explicit
 - keep stale lock timeout aligned with worker heartbeat expectations
+- a lock is only recovered from a run that has been inactive for the stale timeout, so keep that
+  timeout above the longest step and the longest expected wait in the queue
+- after a worker crash, a new launch is refused until then. To go faster, release the lock from the
+  runtime page or relaunch the stuck run with `--force`, which gives up its lock

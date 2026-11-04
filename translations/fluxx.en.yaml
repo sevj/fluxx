@@ -8,7 +8,6 @@ navigation:
     active_runs: Active runs
     runtime: Runtime
     health: Health
-    troubleshooting: Troubleshooting
     logout: Logout
     theme_toggle: Toggle light and dark theme
 
@@ -206,10 +205,8 @@ statistics_index:
 run_index:
     title: All runs
     heading: All runs
-    search_label: Search runs
+    filter_search_label: Search
     search_placeholder: Search by run id, workflow, system, trigger or error
-    search_submit: Search
-    search_reset: Reset
     count: Showing %from%-%to% of %total% runs
     empty: No run has been recorded yet.
     empty_search: No run matches the current filters.
@@ -297,6 +294,17 @@ run_show:
     cancel_run: Cancel run
     cancel_confirm: Cancel this run?
     overview_title: Overview
+    pause_polling: Pause polling
+    resume_polling: Resume polling
+    polling: Refreshing
+    loading: Loading
+    waiting: Waiting for the first refresh
+    state_live: Live
+    state_error: Error
+    state_offline: Offline
+    refresh_failed: Refresh failed
+    parameters_group: Launch parameters
+    relaunched_as: Relaunched as
     workflow_group: Workflow
     execution_group: Execution
     summary_group: Summary
@@ -632,30 +640,30 @@ system_health:
     check_locks: Lock health
     check_alerts: Active alerts
 
-troubleshooting:
-    title: Troubleshooting
-    heading: Troubleshooting
-    subtitle: Line-by-line list of problematic executions and failed step messages.
-    count: Showing %from%-%to% of %total% issues
-    empty: No problematic execution is currently visible.
-    empty_search: No problematic execution matches "%query%".
-    search_label: Search troubleshooting
-    search_placeholder: Search by workflow, step, run id or error
-    search_submit: Search
-    search_reset: Reset
-    workflow: Workflow
-    source_system: Source
-    target_system: Target
-    run: Run
-    step: Step
-    fail_count: Fails
-    failed_at: Failed at
-    error: Error
-
 pagination:
     label: Workflow pagination
     previous: Previous
     next: Next
+
+flash:
+    configuration_saved: Configuration saved.
+    run_relaunched: 'Run relaunched. New run id: %runId%'
+    step_relaunched: 'Step relaunched. New run id: %runId%'
+    run_cancelled: 'Run %runId% cancelled.'
+    run_not_cancellable: 'Run %runId% cannot be cancelled in its current state.'
+    run_still_active: 'Run %runId% is still in progress. Use the CLI with --force when the original worker is definitely stuck.'
+    workflow_locked: 'Workflow "%workflow%" is locked by run "%runId%" for key "%lockKey%".'
+    lock_released: 'Released the lock for run "%runId%".'
+    lock_not_found: 'No active lock was found for run "%runId%".'
+    self_heal:
+        workers_pruned: 'Stopped workers deleted: %deleted%. Stale workers marked as stopped: %marked%.'
+        consumers_purged: 'Dead consumers purged: %purged%. Live consumers skipped: %skipped%.'
+        no_pending_message: No pending message was eligible for reclaim.
+        messages_reclaimed: 'Pending messages reclaimed onto consumer "%consumer%": %claimed%.'
+        no_stale_lock: No stale lock was found.
+        locks_released: 'Stale locks released: %released%.'
+        no_orphan_run: No orphaned run was found.
+        orphan_runs_finished: 'Orphaned runs finalized as failed: %finished%.'
 
 email_recap:
     subject: 'Daily workflow recap %date%'

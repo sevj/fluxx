@@ -10,6 +10,8 @@ final readonly class RunDetailView
 {
     /**
      * @param list<WorkflowExecutionStepOverview> $steps
+     * @param array<string, mixed> $parameters
+     * @param list<RunRelaunchView> $relaunches
      */
     public function __construct(
         private string $workflowCode,
@@ -49,6 +51,9 @@ final readonly class RunDetailView
         private int $errorTotal,
         private array $steps,
         private RunTimelineView $timeline,
+        private bool $active,
+        private array $parameters,
+        private array $relaunches,
     ) {
     }
 
@@ -236,5 +241,27 @@ final readonly class RunDetailView
     public function timeline(): RunTimelineView
     {
         return $this->timeline;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->active;
+    }
+
+    public function parametersJson(): ?string
+    {
+        if ($this->parameters === []) {
+            return null;
+        }
+
+        return json_encode($this->parameters, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: null;
+    }
+
+    /**
+     * @return list<RunRelaunchView>
+     */
+    public function relaunches(): array
+    {
+        return $this->relaunches;
     }
 }

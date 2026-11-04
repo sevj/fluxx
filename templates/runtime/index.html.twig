@@ -5,7 +5,7 @@
 {% block title %}{{ 'runtime_index.title'|trans }}{% endblock %}
 
 {% block scripts %}
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: fluxx_asset_version}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'runtime-monitor', v: fluxx_asset_version()}) }}"></script>
 {% endblock %}
 
 {% block page_class %} page-runtime{% endblock %}

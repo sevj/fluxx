@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Workflow\Runtime;
 
 use DateTimeImmutable;
+use Doctrine\DBAL\Exception as DbalException;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\Enum\WorkflowStepType;
@@ -14,6 +15,7 @@ use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Repository\WorkflowStepRunLookupInterface;
+use Fluxx\Workflow\Context\WorkflowContext;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\WorkflowDeferralInterface;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
@@ -82,7 +84,8 @@ final class FluxxRuntime
             return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
         }
 
-        if ($existingStepRun?->status() === WorkflowStepRunStatus::Running) {
+        // A failed step is final for this run: only a relaunch can execute it again.
+        if (in_array($existingStepRun?->status(), [WorkflowStepRunStatus::Running, WorkflowStepRunStatus::Failed], true)) {
             return [];
         }
 
@@ -106,17 +109,13 @@ final class FluxxRuntime
             memory_reset_peak_usage();
         }
 
-        $this->entityManager->beginTransaction();
-
         try {
-            if ($this->idempotenceResolver->tryCompleteFromHit($workflowRun, $stepDefinition, $stepRun, $context, $input, $stepStartedAt)) {
-                $this->finalizeWorkflowRunState($workflowRun, $definition);
-                $this->entityManager->flush();
-                $this->entityManager->commit();
-
+            if ($this->completeFromIdempotenceHit($workflowRun, $definition, $stepDefinition, $stepRun, $context, $input, $stepStartedAt)) {
                 return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
             }
 
+            // The handler runs outside any transaction: it can call external APIs for minutes,
+            // and a rollback could not undo those calls anyway.
             $this->stepProgressReporter?->start($workflowRun->runId(), $stepCode);
 
             try {
@@ -134,6 +133,9 @@ final class FluxxRuntime
             $this->idempotenceResolver->applyKey($stepDefinition, $stepRun, $context, $input);
 
             $chunkSize = $this->resolveChunkSize($stepDefinition);
+
+            $this->reconnectIfConnectionWasLost();
+            $this->entityManager->beginTransaction();
 
             foreach ($definition->downstreamSteps($stepCode) as $downstreamStep) {
                 $output = $result->outputFor($downstreamStep->code());
@@ -227,6 +229,7 @@ final class FluxxRuntime
         $memoryPeakBytes = $this->measurePeakMemoryBytes();
 
         try {
+            $this->reconnectIfConnectionWasLost();
             $this->entityManager->beginTransaction();
 
             if ($throwable instanceof WorkflowDeferralInterface) {
@@ -267,7 +270,53 @@ final class FluxxRuntime
             throw $errorHandlingThrowable;
         }
 
-        throw $throwable;
+        throw new WorkflowStepFailedException($throwable);
+    }
+
+    private function completeFromIdempotenceHit(
+        WorkflowRun $workflowRun,
+        WorkflowDefinition $definition,
+        WorkflowStepDefinition $stepDefinition,
+        WorkflowStepRun $stepRun,
+        WorkflowContext $context,
+        WorkflowStepInput $input,
+        int $stepStartedAt,
+    ): bool {
+        if ($stepDefinition->idempotence() === null) {
+            return false;
+        }
+
+        $this->entityManager->beginTransaction();
+
+        $completed = $this->idempotenceResolver->tryCompleteFromHit($workflowRun, $stepDefinition, $stepRun, $context, $input, $stepStartedAt);
+
+        if ($completed) {
+            $this->finalizeWorkflowRunState($workflowRun, $definition);
+            $this->entityManager->flush();
+        }
+
+        $this->entityManager->commit();
+
+        return $completed;
+    }
+
+    /**
+     * The database may have dropped the connection while the handler was busy elsewhere.
+     * Closing it makes the next statement open a new one, so the outcome of the step can be saved.
+     */
+    private function reconnectIfConnectionWasLost(): void
+    {
+        $connection = $this->entityManager->getConnection();
+
+        if ($connection->isTransactionActive()) {
+            return;
+        }
+
+        try {
+            $connection->executeQuery($connection->getDatabasePlatform()->getDummySelectSQL());
+        } catch (DbalException) {
+            $connection->close();
+        }
     }
 
     private function rollbackIfActive(): void

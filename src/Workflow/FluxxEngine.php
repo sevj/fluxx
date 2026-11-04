@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow;
 
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
@@ -49,7 +50,12 @@ final readonly class FluxxEngine implements FluxxEngineInterface
         $this->workflowExecutionLockManager->acquire($workflowRun, $definition);
 
         $this->entityManager->persist($workflowRun);
-        $this->entityManager->flush();
+
+        try {
+            $this->entityManager->flush();
+        } catch (UniqueConstraintViolationException $exception) {
+            throw $this->workflowExecutionLockManager->flushFailure($workflowRun, $exception);
+        }
 
         try {
             foreach ($definition->rootSteps() as $stepDefinition) {

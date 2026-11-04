@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Translation\TranslatableMessage;
 
 #[Route('/fluxx/workflow/{workflowCode}/run/{runId}/cancel', name: 'fluxx_workflow_run_cancel', methods: ['POST'])]
 #[IsGranted('ROLE_ADMIN')]
@@ -40,9 +41,9 @@ final class WorkflowRunCancelController extends AbstractController
             );
 
             if ($cancelled) {
-                $this->addFlash('success', sprintf('Run %s cancelled.', $runId));
+                $this->addFlash('success', new TranslatableMessage('flash.run_cancelled', ['%runId%' => $runId], 'fluxx'));
             } else {
-                $this->addFlash('error', sprintf('Run %s cannot be cancelled in its current state.', $runId));
+                $this->addFlash('error', new TranslatableMessage('flash.run_not_cancellable', ['%runId%' => $runId], 'fluxx'));
             }
         } catch (\Throwable $exception) {
             $this->addFlash('error', $exception->getMessage());

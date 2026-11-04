@@ -13,6 +13,7 @@ use Fluxx\Repository\WorkflowExecutionLockRepository;
 #[ORM\Table(name: 'fluxx_workflow_execution_lock')]
 #[ORM\Index(name: 'idx_fluxx_workflow_execution_lock_key', columns: ['lock_key'])]
 #[ORM\Index(name: 'idx_fluxx_workflow_execution_lock_owner_run_id', columns: ['owner_run_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_fluxx_execution_lock_active_lock_key', columns: ['active_lock_key'])]
 class WorkflowExecutionLock
 {
     #[ORM\Id]
@@ -28,6 +29,13 @@ class WorkflowExecutionLock
 
     #[ORM\Column(length: 190)]
     private string $lockKey;
+
+    /**
+     * Holds the lock key while the lock is active and null afterwards: its unique
+     * index allows a single active lock per key on every supported database.
+     */
+    #[ORM\Column(length: 190, nullable: true)]
+    private ?string $activeLockKey;
 
     #[ORM\Column(enumType: WorkflowExecutionLockScope::class, length: 40)]
     private WorkflowExecutionLockScope $scope;
@@ -54,6 +62,7 @@ class WorkflowExecutionLock
         $this->workflowName = $workflowName;
         $this->ownerRunId = $ownerRunId;
         $this->lockKey = $lockKey;
+        $this->activeLockKey = $lockKey;
         $this->scope = $scope;
         $this->businessPartitionKey = $businessPartitionKey;
         $this->acquiredAt = new DateTimeImmutable();
@@ -115,6 +124,7 @@ class WorkflowExecutionLock
             return;
         }
 
+        $this->activeLockKey = null;
         $this->releasedAt = $releasedAt ?? new DateTimeImmutable();
         $this->releaseReason = $reason;
     }

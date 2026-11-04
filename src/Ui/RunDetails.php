@@ -76,6 +76,16 @@ final readonly class RunDetails
             errorTotal: $this->sumStepCount($run, static fn ($step) => $step->errorCount()),
             steps: $this->buildStepViews($run, $stepRuns),
             timeline: $this->runTimeline->for($run, $stepRuns),
+            active: $run->status()->isActive(),
+            parameters: $run->launchParameters(),
+            relaunches: array_map(
+                static fn (WorkflowRun $relaunch): RunRelaunchView => new RunRelaunchView(
+                    runId: $relaunch->runId(),
+                    status: $relaunch->status()->value,
+                    createdAt: $relaunch->createdAt(),
+                ),
+                $this->workflowRunRepository->findRelaunchesOf($run),
+            ),
         );
     }
 

@@ -78,7 +78,7 @@ final readonly class OrphanRunFinisher
 
             $stepRuns = $this->workflowStepRunRepository->findByWorkflowRunsGrouped([$run])[$run->runId()] ?? [];
 
-            if ($this->resolveLastActivityAt($run, $stepRuns) >= $staleThreshold) {
+            if ($run->lastActivityAt($stepRuns) >= $staleThreshold) {
                 continue;
             }
 
@@ -126,24 +126,6 @@ final readonly class OrphanRunFinisher
         }
 
         return false;
-    }
-
-    /**
-     * @param list<WorkflowStepRun> $stepRuns
-     */
-    private function resolveLastActivityAt(WorkflowRun $run, array $stepRuns): DateTimeImmutable
-    {
-        $lastActivityAt = $run->startedAt() ?? $run->createdAt();
-
-        foreach ($stepRuns as $stepRun) {
-            $activityAt = $stepRun->finishedAt() ?? $stepRun->startedAt() ?? $stepRun->createdAt();
-
-            if ($activityAt > $lastActivityAt) {
-                $lastActivityAt = $activityAt;
-            }
-        }
-
-        return $lastActivityAt;
     }
 
     /**

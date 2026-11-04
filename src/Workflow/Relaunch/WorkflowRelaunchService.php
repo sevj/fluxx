@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow\Relaunch;
 
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowPayload;
@@ -56,12 +57,7 @@ final readonly class WorkflowRelaunchService
             throw RunPayloadsPrunedException::forRun($originalRun->runId());
         }
 
-        if (!$force && !in_array($originalRun->status(), [
-            WorkflowRunStatus::Completed,
-            WorkflowRunStatus::Failed,
-            WorkflowRunStatus::PartiallyFailed,
-            WorkflowRunStatus::Cancelled,
-        ], true)) {
+        if (!$force && !$originalRun->status()->isRelaunchable()) {
             throw RunStillActiveException::fromStatus($originalRun->runId(), $originalRun->status());
         }
 
@@ -85,6 +81,13 @@ final readonly class WorkflowRelaunchService
             ),
         );
         $workflowRun->markRelaunched();
+
+        if (!$originalRun->status()->isRelaunchable()) {
+            // Forcing means the operator knows the original run is stuck: it gives up its lock.
+            $this->workflowExecutionLockManager->releaseForRun($originalRun, 'forced_relaunch');
+            $this->entityManager->flush();
+        }
+
         $this->workflowExecutionLockManager->acquire($workflowRun, $definition);
 
         $this->entityManager->persist($workflowRun);
@@ -94,7 +97,12 @@ final readonly class WorkflowRelaunchService
         $this->createResetTargetStepRuns($workflowRun, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
         $this->cloneEntryPayloads($workflowRun, $plan, $originalRun, $clonedStepRuns);
         $this->cloneReadPayloads($workflowRun, $definition, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
-        $this->entityManager->flush();
+
+        try {
+            $this->entityManager->flush();
+        } catch (UniqueConstraintViolationException $exception) {
+            throw $this->workflowExecutionLockManager->flushFailure($workflowRun, $exception);
+        }
 
         try {
             foreach ($plan->entryStepCodes() as $entryStepCode) {

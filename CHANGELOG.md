@@ -6,6 +6,56 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.16.0] - 2026-11-04
+
+### Upgrade
+- The `fluxx_workflow_execution_lock` table gets an `active_lock_key` column with a unique index.
+  Apply `migrations/upgrade-1.16.0-postgresql.sql` before deploying (see the README for other
+  databases).
+
+### Added
+- The run page shows the launch parameters of the run, and refreshes on its own while the run is
+  active.
+- The run page links to the runs started by relaunching it, on top of the existing link back to
+  the original run.
+
+### Changed
+- Declare `symfony/mailer`, `symfony/security-csrf` and `ext-redis` as dependencies: the bundle
+  uses them without requiring them, which could break the installation in a host application.
+- The live polling controls sit at the right of the page header on every page. On a workflow
+  page they only show on the executions tab, which is the only one they refresh.
+- The runs page has a single filter form: searching no longer drops the filters, and applying
+  filters no longer drops the search. The count sits above the table and follows the live refresh.
+- **Behaviour change:** a step handler no longer runs inside the transaction of the runtime, which
+  now only covers saving the outcome of the step. Long API calls no longer keep a transaction open.
+  What a handler writes to the database is kept when it fails afterwards: a handler that relied on
+  that rollback must open its own transaction. A connection lost during the handler is reopened
+  before the outcome is saved.
+
+### Removed
+- The troubleshooting page: the runs page lists the same failures, with more filters. The
+  `fluxx_troubleshooting_index` route no longer exists, so `/fluxx/troubleshooting` answers 404.
+
+### Fixed
+- Table rows stay clickable after a live refresh, and on the run page where they never were.
+- A run that is alive no longer loses its execution lock to a second launch, or to the release
+  of stale locks, while its next step waits in the queue. A lock is only recovered once its run
+  has been inactive for the stale timeout, so a new launch is refused until then after a worker
+  crash, unless the run has been finalized as orphaned in the meantime.
+- Two simultaneous launches can no longer both acquire the same lock: the database refuses the
+  second one, which ends in the usual lock conflict.
+- A step recorded as failed is no longer executed again when Messenger redelivers its message
+  while a sibling branch is still running. Final step failures are now rejected without retry,
+  and go straight to the failure transport when there is one.
+- Relaunch and cancel actions are only shown to `ROLE_ADMIN` users, instead of ending in a 403
+  for the others. The actions column is hidden from them too.
+- The form that relaunches a step is hidden while it would be refused: when the run is still
+  active or its payloads have been pruned.
+- Operation messages are translated instead of being always displayed in English, and the `lang`
+  attribute of the page follows the request locale.
+- The version of the bundle assets is computed from their content, so that browsers cannot keep
+  a stale stylesheet or script after an upgrade.
+
 ## [1.15.3] - 2026-11-03
 
 ### Changed

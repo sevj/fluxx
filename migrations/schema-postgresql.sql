@@ -68,6 +68,7 @@ CREATE TABLE fluxx_workflow_execution_lock (
     workflow_name        VARCHAR(180) NOT NULL,
     owner_run_id         VARCHAR(64) NOT NULL,
     lock_key             VARCHAR(190) NOT NULL,
+    active_lock_key      VARCHAR(190) DEFAULT NULL,
     scope                VARCHAR(40) NOT NULL,
     business_partition_key VARCHAR(180) DEFAULT NULL,
     acquired_at          TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
@@ -77,6 +78,7 @@ CREATE TABLE fluxx_workflow_execution_lock (
 );
 CREATE INDEX idx_fluxx_workflow_execution_lock_key ON fluxx_workflow_execution_lock (lock_key);
 CREATE INDEX idx_fluxx_workflow_execution_lock_owner_run_id ON fluxx_workflow_execution_lock (owner_run_id);
+CREATE UNIQUE INDEX uniq_fluxx_execution_lock_active_lock_key ON fluxx_workflow_execution_lock (active_lock_key);
 
 -- ---------------------------------------------------------------------------
 -- fluxx_runtime_worker_state

@@ -1,5 +1,6 @@
 {% trans_default_domain 'fluxx' %}
 {% import '@Fluxx/_icons.html.twig' as icons %}
+{% set can_operate = is_granted('ROLE_ADMIN') %}
 <div class="section-heading">
     <div>
         <h2 class="section-title">{{ 'workflow_show.executions_title'|trans }}</h2>
@@ -100,7 +101,9 @@
                 <col style="width: 8%">
                 <col style="width: 49%">
                 <col style="width: 14%">
-                <col style="width: 11%">
+                {% if can_operate %}
+                    <col style="width: 11%">
+                {% endif %}
             </colgroup>
             <thead>
                 <tr>
@@ -109,7 +112,9 @@
                     <th>{{ 'workflow_show.status'|trans }}</th>
                     <th>{{ 'workflow_show.step_statuses'|trans }}</th>
                     <th>{{ 'workflow_show.dates'|trans }}</th>
-                    <th>{{ 'workflow_show.actions'|trans }}</th>
+                    {% if can_operate %}
+                        <th>{{ 'workflow_show.actions'|trans }}</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -226,6 +231,7 @@
                                 </div>
                             </div>
                         </td>
+                        {% if can_operate %}
                         <td data-label="{{ 'workflow_show.actions'|trans }}" class="execution-cell-actions">
                             <div class="execution-actions">
                                 {% if execution.status in ['failed', 'partially_failed', 'cancelled'] %}
@@ -251,6 +257,7 @@
                                 {% endif %}
                             </div>
                         </td>
+                        {% endif %}
                     </tr>
                 {% endfor %}
             </tbody>

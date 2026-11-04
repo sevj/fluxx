@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Translation\TranslatableMessage;
 
 #[Route('/fluxx/workflow/{workflowCode}/run/{runId}/relaunch', name: 'fluxx_workflow_run_relaunch', methods: ['POST'])]
 #[IsGranted('ROLE_ADMIN')]
@@ -42,16 +43,15 @@ final class WorkflowRunRelaunchController extends AbstractController
                 reason: is_string($reason) && $reason !== '' ? $reason : null,
                 operatorUser: $this->getUser()?->getUserIdentifier(),
             );
-            $this->addFlash('success', sprintf('Run relaunched. New run id: %s', $newRunId));
+            $this->addFlash('success', new TranslatableMessage('flash.run_relaunched', ['%runId%' => $newRunId], 'fluxx'));
         } catch (WorkflowExecutionLockConflict $exception) {
-            $this->addFlash('error', sprintf(
-                'Workflow "%s" is locked by run "%s" for key "%s".',
-                $exception->workflowCode(),
-                $exception->activeRunId(),
-                $exception->lockKey(),
-            ));
-        } catch (RunStillActiveException $exception) {
-            $this->addFlash('error', sprintf('%s Use the CLI with --force when the original worker is definitely stuck.', $exception->getMessage()));
+            $this->addFlash('error', new TranslatableMessage('flash.workflow_locked', [
+                '%workflow%' => $exception->workflowCode(),
+                '%runId%' => $exception->activeRunId(),
+                '%lockKey%' => $exception->lockKey(),
+            ], 'fluxx'));
+        } catch (RunStillActiveException) {
+            $this->addFlash('error', new TranslatableMessage('flash.run_still_active', ['%runId%' => $runId], 'fluxx'));
         } catch (\Throwable $exception) {
             $this->addFlash('error', $exception->getMessage());
         }

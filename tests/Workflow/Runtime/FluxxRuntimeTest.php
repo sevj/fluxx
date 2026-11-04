@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Tests\Workflow\Runtime;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception as DbalException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Exception\EntityManagerClosed;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
@@ -38,6 +39,7 @@ use Fluxx\Workflow\Runtime\WorkflowCancellationSynchronizer;
 use Fluxx\Workflow\Runtime\WorkflowIdempotenceResolver;
 use Fluxx\Workflow\Runtime\WorkflowRetryScheduler;
 use Fluxx\Workflow\Runtime\WorkflowRunCompletionDecider;
+use Fluxx\Workflow\Runtime\WorkflowStepFailedException;
 use Fluxx\Workflow\Result\WorkflowStepResult;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
@@ -426,12 +428,58 @@ final class FluxxRuntimeTest extends TestCase
 
         try {
             $this->runtime->runStep('run-1', 'fetch');
-            self::fail('Expected the runtime to rethrow the business error.');
-        } catch (BusinessStepFailure $exception) {
+            self::fail('Expected the runtime to report the business error.');
+        } catch (WorkflowStepFailedException $exception) {
+            self::assertInstanceOf(BusinessStepFailure::class, $exception->failure());
             self::assertSame('bad record', $exception->getMessage());
         }
 
         self::assertSame(WorkflowRunStatus::Failed, $workflowRun->status());
+    }
+
+    #[Test]
+    public function it_does_not_execute_a_failed_step_again_while_a_sibling_branch_is_running(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $sibling = new WorkflowStepRun(workflowRun: $workflowRun, stepType: 'write', stepName: 'sibling', position: 2);
+        $sibling->markRunning();
+        $this->stepRunLookup->add($sibling);
+
+        $handler = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $handler->expects(self::once())->method('execute')->willThrowException(new BusinessStepFailure('bad record'));
+        $this->registryWithParallelBranches($handler);
+
+        try {
+            $this->runtime->runStep('run-1', 'fetch');
+            self::fail('Expected the runtime to report the business error.');
+        } catch (WorkflowStepFailedException) {
+        }
+
+        self::assertSame([], $this->runtime->runStep('run-1', 'fetch'));
+        self::assertSame(WorkflowRunStatus::Running, $workflowRun->status());
+        self::assertSame(WorkflowStepRunStatus::Failed, $this->stepRunLookup->findLatestByWorkflowRunAndStepName($workflowRun, 'fetch')?->status());
+        self::assertCount(2, $this->stepRunLookup->findByWorkflowRunOrdered($workflowRun));
+    }
+
+    #[Test]
+    public function it_still_executes_a_step_reset_by_a_relaunch(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Relaunched);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $stepRun = new WorkflowStepRun(workflowRun: $workflowRun, stepType: 'read', stepName: 'fetch', position: 1);
+        $stepRun->markRelaunched();
+        $this->stepRunLookup->add($stepRun);
+
+        $handler = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $handler->expects(self::once())->method('execute')->willReturn(new WorkflowStepResult());
+        $this->registryWithHandler($handler);
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame(WorkflowStepRunStatus::Completed, $stepRun->status());
     }
 
     #[Test]
@@ -624,7 +672,7 @@ final class FluxxRuntimeTest extends TestCase
     }
 
     #[Test]
-    public function it_rolls_back_and_reopens_a_transaction_on_technical_error(): void
+    public function it_opens_a_single_transaction_to_record_a_technical_error(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
@@ -642,8 +690,46 @@ final class FluxxRuntimeTest extends TestCase
 
         $this->runtime->runStep('run-1', 'fetch');
 
-        self::assertSame(['begin', 'rollback', 'begin', 'commit'], $this->transactionSequence);
+        self::assertSame(['begin', 'commit'], $this->transactionSequence);
         self::assertSame(WorkflowRunStatus::Retrying, $workflowRun->status());
+    }
+
+    #[Test]
+    public function it_runs_the_handler_outside_any_transaction(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $transactionActive = null;
+        $handler = $this->createStub(ExecutableWorkflowStepInterface::class);
+        $handler->method('execute')->willReturnCallback(function () use (&$transactionActive): WorkflowStepResult {
+            $transactionActive = $this->entityManager->getConnection()->isTransactionActive();
+
+            return new WorkflowStepResult(records: []);
+        });
+        $this->registryWithHandler($handler);
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertFalse($transactionActive);
+        self::assertSame(['begin', 'commit'], $this->transactionSequence);
+    }
+
+    #[Test]
+    public function it_closes_a_lost_connection_before_saving_the_outcome_of_the_step(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $connection = $this->entityManager->getConnection();
+        $connection->method('executeQuery')->willThrowException(
+            new class('server closed the connection') extends RuntimeException implements DbalException {},
+        );
+        $connection->expects(self::once())->method('close');
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
     }
 
     #[Test]
@@ -714,6 +800,23 @@ final class FluxxRuntimeTest extends TestCase
     {
         $workflow = $this->createMock(WorkflowInterface::class);
         $workflow->method('definition')->willReturn($this->fixtureDefinition($handler, withIdempotence: $withIdempotence, retryPolicy: $retryPolicy));
+
+        $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
+    }
+
+    private function registryWithParallelBranches(ExecutableWorkflowStepInterface $handler): void
+    {
+        $workflow = $this->createMock(WorkflowInterface::class);
+        $workflow->method('definition')->willReturn(new WorkflowDefinition(
+            code: 'fixture',
+            name: 'Fixture',
+            sourceSystem: 'src',
+            targetSystem: 'tgt',
+            steps: [
+                new WorkflowStepDefinition('fetch', 'Fetch', 'read', $handler),
+                new WorkflowStepDefinition('sibling', 'Sibling', 'write', new StubResultStep(new WorkflowStepResult())),
+            ],
+        ));
 
         $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
     }

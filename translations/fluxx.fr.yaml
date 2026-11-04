@@ -8,7 +8,6 @@ navigation:
     active_runs: Runs en cours
     runtime: Runtime
     health: Santé
-    troubleshooting: Diagnostic
     logout: Déconnexion
     theme_toggle: Basculer entre le thème clair et le thème sombre
 
@@ -206,10 +205,8 @@ statistics_index:
 run_index:
     title: Toutes les exécutions
     heading: Toutes les exécutions
-    search_label: Rechercher des exécutions
+    filter_search_label: Recherche
     search_placeholder: Rechercher par ID d'exécution, workflow, système, déclencheur ou erreur
-    search_submit: Rechercher
-    search_reset: Réinitialiser
     count: Affichage de %from%-%to% sur %total% exécutions
     empty: Aucune exécution n'a encore été enregistrée.
     empty_search: Aucune exécution ne correspond aux filtres actuels.
@@ -297,6 +294,17 @@ run_show:
     cancel_run: Annuler l'exécution
     cancel_confirm: Annuler cette exécution ?
     overview_title: Vue d'ensemble
+    pause_polling: Mettre en pause
+    resume_polling: Reprendre
+    polling: Actualisation
+    loading: Chargement
+    waiting: En attente de la première actualisation
+    state_live: En direct
+    state_error: Erreur
+    state_offline: Hors ligne
+    refresh_failed: Échec de l'actualisation
+    parameters_group: Paramètres de lancement
+    relaunched_as: Relancée dans
     workflow_group: Workflow
     execution_group: Exécution
     summary_group: Résumé
@@ -632,30 +640,30 @@ system_health:
     check_locks: Santé des verrous
     check_alerts: Alertes actives
 
-troubleshooting:
-    title: Diagnostic
-    heading: Diagnostic
-    subtitle: Liste ligne par ligne des exécutions problématiques et messages d'étapes échoués.
-    count: Affichage de %from%-%to% sur %total% incidents
-    empty: Aucune exécution problématique n'est actuellement visible.
-    empty_search: Aucune exécution problématique ne correspond à « %query% ».
-    search_label: Rechercher dans le diagnostic
-    search_placeholder: Rechercher par workflow, étape, ID d'exécution ou erreur
-    search_submit: Rechercher
-    search_reset: Réinitialiser
-    workflow: Workflow
-    source_system: Source
-    target_system: Cible
-    run: Exécution
-    step: Étape
-    fail_count: Échecs
-    failed_at: Échouée le
-    error: Erreur
-
 pagination:
     label: Pagination des workflows
     previous: Précédent
     next: Suivant
+
+flash:
+    configuration_saved: Configuration enregistrée.
+    run_relaunched: 'Exécution relancée. Identifiant de la nouvelle exécution : %runId%'
+    step_relaunched: 'Étape relancée. Identifiant de la nouvelle exécution : %runId%'
+    run_cancelled: 'Exécution %runId% annulée.'
+    run_not_cancellable: 'L''exécution %runId% ne peut pas être annulée dans son état actuel.'
+    run_still_active: 'L''exécution %runId% est encore en cours. Utilisez la CLI avec --force si le worker d''origine est définitivement bloqué.'
+    workflow_locked: 'Le workflow "%workflow%" est verrouillé par l''exécution "%runId%" pour la clé "%lockKey%".'
+    lock_released: 'Verrou de l''exécution "%runId%" libéré.'
+    lock_not_found: 'Aucun verrou actif trouvé pour l''exécution "%runId%".'
+    self_heal:
+        workers_pruned: 'Workers arrêtés supprimés : %deleted%. Workers inactifs marqués comme arrêtés : %marked%.'
+        consumers_purged: 'Consumers morts purgés : %purged%. Consumers actifs ignorés : %skipped%.'
+        no_pending_message: Aucun message en attente n'était éligible à la récupération.
+        messages_reclaimed: 'Messages en attente récupérés sur le consumer "%consumer%" : %claimed%.'
+        no_stale_lock: Aucun verrou périmé trouvé.
+        locks_released: 'Verrous périmés libérés : %released%.'
+        no_orphan_run: Aucune exécution orpheline trouvée.
+        orphan_runs_finished: 'Exécutions orphelines finalisées en échec : %finished%.'
 
 email_recap:
     subject: 'Récapitulatif quotidien des workflows %date%'

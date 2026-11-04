@@ -200,6 +200,26 @@ class WorkflowRun
     }
 
     /**
+     * What the run was launched with: the metadata given by its caller, without what Fluxx
+     * records there itself. CLI parameters are nested under a "parameters" key.
+     *
+     * @return array<string, mixed>
+     */
+    public function launchParameters(): array
+    {
+        $parameters = array_diff_key($this->metadata, array_flip(['error', 'relaunch', 'cancellation']));
+        $nested = $parameters['parameters'] ?? null;
+
+        if (!is_array($nested)) {
+            return $parameters;
+        }
+
+        unset($parameters['parameters']);
+
+        return $parameters + $nested;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function relaunchMetadata(): ?array
@@ -249,6 +269,24 @@ class WorkflowRun
 
         $this->stepRuns->add($stepRun);
         $stepRun->attachToRun($this);
+    }
+
+    /**
+     * @param iterable<WorkflowStepRun> $stepRuns
+     */
+    public function lastActivityAt(iterable $stepRuns): DateTimeImmutable
+    {
+        $lastActivityAt = $this->startedAt ?? $this->createdAt;
+
+        foreach ($stepRuns as $stepRun) {
+            $activityAt = $stepRun->finishedAt() ?? $stepRun->startedAt() ?? $stepRun->createdAt();
+
+            if ($activityAt > $lastActivityAt) {
+                $lastActivityAt = $activityAt;
+            }
+        }
+
+        return $lastActivityAt;
     }
 
     public function markRunning(?DateTimeImmutable $startedAt = null): void

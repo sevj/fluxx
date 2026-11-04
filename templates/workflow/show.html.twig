@@ -5,7 +5,7 @@
 {% block title %}{{ workflow.name }} - {{ 'workflow_show.title'|trans }}{% endblock %}
 
 {% block scripts %}
-    <script defer src="{{ path('fluxx_script_asset', {'script': 'workflow-detail', v: fluxx_asset_version}) }}"></script>
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'workflow-detail', v: fluxx_asset_version()}) }}"></script>
 {% endblock %}
 
 {% block body %}
@@ -26,6 +26,26 @@
                     <span class="button-icon" aria-hidden="true">{{ icons.icon('arrow-left') }}</span>
                     <span class="button-label">{{ 'workflow_show.back'|trans }}</span>
                 </a>
+                <div class="polling-controls polling-controls-inline" data-executions-polling hidden>
+                    <span class="status-badge status-badge-pending" data-executions-state>{{ 'workflow_show.loading'|trans }}</span>
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-executions-poll-toggle
+                        aria-pressed="true"
+                    >
+                        <span class="button-icon button-icon-toggle" aria-hidden="true">
+                            <span class="icon-when-active">{{ icons.icon('pause') }}</span>
+                            <span class="icon-when-inactive">{{ icons.icon('play') }}</span>
+                        </span>
+                        <span class="button-label" data-button-label>{{ 'workflow_show.pause_polling'|trans }}</span>
+                    </button>
+                    <span class="polling-indicator" data-executions-poll-loader hidden>
+                        <span class="polling-spinner" aria-hidden="true"></span>
+                        <span>{{ 'workflow_show.polling'|trans }}</span>
+                    </span>
+                    <span class="runtime-refresh" data-executions-refresh>{{ 'workflow_show.waiting'|trans }}</span>
+                </div>
             </div>
         </header>
 
@@ -117,26 +137,6 @@
         </section>
 
         <section id="workflow-tab-executions" class="section-card" data-tab-panel="executions" hidden>
-            <div class="polling-controls">
-                <span class="status-badge status-badge-pending" data-executions-state>{{ 'workflow_show.loading'|trans }}</span>
-                <button
-                    type="button"
-                    class="secondary-button"
-                    data-executions-poll-toggle
-                    aria-pressed="true"
-                >
-                    <span class="button-icon button-icon-toggle" aria-hidden="true">
-                        <span class="icon-when-active">{{ icons.icon('pause') }}</span>
-                        <span class="icon-when-inactive">{{ icons.icon('play') }}</span>
-                    </span>
-                    <span class="button-label" data-button-label>{{ 'workflow_show.pause_polling'|trans }}</span>
-                </button>
-                <span class="polling-indicator" data-executions-poll-loader hidden>
-                    <span class="polling-spinner" aria-hidden="true"></span>
-                    <span>{{ 'workflow_show.polling'|trans }}</span>
-                </span>
-                <span class="runtime-refresh" data-executions-refresh>{{ 'workflow_show.waiting'|trans }}</span>
-            </div>
             <div data-tab-content="executions">
                 <section class="empty">{{ 'workflow_show.tab_loading'|trans }}</section>
             </div>

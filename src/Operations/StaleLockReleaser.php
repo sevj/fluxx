@@ -7,17 +7,16 @@ namespace Fluxx\Operations;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowExecutionLock;
-use Fluxx\Repository\RuntimeWorkerStateLookupInterface;
 use Fluxx\Repository\WorkflowExecutionLockStoreInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
+use Fluxx\Workflow\Lock\WorkflowRunAbandonmentDetector;
 
 /**
  * Releases workflow execution locks that no longer protect a live execution.
  *
  * A lock is considered releasable when its owner run is missing or already in a
- * terminal state, or when no worker has pushed a heartbeat for that run within
- * the stale threshold (the same signal used by the lock manager's stale
- * recovery). This mirrors {@see \Fluxx\Workflow\Lock\WorkflowExecutionLockManager::shouldRecoverStaleLock()}
+ * terminal state, or when that run is abandoned within the stale threshold (the
+ * same signal used by the lock manager's stale recovery). This mirrors {@see \Fluxx\Workflow\Lock\WorkflowExecutionLockManager::shouldRecoverStaleLock()}
  * but applies it as an explicit, operator-triggered cleanup that also covers
  * locks whose owning run has no lock configuration to recover from.
  */
@@ -27,7 +26,7 @@ final readonly class StaleLockReleaser
         private EntityManagerInterface $entityManager,
         private WorkflowExecutionLockStoreInterface $workflowExecutionLockRepository,
         private WorkflowRunLookupInterface $workflowRunRepository,
-        private RuntimeWorkerStateLookupInterface $runtimeWorkerStateRepository,
+        private WorkflowRunAbandonmentDetector $abandonmentDetector,
     ) {
     }
 
@@ -51,8 +50,8 @@ final readonly class StaleLockReleaser
     }
 
     /**
-     * Releases every active lock whose owner run is gone, terminal, or has no
-     * live worker heartbeat within the stale threshold.
+     * Releases every active lock whose owner run is gone, terminal, or abandoned
+     * within the stale threshold.
      *
      * @return list<array{runId: string, lockKey: string, reason: string}>
      */
@@ -100,7 +99,7 @@ final readonly class StaleLockReleaser
             return 'owner_run_terminal';
         }
 
-        if (!$this->runtimeWorkerStateRepository->hasActiveWorkerForRun($ownerRun->runId(), $heartbeatThreshold)) {
+        if ($this->abandonmentDetector->isAbandoned($ownerRun, $heartbeatThreshold)) {
             return 'worker_heartbeat_stale';
         }
 

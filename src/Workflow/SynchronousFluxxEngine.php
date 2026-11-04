@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow;
 
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\Runtime\FluxxRuntime;
+use Fluxx\Workflow\Runtime\WorkflowStepFailedException;
 use Fluxx\Workflow\Result\WorkflowStepResult;
 use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
@@ -74,7 +76,12 @@ final readonly class SynchronousFluxxEngine implements FluxxEngineInterface, Syn
         $this->workflowExecutionLockManager->acquire($workflowRun, $definition);
 
         $this->entityManager->persist($workflowRun);
-        $this->entityManager->flush();
+
+        try {
+            $this->entityManager->flush();
+        } catch (UniqueConstraintViolationException $exception) {
+            throw $this->workflowExecutionLockManager->flushFailure($workflowRun, $exception);
+        }
 
         $leafCodes = [];
         foreach ($this->leafSteps($definition) as $leaf) {
@@ -112,6 +119,10 @@ final readonly class SynchronousFluxxEngine implements FluxxEngineInterface, Syn
                 try {
                     $nextSteps = $this->runtime->runStep($runId, $stepCode);
                 } catch (Throwable $throwable) {
+                    if ($throwable instanceof WorkflowStepFailedException) {
+                        $throwable = $throwable->failure();
+                    }
+
                     if ($output instanceof OutputInterface) {
                         $output->writeln(sprintf(
                             ' FAILED: %s',

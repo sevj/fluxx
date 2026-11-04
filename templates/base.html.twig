@@ -1,14 +1,13 @@
 {% trans_default_domain 'fluxx' %}
-{% set fluxx_asset_version = 'design-v2-6' %}
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="{{ app.request.locale|replace({'_': '-'}) }}" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Fluxx{% endblock %}</title>
-    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: '20260616-favicon'}) }}">
-    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: fluxx_asset_version}) }}"></script>
-    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: fluxx_asset_version}) }}">
+    <link rel="icon" type="image/png" href="{{ path('fluxx_favicon_asset', {v: fluxx_asset_version()}) }}">
+    <script src="{{ path('fluxx_script_asset', {'script': 'theme', v: fluxx_asset_version()}) }}"></script>
+    <link rel="stylesheet" href="{{ path('fluxx_workflow_stylesheet', {v: fluxx_asset_version()}) }}">
     {% block scripts %}{% endblock %}
 </head>
 <body>

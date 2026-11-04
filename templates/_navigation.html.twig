@@ -6,7 +6,6 @@
     {route: 'fluxx_run_index', prefix: 'fluxx_run_index', label: 'navigation.runs'},
     {route: 'fluxx_run_active', prefix: 'fluxx_run_active', label: 'navigation.active_runs'},
     {route: 'fluxx_statistics_index', prefix: 'fluxx_statistics', label: 'navigation.statistics'},
-    {route: 'fluxx_troubleshooting_index', prefix: 'fluxx_troubleshooting', label: 'navigation.troubleshooting'},
 ] %}
 {% set admin_links = [
     {route: 'fluxx_runtime_index', prefix: 'fluxx_runtime', label: 'navigation.runtime'},
@@ -18,7 +17,7 @@
     <div class="fluxx-topbar-main">
         <a href="{{ path('fluxx_workflow_index') }}" class="fluxx-brand" aria-label="Fluxx">
             <img
-                src="{{ path('fluxx_logo_asset', {v: '20260616-logo'}) }}"
+                src="{{ path('fluxx_logo_asset', {v: fluxx_asset_version()}) }}"
                 alt="Fluxx"
                 class="fluxx-brand-logo"
             >

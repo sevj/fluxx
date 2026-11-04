@@ -5,19 +5,18 @@ declare(strict_types=1);
 namespace Fluxx\Workflow\Lock;
 
 use DateTimeImmutable;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowExecutionLockScope;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowExecutionLock;
-use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\WorkflowRun;
-use Fluxx\Entity\WorkflowStepRun;
-use Fluxx\Repository\RuntimeWorkerStateLookupInterface;
 use Fluxx\Repository\WorkflowExecutionLockStoreInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Workflow\WorkflowDefinition;
 use InvalidArgumentException;
+use Throwable;
 
 final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLockManagerInterface
 {
@@ -25,7 +24,7 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
         private EntityManagerInterface $entityManager,
         private WorkflowExecutionLockStoreInterface $workflowExecutionLockRepository,
         private WorkflowRunLookupInterface $workflowRunRepository,
-        private RuntimeWorkerStateLookupInterface $runtimeWorkerStateRepository,
+        private WorkflowRunAbandonmentDetector $abandonmentDetector,
         private RuntimeSettingsManager $runtimeSettingsManager,
     ) {
     }
@@ -44,6 +43,8 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
         if ($activeLock !== null && $activeLock->ownerRunId() !== $workflowRun->runId()) {
             if ($this->shouldRecoverStaleLock($activeLock, $configuration)) {
                 $activeLock->release('stale_recovered');
+                // Doctrine runs inserts before updates: the key must be freed before the new lock claims it.
+                $this->entityManager->flush();
             } else {
                 throw new WorkflowExecutionLockConflict(
                     workflowCode: $definition->code(),
@@ -81,6 +82,21 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
         $lock->release($reason);
     }
 
+    public function flushFailure(WorkflowRun $workflowRun, UniqueConstraintViolationException $exception): Throwable
+    {
+        $lockKey = $workflowRun->lockKey();
+
+        if ($lockKey === null || !str_contains($exception->getMessage(), 'active_lock_key')) {
+            return $exception;
+        }
+
+        return new WorkflowExecutionLockConflict(
+            workflowCode: $workflowRun->workflowName(),
+            lockKey: $lockKey,
+            activeRunId: $this->workflowExecutionLockRepository->findActiveByLockKey($lockKey)?->ownerRunId() ?? 'unknown',
+        );
+    }
+
     private function shouldRecoverStaleLock(
         WorkflowExecutionLock $lock,
         WorkflowExecutionLockConfiguration $configuration,
@@ -100,33 +116,15 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
             return true;
         }
 
-        if ($this->hasScheduledRetry($ownerRun)) {
-            return false;
-        }
-
         $staleTimeoutSeconds = min(
             $configuration->staleTimeoutSeconds(),
             $this->runtimeSettingsManager->get()->staleLockTimeoutSeconds,
         );
 
-        $heartbeatThreshold = new DateTimeImmutable(sprintf('-%d seconds', $staleTimeoutSeconds));
-
-        return !$this->runtimeWorkerStateRepository->hasActiveWorkerForRun($ownerRun->runId(), $heartbeatThreshold);
-    }
-
-    private function hasScheduledRetry(WorkflowRun $run): bool
-    {
-        return (int) $this->entityManager->createQueryBuilder()
-            ->select('COUNT(stepRun.id)')
-            ->from(WorkflowStepRun::class, 'stepRun')
-            ->where('stepRun.workflowRun = :run')
-            ->andWhere('stepRun.status = :status')
-            ->andWhere('stepRun.nextRetryAt > :now')
-            ->setParameter('run', $run)
-            ->setParameter('status', WorkflowStepRunStatus::Retrying)
-            ->setParameter('now', new DateTimeImmutable())
-            ->getQuery()
-            ->getSingleScalarResult() > 0;
+        return $this->abandonmentDetector->isAbandoned(
+            $ownerRun,
+            new DateTimeImmutable(sprintf('-%d seconds', $staleTimeoutSeconds)),
+        );
     }
 
     private function buildLockKey(
