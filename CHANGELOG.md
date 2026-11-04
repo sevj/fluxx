@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.17.1] - 2026-11-04
+
+### Changed
+- The runs table is compact: the run id is shortened to 8 characters, the workflow cell also holds
+  the category, a new flow column holds the source, the target and the trigger, and a new timing
+  column holds the creation date and the duration. Full run ids, dates and errors show on hover.
+- Between 900 and 1180 pixels wide, the runs table scrolls horizontally instead of clipping its
+  actions.
+
+### Fixed
+- Chips of the runs table no longer break in the middle of a word.
+- The bottom border of the run cell lines up with the rest of its row, on the runs table and on the
+  executions tab.
+
 ## [1.17.0] - 2026-11-04
 
 ### Added

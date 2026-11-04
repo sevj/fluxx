@@ -150,10 +150,10 @@ final class TemplateRenderingTest extends TestCase
         self::assertStringContainsString('method="post"', $admin);
         self::assertStringNotContainsString('execution-cell-actions', $user);
         self::assertStringNotContainsString('method="post"', $user);
-        self::assertSame(10, substr_count($admin, '<th>'));
-        self::assertSame(9, substr_count($user, '<th>'));
-        self::assertSame(10, substr_count($admin, '<col '));
-        self::assertSame(9, substr_count($user, '<col '));
+        self::assertSame(7, substr_count($admin, '<th>'));
+        self::assertSame(6, substr_count($user, '<th>'));
+        self::assertSame(7, substr_count($admin, '<col '));
+        self::assertSame(6, substr_count($user, '<col '));
     }
 
     #[Test]

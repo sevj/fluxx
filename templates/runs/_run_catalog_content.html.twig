@@ -22,31 +22,25 @@
         }) }}
     </div>
     <section class="workflow-list">
-        <table class="workflow-table-compact">
+        <table class="workflow-table-compact run-catalog-table">
             <colgroup>
                 <col style="width: 9%">
-                <col style="width: 13%">
-                <col style="width: 6%">
-                <col style="width: 7%">
-                <col style="width: 7%">
-                <col style="width: 7%">
-                <col style="width: 7%">
-                <col style="width: 14%">
-                <col style="width: 13%">
+                <col style="width: 19%">
+                <col style="width: 20%">
+                <col style="width: 10%">
+                <col style="width: 11%">
+                <col style="width: 21%">
                 {% if can_operate %}
-                    <col style="width: 17%">
+                    <col style="width: 10%">
                 {% endif %}
             </colgroup>
             <thead>
                 <tr>
                     <th>{{ 'run_index.run'|trans }}</th>
                     <th>{{ 'run_index.workflow'|trans }}</th>
-                    <th>{{ 'run_index.category'|trans }}</th>
-                    <th>{{ 'run_index.trigger'|trans }}</th>
-                    <th>{{ 'run_index.source_system'|trans }}</th>
-                    <th>{{ 'run_index.target_system'|trans }}</th>
+                    <th>{{ 'run_index.flow'|trans }}</th>
                     <th>{{ 'run_index.status'|trans }}</th>
-                    <th>{{ 'run_index.dates'|trans }}</th>
+                    <th>{{ 'run_index.timing'|trans }}</th>
                     <th>{{ 'run_index.error'|trans }}</th>
                     {% if can_operate %}
                         <th>{{ 'run_index.actions'|trans }}</th>
@@ -57,7 +51,7 @@
                 {% for run in runPage.items %}
                     <tr class="clickable-row" data-row-href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" tabindex="0" role="link">
                         <td data-label="{{ 'run_index.run'|trans }}" class="execution-cell-run">
-                            <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="run-id">{{ run.runId }}</a>
+                            <a href="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="run-id run-id-short" title="{{ run.runId }}">{{ run.runId|slice(0, 8) }}</a>
                             {% if run.synchronous %}
                                 <span class="system-chip system-chip-sync" title="{{ 'run_index.synchronous_title'|trans }}">{{ 'run_index.synchronous'|trans }}</span>
                             {% endif %}
@@ -65,22 +59,16 @@
                         <td data-label="{{ 'run_index.workflow'|trans }}">
                             <a href="{{ path('fluxx_workflow_show', {'code': run.workflowCode}) }}" class="workflow-link">
                                 <div class="workflow-name">{{ run.workflowName ?: run.workflowCode }}</div>
-                                <div class="item-code">{{ run.workflowCode }}</div>
+                                <div class="item-code run-workflow-meta" title="{{ run.workflowCode }}{% if run.workflowCategory %} · {{ run.workflowCategory }}{% endif %}">{{ run.workflowCode }}{% if run.workflowCategory %} · {{ run.workflowCategory }}{% endif %}</div>
                             </a>
                         </td>
-                        <td data-label="{{ 'run_index.category'|trans }}">
-                            {% if run.workflowCategory %}
-                                <span class="system-chip">{{ run.workflowCategory }}</span>
-                            {% endif %}
-                        </td>
-                        <td data-label="{{ 'run_index.trigger'|trans }}" class="execution-cell-trigger">
-                            <span class="system-chip">{{ run.trigger }}</span>
-                        </td>
-                        <td data-label="{{ 'run_index.source_system'|trans }}">
-                            <span class="system-chip system-chip-source">{{ run.sourceSystem }}</span>
-                        </td>
-                        <td data-label="{{ 'run_index.target_system'|trans }}">
-                            <span class="system-chip system-chip-target">{{ run.targetSystem }}</span>
+                        <td data-label="{{ 'run_index.flow'|trans }}">
+                            <div class="run-flow">
+                                <span class="system-chip system-chip-source" title="{{ run.sourceSystem }}">{{ run.sourceSystem }}</span>
+                                <span class="run-flow-arrow" aria-hidden="true">→</span>
+                                <span class="system-chip system-chip-target" title="{{ run.targetSystem }}">{{ run.targetSystem }}</span>
+                            </div>
+                            <div class="item-code run-trigger" title="{{ 'run_index.trigger'|trans }}">{{ run.trigger }}</div>
                         </td>
                         <td data-label="{{ 'run_index.status'|trans }}" class="execution-cell-status">
                             <span class="status-badge status-badge-{{ run.status|replace({'_': '-'}) }}">
@@ -90,33 +78,22 @@
                                 <span class="lock-badge" title="{{ 'run_index.locked'|trans({'%key%': run.lockKey}) }}" aria-label="{{ 'run_index.locked'|trans({'%key%': run.lockKey}) }}">{{ icons.icon('lock') }}</span>
                             {% endif %}
                         </td>
-                        <td data-label="{{ 'run_index.dates'|trans }}" class="execution-cell-dates">
-                            <div class="execution-dates">
-                                <div class="execution-dates-item">
-                                    <span class="execution-dates-label">{{ 'run_index.created_at'|trans }}</span>
-                                    <span class="metric-value">{{ run.createdAt|date('d/m H:i') }}</span>
-                                </div>
-                                <div class="execution-dates-item">
-                                    <span class="execution-dates-label">{{ 'run_index.started_at'|trans }}</span>
-                                    {% if run.startedAt %}
-                                        <span class="metric-value">{{ run.startedAt|date('d/m H:i') }}</span>
-                                    {% else %}
-                                        <span class="metric-empty">{{ 'run_index.not_started'|trans }}</span>
-                                    {% endif %}
-                                </div>
-                                <div class="execution-dates-item">
-                                    <span class="execution-dates-label">{{ 'run_index.finished_at'|trans }}</span>
-                                    {% if run.finishedAt %}
-                                        <span class="metric-value">{{ run.finishedAt|date('d/m H:i') }}</span>
-                                    {% else %}
-                                        <span class="metric-empty">{{ 'run_index.not_finished'|trans }}</span>
-                                    {% endif %}
-                                </div>
+                        <td data-label="{{ 'run_index.timing'|trans }}" class="execution-cell-dates">
+                            {% set timing_title %}{{ 'run_index.created_at'|trans }}: {{ run.createdAt|date('d/m/Y H:i:s') }} · {{ 'run_index.started_at'|trans }}: {{ run.startedAt ? run.startedAt|date('d/m/Y H:i:s') : 'run_index.not_started'|trans }} · {{ 'run_index.finished_at'|trans }}: {{ run.finishedAt ? run.finishedAt|date('d/m/Y H:i:s') : 'run_index.not_finished'|trans }}{% endset %}
+                            <div class="run-timing" title="{{ timing_title }}">
+                                <span class="metric-value">{{ run.createdAt|date('d/m H:i') }}</span>
+                                {% if run.durationMs is not null %}
+                                    <span class="item-code">{{ run.durationMs == 0 ? 'run_index.under_one_second'|trans : run.durationMs|fluxx_duration }}</span>
+                                {% elseif run.startedAt is null %}
+                                    <span class="metric-empty">{{ 'run_index.not_started'|trans }}</span>
+                                {% else %}
+                                    <span class="metric-empty">{{ 'run_index.not_finished'|trans }}</span>
+                                {% endif %}
                             </div>
                         </td>
                         <td data-label="{{ 'run_index.error'|trans }}" class="execution-cell-error">
                             {% if run.errorMessage %}
-                                <div class="execution-error-preview" title="{{ run.errorMessage|e('html_attr') }}">{{ run.errorMessage|slice(0, 80) }}{% if run.errorMessage|length > 80 %}…{% endif %}</div>
+                                <div class="execution-error-preview" title="{{ run.errorMessage|e('html_attr') }}">{{ run.errorMessage }}</div>
                             {% else %}
                                 <span class="metric-empty">-</span>
                             {% endif %}

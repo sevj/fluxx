@@ -1403,11 +1403,62 @@ tbody tr:hover > td {
     font-size: 12px;
 }
 
-.workflow-table-compact .execution-cell-run {
+.run-catalog-table {
+    min-width: 1180px;
+}
+
+.workflow-table-compact .execution-cell-run .system-chip {
+    display: table;
+    margin-top: 4px;
+    padding: 1px 4px;
+    font-size: 10px;
+    letter-spacing: 0;
+    white-space: nowrap;
+}
+
+.run-id-short {
+    white-space: nowrap;
+}
+
+.run-workflow-meta {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.run-flow {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 4px;
+    min-width: 0;
+}
+
+.run-flow-arrow {
+    color: var(--text-faint);
+    font-size: 11px;
+}
+
+td .run-flow .system-chip {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.run-trigger {
+    margin-top: 4px;
+    font-size: 11px;
+}
+
+.run-timing {
+    display: grid;
+    gap: 4px;
+}
+
+.run-timing .item-code,
+.run-timing .metric-empty {
+    font-size: 11px;
 }
 
 .workflow-table-compact .execution-cell-trigger,
@@ -1540,10 +1591,15 @@ tbody tr:hover > td {
 }
 
 .execution-error-preview {
+    display: -webkit-box;
+    overflow: hidden;
     color: var(--red);
     font-family: var(--font-mono);
     font-size: 11px;
     line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
 }
 
 .execution-status-legend {
@@ -3095,6 +3151,10 @@ tbody tr:hover > td {
 
     table:not(.payload-table) thead {
         display: none;
+    }
+
+    .run-catalog-table {
+        min-width: 0;
     }
 
     table:not(.payload-table) tr {

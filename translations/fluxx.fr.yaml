@@ -240,12 +240,11 @@ run_index:
     reset_filters: Réinitialiser
     run: Exécution
     workflow: Workflow
-    category: Catégorie
     trigger: Déclencheur
-    source_system: Source
-    target_system: Cible
+    flow: Flux
+    timing: Horaires
+    under_one_second: '< 1 s'
     status: Statut
-    dates: Dates
     error: Erreur
     actions: Actions
     created_at: Créée

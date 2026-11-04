@@ -97,6 +97,15 @@ final readonly class RunRowView
         return $this->finishedAt;
     }
 
+    public function durationMs(): ?int
+    {
+        if ($this->startedAt === null || $this->finishedAt === null) {
+            return null;
+        }
+
+        return max(0, ($this->finishedAt->getTimestamp() - $this->startedAt->getTimestamp()) * 1000);
+    }
+
     public function errorMessage(): ?string
     {
         return $this->errorMessage;
