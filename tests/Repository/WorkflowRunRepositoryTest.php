@@ -50,10 +50,10 @@ final class WorkflowRunRepositoryTest extends TestCase
                 '2026-07-21' => ['executionCount' => 12, 'errorCount' => 2],
                 '2026-07-22' => ['executionCount' => 7, 'errorCount' => 1],
             ],
-            $repository->aggregateCreatedSinceByWorkflowName(
-                'workflow',
+            $repository->aggregateCreatedSince(
                 new DateTimeImmutable('2026-07-01 00:00:00'),
                 'day',
+                'workflow',
             ),
         );
     }
@@ -91,9 +91,11 @@ final class WorkflowRunRepositoryTest extends TestCase
                 [
                     'workflowName' => 'workflow',
                     'startAt' => new DateTimeImmutable('2026-07-01 00:00:00'),
+                    'finishedStatuses' => ['completed', 'partially_failed'],
                 ],
                 [
                     'startAt' => Types::DATETIME_IMMUTABLE,
+                    'finishedStatuses' => ArrayParameterType::STRING,
                 ],
             )
             ->willReturn([120, '340', 0]);
@@ -108,9 +110,9 @@ final class WorkflowRunRepositoryTest extends TestCase
                 'relaunchCount' => 4,
                 'durations' => [120, 340, 0],
             ],
-            $repository->summarizeCreatedSinceByWorkflowName(
-                'workflow',
+            $repository->summarizeCreatedSince(
                 new DateTimeImmutable('2026-07-01 00:00:00'),
+                'workflow',
             ),
         );
     }

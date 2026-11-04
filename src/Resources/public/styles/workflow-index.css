@@ -2368,6 +2368,23 @@ tbody tr:hover > td {
     border-bottom-color: var(--accent);
 }
 
+.statistics-controls-top {
+    display: flex;
+    margin-bottom: 16px;
+}
+
+.statistics-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    min-width: 220px;
+}
+
+.statistics-filter-form .run-filter-field {
+    flex: 1 1 220px;
+}
+
 .statistics-summary {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -2430,89 +2447,72 @@ tbody tr:hover > td {
 .statistics-chart {
     display: grid;
     grid-template-columns: 42px minmax(0, 1fr);
-    gap: 12px;
-    align-items: end;
-    min-height: 252px;
+    gap: 8px;
     margin-top: 14px;
+    padding: 8px 0 22px;
 }
 
 .statistics-y-axis {
-    display: grid;
-    align-self: stretch;
-    padding: 4px 0 22px;
+    position: relative;
+    height: 190px;
     color: var(--text-faint);
     font-family: var(--font-mono);
     font-size: 10px;
 }
 
 .statistics-y-axis span {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    position: absolute;
+    right: 0;
+    transform: translateY(50%);
+    line-height: 1;
 }
 
 .statistics-bars {
     position: relative;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
-    gap: 8px;
-    align-items: end;
-    min-height: 252px;
-    padding: 6px 0 22px;
+    display: flex;
+    gap: 2px;
+    height: 190px;
     border-left: 1px solid var(--border-strong);
     border-bottom: 1px solid var(--border-strong);
 }
 
-.statistics-bars::before,
-.statistics-bars::after {
-    content: "";
+.statistics-gridline {
     position: absolute;
     left: 0;
     right: 0;
     border-top: 1px dashed var(--border);
-}
-
-.statistics-bars::before {
-    top: 33.333%;
-}
-
-.statistics-bars::after {
-    top: 66.666%;
+    pointer-events: none;
 }
 
 .statistics-bar-group {
-    display: grid;
-    gap: 8px;
-    align-items: end;
-    min-width: 0;
-}
-
-.statistics-bar-stage {
     position: relative;
-    height: 190px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .statistics-bar {
     position: absolute;
     bottom: 0;
-    min-height: 1px;
+    left: 50%;
+    min-height: 2px;
+    transform: translateX(-50%);
 }
 
 .statistics-bar-executions {
-    width: 12px;
+    width: min(12px, 100%);
     background: color-mix(in srgb, var(--accent) 70%, var(--surface));
 }
 
 .statistics-bar-errors {
-    width: 5px;
+    width: min(5px, 45%);
     background: var(--red);
 }
 
 .statistics-axis-label {
-    min-height: 14px;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
     color: var(--text-faint);
     font-family: var(--font-mono);
     font-size: 10px;

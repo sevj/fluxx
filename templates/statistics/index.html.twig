@@ -15,14 +15,33 @@
             <div class="section-heading">
                 <div>
                     <h2 class="section-title">{{ 'statistics_index.overview_title'|trans }}</h2>
-                    <p class="subtitle section-subtitle">{{ 'statistics_index.overview_subtitle'|trans }}</p>
+                    <p class="subtitle section-subtitle">{{ (globalStatistics.workflowCode ? 'statistics_index.overview_subtitle_workflow' : 'statistics_index.overview_subtitle')|trans }}</p>
                 </div>
+                <form method="get" action="{{ path('fluxx_statistics_index') }}" class="statistics-filter-form">
+                    <input type="hidden" name="range" value="{{ globalStatistics.selectedRange }}">
+                    <label class="run-filter-field">
+                        <span class="run-filter-label">{{ 'statistics_index.filter_workflow_label'|trans }}</span>
+                        <select name="workflow" class="search-input" onchange="this.form.requestSubmit()">
+                            <option value="">{{ 'statistics_index.filter_workflow_all'|trans }}</option>
+                            {% for choice in workflowChoices %}
+                                <option value="{{ choice.code }}"{{ globalStatistics.workflowCode == choice.code ? ' selected' : '' }}>
+                                    {{ choice.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <noscript>
+                        <button type="submit" class="secondary-button">
+                            <span class="button-label">{{ 'statistics_index.apply_filter'|trans }}</span>
+                        </button>
+                    </noscript>
+                </form>
             </div>
 
             {% include '@Fluxx/_statistics_chart.html.twig' with {
                 statistics: globalStatistics,
                 range_route: 'fluxx_statistics_index',
-                range_params: {}
+                range_params: globalStatistics.workflowCode ? {'workflow': globalStatistics.workflowCode} : {}
             } %}
         </section>
     </div>

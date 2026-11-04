@@ -15,6 +15,7 @@ use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Tests\Fixture\FixtureWorkflow;
 use Fluxx\Tests\Fixture\StubExecutableStep;
 use Fluxx\Ui\WorkflowDetails;
+use Fluxx\Ui\WorkflowStatisticsViewFactory;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowStepDefinition;
@@ -36,6 +37,7 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
             stepTypeRegistry: new StepTypeRegistry([]),
             workflowRunRepository: new WorkflowRunRepository($managerRegistry),
             workflowStepRunStatistics: new WorkflowStepRunStatistics($managerRegistry),
+            statisticsViewFactory: new WorkflowStatisticsViewFactory(new WorkflowRunRepository($managerRegistry), new WorkflowStepRunStatistics($managerRegistry)),
         );
 
         $view = $details->forTab(
@@ -120,6 +122,7 @@ final class WorkflowDetailsTabLoadingTest extends TestCase
             stepTypeRegistry: new StepTypeRegistry([]),
             workflowRunRepository: new WorkflowRunRepository($managerRegistry),
             workflowStepRunStatistics: new WorkflowStepRunStatistics($managerRegistry),
+            statisticsViewFactory: new WorkflowStatisticsViewFactory(new WorkflowRunRepository($managerRegistry), new WorkflowStepRunStatistics($managerRegistry)),
         );
 
         $view = $details->forTab(

@@ -8,6 +8,10 @@ use DateTimeImmutable;
 use Fluxx\Twig\AssetExtension;
 use Fluxx\Twig\DurationExtension;
 use Fluxx\Ui\AssetVersion;
+use Fluxx\Ui\WorkflowChoiceView;
+use Fluxx\Ui\WorkflowStatisticsPointView;
+use Fluxx\Ui\WorkflowStatisticsRangeView;
+use Fluxx\Ui\WorkflowStatisticsView;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -174,6 +178,63 @@ final class TemplateRenderingTest extends TestCase
     }
 
     #[Test]
+    public function an_empty_statistics_page_keeps_its_filter_and_its_period_links(): void
+    {
+        $html = $this->twig(admin: true)->render('@Fluxx/statistics/index.html.twig', [
+            'globalStatistics' => new WorkflowStatisticsView(
+                selectedRange: 'week',
+                ranges: [new WorkflowStatisticsRangeView('week', 'statistics_index.range_week', true), new WorkflowStatisticsRangeView('year', 'statistics_index.range_year', false)],
+                points: [],
+                metrics: [],
+                stepMetrics: [],
+                executionTotal: 0,
+                errorTotal: 0,
+                maxValue: 1,
+                yAxisTicks: [1, 0],
+                workflowCode: 'contacts',
+            ),
+            'workflowChoices' => [new WorkflowChoiceView('contacts', 'Contacts'), new WorkflowChoiceView('orders', 'Orders')],
+        ]);
+
+        self::assertStringContainsString('fluxx_statistics_index?workflow=contacts&amp;range=year', $html);
+        self::assertStringContainsString('name="range" value="week"', $html);
+        self::assertMatchesRegularExpression('/value="contacts" selected/', $html);
+        self::assertDoesNotMatchRegularExpression('/value="orders" selected/', $html);
+        self::assertStringContainsString('class="empty"', $html);
+    }
+
+    #[Test]
+    public function the_chart_places_its_ticks_on_the_scale_of_the_bars_and_draws_nothing_for_an_empty_day(): void
+    {
+        $html = $this->twig(admin: true)->render('@Fluxx/_statistics_chart.html.twig', [
+            'statistics' => new WorkflowStatisticsView(
+                selectedRange: 'week',
+                ranges: [],
+                points: [
+                    new WorkflowStatisticsPointView(new TranslatableMessage('statistics_chart.month_nov', [], 'fluxx'), new TranslatableMessage('statistics_chart.weekday_mon', [], 'fluxx'), 8, 2, 100.0, 25.0),
+                    new WorkflowStatisticsPointView(new TranslatableMessage('statistics_chart.month_nov', [], 'fluxx'), null, 0, 0, 0.0, 0.0),
+                ],
+                metrics: [],
+                stepMetrics: [],
+                executionTotal: 8,
+                errorTotal: 2,
+                maxValue: 8,
+                yAxisTicks: [8, 4, 0],
+            ),
+            'range_route' => 'fluxx_statistics_index',
+            'range_params' => [],
+        ]);
+
+        self::assertSame(1, substr_count($html, 'statistics-bar-executions'));
+        self::assertSame(1, substr_count($html, 'statistics-bar-errors'));
+        self::assertSame(1, substr_count($html, 'statistics-axis-label'));
+        self::assertStringContainsString('<span style="bottom: 100%;">8</span>', $html);
+        self::assertStringContainsString('<span style="bottom: 50%;">4</span>', $html);
+        self::assertStringContainsString('<span style="bottom: 0%;">0</span>', $html);
+        self::assertSame(2, substr_count($html, 'statistics-gridline'));
+    }
+
+    #[Test]
     public function the_run_catalog_searches_and_filters_through_a_single_form(): void
     {
         $html = $this->twig(admin: true)->render('@Fluxx/runs/index.html.twig', [
@@ -278,9 +339,9 @@ final class TemplateRenderingTest extends TestCase
         $twig->addExtension(new DurationExtension());
         $twig->addExtension(new AssetExtension(new AssetVersion()));
         $twig->addFunction(new TwigFunction('path', static function (string $route, array $parameters = []): string {
-            $version = $parameters['v'] ?? null;
+            $query = isset($parameters['v']) ? ['v' => $parameters['v']] : $parameters;
 
-            return $route . ($version !== null ? '?v=' . $version : '');
+            return $route . ($query !== [] ? '?' . http_build_query($query) : '');
         }));
         $twig->addFunction(new TwigFunction('csrf_token', static fn (string $id): string => 'token'));
         $twig->addFunction(new TwigFunction('is_granted', static fn (string $role): bool => $admin));

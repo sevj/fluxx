@@ -315,9 +315,9 @@ final class WorkflowStepRunStatisticsTest extends TestCase
                     ],
                 ],
             ],
-            $statistics->aggregateLatestStepStatisticsByWorkflowNameSince(
-                'workflow',
+            $statistics->aggregateLatestStepStatisticsSince(
                 new DateTimeImmutable('2026-07-01 00:00:00'),
+                'workflow',
             ),
         );
     }

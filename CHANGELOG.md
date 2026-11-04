@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.17.0] - 2026-11-04
+
+### Added
+- The global statistics page can be filtered by workflow. The filter and the period are kept when
+  the other one changes.
+
+### Changed
+- **Behaviour change:** average and P95 durations only cover `completed` and `partially_failed`
+  runs. A failed run ends when it gets cleaned up, sometimes days later, which made these figures
+  meaningless.
+- **Behaviour change:** rejected records no longer include failed steps, which each recorded one
+  error for their own failure. Handled minus succeeded now equals rejected.
+- Record totals are labelled as handled per step, since a record going through several steps
+  counts once per step.
+- Periods are named after what they cover: last 7 days, last 30 days and last 12 months.
+- Durations and large counts are easier to read, and chart labels and tooltips follow the locale.
+- The global page and the workflow tab share the same statistics code and chart.
+
+### Fixed
+- The period selector no longer disappears when the selected period has no run.
+- Chart ticks and gridlines line up with the bars, a day without any run draws nothing, and the
+  chart no longer wraps on small screens.
+
 ## [1.16.0] - 2026-11-04
 
 ### Upgrade

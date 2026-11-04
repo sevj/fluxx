@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Fluxx\Ui;
 
-use DateInterval;
 use DateTimeImmutable;
 use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\WorkflowRunRepository;
@@ -17,13 +16,13 @@ use InvalidArgumentException;
 final readonly class WorkflowDetails
 {
     private const DEFAULT_PER_PAGE = 10;
-    private const DEFAULT_STATISTICS_RANGE = 'month';
 
     public function __construct(
         private SynchronizationRegistry $registry,
         private StepTypeRegistry $stepTypeRegistry,
         private WorkflowRunRepository $workflowRunRepository,
         private WorkflowStepRunStatistics $workflowStepRunStatistics,
+        private WorkflowStatisticsViewFactory $statisticsViewFactory,
     ) {
     }
 
@@ -31,12 +30,11 @@ final readonly class WorkflowDetails
         string $workflowCode,
         int $page = 1,
         int $perPage = self::DEFAULT_PER_PAGE,
-        string $statisticsRange = self::DEFAULT_STATISTICS_RANGE,
+        string $statisticsRange = WorkflowStatisticsViewFactory::DEFAULT_RANGE,
         ?WorkflowRunFilters $executionFilters = null,
     ): WorkflowDetailView
     {
         $definition = $this->registry->get($workflowCode)->definition();
-        $statisticsRange = $this->normalizeStatisticsRange($statisticsRange);
         $executionFilters ??= new WorkflowRunFilters(workflowCode: $definition->code());
         $steps = $this->buildStepDefinitionViews($definition);
         $graph = $this->buildGraphRows($steps);
@@ -46,7 +44,7 @@ final readonly class WorkflowDetails
             steps: $steps,
             graph: $graph,
             executionPage: $this->buildExecutionPage($definition, $page, $perPage, $executionFilters),
-            statistics: $this->buildStatisticsView($definition, $statisticsRange),
+            statistics: $this->statisticsViewFactory->build($statisticsRange, $definition),
             withOverviewMetrics: true,
         );
     }
@@ -56,12 +54,11 @@ final readonly class WorkflowDetails
         string $tab,
         int $page = 1,
         int $perPage = self::DEFAULT_PER_PAGE,
-        string $statisticsRange = self::DEFAULT_STATISTICS_RANGE,
+        string $statisticsRange = WorkflowStatisticsViewFactory::DEFAULT_RANGE,
         ?WorkflowRunFilters $executionFilters = null,
     ): WorkflowDetailView
     {
         $definition = $this->registry->get($workflowCode)->definition();
-        $statisticsRange = $this->normalizeStatisticsRange($statisticsRange);
         $executionFilters ??= new WorkflowRunFilters(workflowCode: $definition->code());
 
         return match ($tab) {
@@ -104,7 +101,7 @@ final readonly class WorkflowDetails
             steps: $steps,
             graph: $graph,
             executionPage: $this->emptyExecutionPage($page, $perPage),
-            statistics: $this->emptyStatisticsView($statisticsRange),
+            statistics: $this->statisticsViewFactory->empty($statisticsRange),
         );
     }
 
@@ -123,7 +120,7 @@ final readonly class WorkflowDetails
             steps: $steps,
             graph: $graph,
             executionPage: $this->buildExecutionPage($definition, $page, $perPage, $executionFilters),
-            statistics: $this->emptyStatisticsView($statisticsRange),
+            statistics: $this->statisticsViewFactory->empty($statisticsRange),
         );
     }
 
@@ -138,7 +135,7 @@ final readonly class WorkflowDetails
             steps: [],
             graph: $this->emptyGraph(),
             executionPage: $this->emptyExecutionPage($page, $perPage),
-            statistics: $this->buildStatisticsView($definition, $statisticsRange),
+            statistics: $this->statisticsViewFactory->build($statisticsRange, $definition),
         );
     }
 
@@ -226,23 +223,6 @@ final readonly class WorkflowDetails
             perPage: $perPage,
             totalItems: 0,
             totalPages: $page,
-        );
-    }
-
-    private function emptyStatisticsView(string $statisticsRange): WorkflowStatisticsView
-    {
-        $range = $this->normalizeStatisticsRange($statisticsRange);
-
-        return new WorkflowStatisticsView(
-            selectedRange: $range,
-            ranges: $this->buildStatisticsRanges($range),
-            points: [],
-            metrics: [],
-            stepMetrics: [],
-            executionTotal: 0,
-            errorTotal: 0,
-            maxValue: 1,
-            yAxisTicks: [1, 0],
         );
     }
 
@@ -1248,304 +1228,5 @@ final readonly class WorkflowDetails
         }
 
         return $stepMap;
-    }
-
-    private function normalizeStatisticsRange(string $statisticsRange): string
-    {
-        return in_array($statisticsRange, ['week', 'month', 'year'], true)
-            ? $statisticsRange
-            : self::DEFAULT_STATISTICS_RANGE;
-    }
-
-    private function buildStatisticsView(WorkflowDefinition $definition, string $statisticsRange): WorkflowStatisticsView
-    {
-        $range = $this->normalizeStatisticsRange($statisticsRange);
-        $today = new DateTimeImmutable('today');
-
-        $bucketStarts = match ($range) {
-            'week' => $this->buildDailyBucketStarts($today->sub(new DateInterval('P6D')), 7),
-            'year' => $this->buildMonthlyBucketStarts($today->modify('first day of this month')->sub(new DateInterval('P11M')), 12),
-            default => $this->buildDailyBucketStarts($today->sub(new DateInterval('P29D')), 30),
-        };
-
-        $startAt = $bucketStarts[0];
-        $bucketFormat = $range === 'year' ? 'Y-m' : 'Y-m-d';
-        $bucketStats = $this->workflowRunRepository->aggregateCreatedSinceByWorkflowName(
-            $definition->code(),
-            $startAt,
-            $range === 'year' ? 'month' : 'day',
-        );
-        $runStatistics = $this->workflowRunRepository->summarizeCreatedSinceByWorkflowName($definition->code(), $startAt);
-        $stepStatistics = $this->workflowStepRunStatistics->aggregateLatestStepStatisticsByWorkflowNameSince($definition->code(), $startAt);
-
-        foreach ($bucketStarts as $bucketStart) {
-            $bucketStats[$bucketStart->format($bucketFormat)] ??= [
-                'executionCount' => 0,
-                'errorCount' => 0,
-            ];
-        }
-
-        $maxValue = 0;
-        $executionTotal = 0;
-        $errorTotal = 0;
-
-        foreach ($bucketStarts as $bucketStart) {
-            $bucketKey = $bucketStart->format($bucketFormat);
-            $executionCount = $bucketStats[$bucketKey]['executionCount'];
-            $errorCount = $bucketStats[$bucketKey]['errorCount'];
-            $executionTotal += $executionCount;
-            $errorTotal += $errorCount;
-            $maxValue = max($maxValue, $executionCount, $errorCount);
-        }
-
-        $maxValue = max($maxValue, 1);
-        $points = [];
-
-        foreach ($bucketStarts as $index => $bucketStart) {
-            $bucketKey = $bucketStart->format($bucketFormat);
-            $executionCount = $bucketStats[$bucketKey]['executionCount'];
-            $errorCount = $bucketStats[$bucketKey]['errorCount'];
-
-            $points[] = new WorkflowStatisticsPointView(
-                label: $this->formatBucketLabel($bucketStart, $range),
-                axisLabel: $this->formatBucketAxisLabel($bucketStart, $range, $index, count($bucketStarts)),
-                executionCount: $executionCount,
-                errorCount: $errorCount,
-                executionHeightPercent: ($executionCount / $maxValue) * 100,
-                errorHeightPercent: ($errorCount / $maxValue) * 100,
-            );
-        }
-
-        return new WorkflowStatisticsView(
-            selectedRange: $range,
-            ranges: $this->buildStatisticsRanges($range),
-            points: $points,
-            metrics: $this->buildAdvancedStatisticsMetrics($runStatistics, $stepStatistics),
-            stepMetrics: $this->buildStepStatistics($definition, $stepStatistics['steps']),
-            executionTotal: $executionTotal,
-            errorTotal: $errorTotal,
-            maxValue: $maxValue,
-            yAxisTicks: $this->buildYAxisTicks($maxValue),
-        );
-    }
-
-    /**
-     * @return list<WorkflowStatisticsRangeView>
-     */
-    private function buildStatisticsRanges(string $range): array
-    {
-        return [
-            new WorkflowStatisticsRangeView('week', 'workflow_show.range_week', $range === 'week'),
-            new WorkflowStatisticsRangeView('month', 'workflow_show.range_month', $range === 'month'),
-            new WorkflowStatisticsRangeView('year', 'workflow_show.range_year', $range === 'year'),
-        ];
-    }
-
-    /**
-     * @return list<DateTimeImmutable>
-     */
-    private function buildDailyBucketStarts(DateTimeImmutable $startAt, int $days): array
-    {
-        $buckets = [];
-
-        for ($index = 0; $index < $days; ++$index) {
-            $buckets[] = $startAt->add(new DateInterval(sprintf('P%dD', $index)));
-        }
-
-        return $buckets;
-    }
-
-    /**
-     * @return list<DateTimeImmutable>
-     */
-    private function buildMonthlyBucketStarts(DateTimeImmutable $startAt, int $months): array
-    {
-        $buckets = [];
-
-        for ($index = 0; $index < $months; ++$index) {
-            $buckets[] = $startAt->add(new DateInterval(sprintf('P%dM', $index)));
-        }
-
-        return $buckets;
-    }
-
-    private function formatBucketLabel(DateTimeImmutable $bucketStart, string $range): string
-    {
-        return match ($range) {
-            'week' => $bucketStart->format('D d M'),
-            'year' => $bucketStart->format('M Y'),
-            default => $bucketStart->format('d M Y'),
-        };
-    }
-
-    private function formatBucketAxisLabel(DateTimeImmutable $bucketStart, string $range, int $index, int $count): string
-    {
-        return match ($range) {
-            'week' => $bucketStart->format('D'),
-            'year' => $bucketStart->format('M'),
-            default => ($index % 5 === 0 || $index === $count - 1) ? $bucketStart->format('d/m') : '',
-        };
-    }
-
-    /**
-     * @return list<int>
-     */
-    private function buildYAxisTicks(int $maxValue): array
-    {
-        if ($maxValue <= 1) {
-            return [1, 0];
-        }
-
-        $mid = (int) ceil($maxValue / 2);
-
-        return array_values(array_unique([$maxValue, $mid, 0]));
-    }
-
-    /**
-     * @param array{
-     *     runCount: int,
-     *     failedCount: int,
-     *     partialFailedCount: int,
-     *     relaunchCount: int,
-     *     durations: list<int>
-     * } $runStatistics
-     * @param array{
-     *     retryRunCount: int,
-     *     processedTotal: int,
-     *     successTotal: int,
-     *     recordErrorTotal: int,
-     *     steps: array<string, array{
-     *         durationTotal: int,
-     *         durationCount: int,
-     *         failureCount: int,
-     *         retryCount: int,
-     *         idempotenceHitCount: int,
-     *         executionCount: int
-     *     }>
-     * } $stepStatistics
-     * @return list<WorkflowStatisticsMetricView>
-     */
-    private function buildAdvancedStatisticsMetrics(array $runStatistics, array $stepStatistics): array
-    {
-        $runCount = $runStatistics['runCount'];
-
-        return [
-            new WorkflowStatisticsMetricView('workflow_show.metric_avg_duration', $this->formatDurationMetric($this->average($runStatistics['durations']))),
-            new WorkflowStatisticsMetricView('workflow_show.metric_p95_duration', $this->formatDurationMetric($this->percentile95($runStatistics['durations']))),
-            new WorkflowStatisticsMetricView('workflow_show.metric_failure_rate', $this->formatPercentageMetric($runStatistics['failedCount'], $runCount), $runStatistics['failedCount'] > 0 ? 'error' : 'default'),
-            new WorkflowStatisticsMetricView('workflow_show.metric_partial_failure_rate', $this->formatPercentageMetric($runStatistics['partialFailedCount'], $runCount), $runStatistics['partialFailedCount'] > 0 ? 'warning' : 'default'),
-            new WorkflowStatisticsMetricView('workflow_show.metric_retry_rate', $this->formatPercentageMetric($stepStatistics['retryRunCount'], $runCount), $stepStatistics['retryRunCount'] > 0 ? 'warning' : 'default'),
-            new WorkflowStatisticsMetricView('workflow_show.metric_relaunch_rate', $this->formatPercentageMetric($runStatistics['relaunchCount'], $runCount)),
-            new WorkflowStatisticsMetricView('workflow_show.metric_processed_total', (string) $stepStatistics['processedTotal']),
-            new WorkflowStatisticsMetricView('workflow_show.metric_success_total', (string) $stepStatistics['successTotal']),
-            new WorkflowStatisticsMetricView('workflow_show.metric_record_errors_total', (string) $stepStatistics['recordErrorTotal'], $stepStatistics['recordErrorTotal'] > 0 ? 'error' : 'default'),
-        ];
-    }
-
-    /**
-     * @param array<string, array{
-     *     durationTotal: int,
-     *     durationCount: int,
-     *     failureCount: int,
-     *     retryCount: int,
-     *     idempotenceHitCount: int,
-     *     executionCount: int
-     * }> $stepStatsByCode
-     * @return list<WorkflowStepStatisticsView>
-     */
-    private function buildStepStatistics(WorkflowDefinition $definition, array $stepStatsByCode): array
-    {
-        $stats = [];
-
-        foreach ($definition->steps() as $step) {
-            $stats[$step->code()] = [
-                'name' => $step->name(),
-                'durationTotal' => 0,
-                'durationCount' => 0,
-                'failureCount' => 0,
-                'retryCount' => 0,
-                'idempotenceHitCount' => 0,
-                'executionCount' => 0,
-            ];
-        }
-
-        foreach ($stepStatsByCode as $stepCode => $stepStats) {
-            if (!isset($stats[$stepCode])) {
-                continue;
-            }
-
-            $stats[$stepCode] = [
-                ...$stats[$stepCode],
-                ...$stepStats,
-            ];
-        }
-
-        $views = [];
-
-        foreach ($definition->steps() as $step) {
-            $stepStats = $stats[$step->code()];
-            $views[] = new WorkflowStepStatisticsView(
-                code: $step->code(),
-                name: $stepStats['name'],
-                averageDurationMs: $stepStats['durationCount'] > 0
-                    ? (int) floor($stepStats['durationTotal'] / $stepStats['durationCount'])
-                    : null,
-                failureCount: $stepStats['failureCount'],
-                retryCount: $stepStats['retryCount'],
-                idempotenceHitCount: $stepStats['idempotenceHitCount'],
-                executionCount: $stepStats['executionCount'],
-            );
-        }
-
-        return $views;
-    }
-
-    /**
-     * @param list<int> $values
-     */
-    private function average(array $values): ?int
-    {
-        if ($values === []) {
-            return null;
-        }
-
-        return (int) floor(array_sum($values) / count($values));
-    }
-
-    /**
-     * @param list<int> $values
-     */
-    private function percentile95(array $values): ?int
-    {
-        if ($values === []) {
-            return null;
-        }
-
-        sort($values);
-        $index = max((int) ceil(count($values) * 0.95) - 1, 0);
-
-        return $values[$index] ?? null;
-    }
-
-    private function formatDurationMetric(?int $durationMs): string
-    {
-        if ($durationMs === null) {
-            return '-';
-        }
-
-        if ($durationMs >= 1000) {
-            return number_format($durationMs / 1000, 1, '.', ' ') . ' s';
-        }
-
-        return $durationMs . ' ms';
-    }
-
-    private function formatPercentageMetric(int $count, int $total): string
-    {
-        if ($total === 0) {
-            return '0%';
-        }
-
-        return number_format(($count / $total) * 100, 1, '.', ' ') . '%';
     }
 }

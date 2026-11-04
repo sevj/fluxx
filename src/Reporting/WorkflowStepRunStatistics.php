@@ -294,6 +294,8 @@ final readonly class WorkflowStepRunStatistics
     }
 
     /**
+     * A failed step records one error for its own failure: only the other steps count rejected records.
+     *
      * @return array{
      *     retryRunCount: int,
      *     processedTotal: int,
@@ -309,13 +311,13 @@ final readonly class WorkflowStepRunStatistics
      *     }>
      * }
      */
-    public function aggregateLatestStepStatisticsByWorkflowNameSince(string $workflowName, DateTimeImmutable $startAt): array
+    public function aggregateLatestStepStatisticsSince(DateTimeImmutable $startAt, ?string $workflowName = null): array
     {
         $connection = $this->connection();
-        $latestStepRunsSubquery = $this->latestStepRunsByWorkflowSinceSubquery();
+        $latestStepRunsSubquery = $this->latestStepRunsSinceSubquery($workflowName);
         $baseParams = [
-            'workflowName' => $workflowName,
             'startAt' => $startAt,
+            ...($workflowName !== null ? ['workflowName' => $workflowName] : []),
         ];
         $baseTypes = [
             'startAt' => Types::DATETIME_IMMUTABLE,
@@ -333,7 +335,7 @@ final readonly class WorkflowStepRunStatistics
                     COUNT(*) AS execution_count,
                     SUM(workflow_step_run.processed_count) AS processed_total,
                     SUM(workflow_step_run.success_count) AS success_total,
-                    SUM(workflow_step_run.error_count) AS record_error_total
+                    SUM(CASE WHEN workflow_step_run.status <> :failedStatus THEN workflow_step_run.error_count ELSE 0 END) AS record_error_total
                  FROM fluxx_workflow_step_run workflow_step_run
                  INNER JOIN (%s) latest_step_run ON latest_step_run.latest_id = workflow_step_run.id
                  GROUP BY workflow_step_run.step_name',
@@ -394,81 +396,11 @@ final readonly class WorkflowStepRunStatistics
         ];
     }
 
-    /**
-     * @return array{
-     *     retryRunCount: int,
-     *     processedTotal: int,
-     *     successTotal: int,
-     *     recordErrorTotal: int
-     * }
-     */
-    public function aggregateLatestStepStatisticsSinceAll(DateTimeImmutable $startAt): array
+    private function latestStepRunsSinceSubquery(?string $workflowName): string
     {
-        $connection = $this->connection();
-        $latestStepRunsSubquery = $this->latestStepRunsSinceAllSubquery();
-        $summary = $connection->fetchAssociative(
-            sprintf(
-                'SELECT
-                    SUM(workflow_step_run.processed_count) AS processed_total,
-                    SUM(workflow_step_run.success_count) AS success_total,
-                    SUM(workflow_step_run.error_count) AS record_error_total
-                 FROM fluxx_workflow_step_run workflow_step_run
-                 INNER JOIN (%s) latest_step_run ON latest_step_run.latest_id = workflow_step_run.id',
-                $latestStepRunsSubquery,
-            ),
-            [
-                'startAt' => $startAt,
-            ],
-            [
-                'startAt' => Types::DATETIME_IMMUTABLE,
-            ],
-        ) ?: [];
+        $workflowCondition = $workflowName !== null ? 'AND workflow_run.workflow_name = :workflowName' : '';
 
-        $retryRunCount = (int) $connection->fetchOne(
-            sprintf(
-                'SELECT COUNT(DISTINCT workflow_step_run.workflow_run_id)
-                 FROM fluxx_workflow_step_run workflow_step_run
-                 INNER JOIN (%s) latest_step_run ON latest_step_run.latest_id = workflow_step_run.id
-                 WHERE workflow_step_run.retry_count > 0',
-                $latestStepRunsSubquery,
-            ),
-            [
-                'startAt' => $startAt,
-            ],
-            [
-                'startAt' => Types::DATETIME_IMMUTABLE,
-            ],
-        );
-
-        return [
-            'retryRunCount' => $retryRunCount,
-            'processedTotal' => (int) ($summary['processed_total'] ?? 0),
-            'successTotal' => (int) ($summary['success_total'] ?? 0),
-            'recordErrorTotal' => (int) ($summary['record_error_total'] ?? 0),
-        ];
-    }
-
-    private function latestStepRunsByWorkflowSinceSubquery(): string
-    {
-        return <<<'SQL'
-            SELECT latest_step_run.latest_id
-            FROM (
-                SELECT
-                    workflow_step_run.workflow_run_id,
-                    workflow_step_run.step_name,
-                    MAX(workflow_step_run.id) AS latest_id
-                FROM fluxx_workflow_step_run workflow_step_run
-                INNER JOIN fluxx_workflow_run workflow_run ON workflow_run.id = workflow_step_run.workflow_run_id
-                WHERE workflow_run.workflow_name = :workflowName
-                  AND workflow_run.created_at >= :startAt
-                GROUP BY workflow_step_run.workflow_run_id, workflow_step_run.step_name
-            ) latest_step_run
-        SQL;
-    }
-
-    private function latestStepRunsSinceAllSubquery(): string
-    {
-        return <<<'SQL'
+        return <<<SQL
             SELECT latest_step_run.latest_id
             FROM (
                 SELECT
@@ -478,6 +410,7 @@ final readonly class WorkflowStepRunStatistics
                 FROM fluxx_workflow_step_run workflow_step_run
                 INNER JOIN fluxx_workflow_run workflow_run ON workflow_run.id = workflow_step_run.workflow_run_id
                 WHERE workflow_run.created_at >= :startAt
+                  {$workflowCondition}
                 GROUP BY workflow_step_run.workflow_run_id, workflow_step_run.step_name
             ) latest_step_run
         SQL;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Controller;
 
 use Fluxx\Ui\GlobalStatistics;
+use Fluxx\Ui\RunCatalog;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,15 +18,18 @@ final class GlobalStatisticsController extends AbstractController
 {
     public function __construct(
         private readonly GlobalStatistics $globalStatistics,
+        private readonly RunCatalog $runCatalog,
     ) {
     }
 
     public function __invoke(Request $request): Response
     {
         $range = trim((string) $request->query->get('range', ''));
+        $workflow = trim((string) $request->query->get('workflow', ''));
 
         return $this->render('@Fluxx/statistics/index.html.twig', [
-            'globalStatistics' => $this->globalStatistics->build($range),
+            'globalStatistics' => $this->globalStatistics->build($range, $workflow),
+            'workflowChoices' => $this->runCatalog->availableWorkflows(),
         ]);
     }
 }

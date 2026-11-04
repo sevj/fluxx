@@ -229,7 +229,7 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
     /**
      * @return array<string, array{executionCount: int, errorCount: int}>
      */
-    public function aggregateCreatedSinceByWorkflowName(string $workflowName, DateTimeImmutable $startAt, string $bucket): array
+    public function aggregateCreatedSince(DateTimeImmutable $startAt, string $bucket, ?string $workflowName = null): array
     {
         $connection = $this->getEntityManager()->getConnection();
         $bucketExpression = $this->bucketExpression('created_at', $bucket);
@@ -237,13 +237,14 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
             sprintf(
                 'SELECT %1$s AS bucket_key, COUNT(*) AS execution_count, SUM(CASE WHEN status IN (:errorStatuses) THEN 1 ELSE 0 END) AS error_count
                  FROM fluxx_workflow_run
-                 WHERE workflow_name = :workflowName
-                   AND created_at >= :startAt
+                 WHERE created_at >= :startAt
+                   %2$s
                  GROUP BY %1$s',
                 $bucketExpression,
+                $this->workflowNameCondition($workflowName),
             ),
             [
-                'workflowName' => $workflowName,
+                ...$this->workflowNameParameter($workflowName),
                 'startAt' => $startAt,
                 'errorStatuses' => [
                     WorkflowRunStatus::Failed->value,
@@ -283,7 +284,7 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
      *     durations: list<int>
      * }
      */
-    public function summarizeCreatedSinceByWorkflowName(string $workflowName, DateTimeImmutable $startAt): array
+    public function summarizeCreatedSince(DateTimeImmutable $startAt, ?string $workflowName = null): array
     {
         $connection = $this->getEntityManager()->getConnection();
         $metadataTextExpression = $this->jsonTextExpression('metadata');
@@ -295,12 +296,13 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
                     SUM(CASE WHEN status = :partialFailedStatus THEN 1 ELSE 0 END) AS partial_failed_count,
                     SUM(CASE WHEN %s LIKE :relaunchMarker THEN 1 ELSE 0 END) AS relaunch_count
                  FROM fluxx_workflow_run
-                 WHERE workflow_name = :workflowName
-                   AND created_at >= :startAt',
+                 WHERE created_at >= :startAt
+                   %s',
                 $metadataTextExpression,
+                $this->workflowNameCondition($workflowName),
             ),
             [
-                'workflowName' => $workflowName,
+                ...$this->workflowNameParameter($workflowName),
                 'startAt' => $startAt,
                 'failedStatus' => WorkflowRunStatus::Failed->value,
                 'partialFailedStatus' => WorkflowRunStatus::PartiallyFailed->value,
@@ -317,18 +319,26 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
                 sprintf(
                     'SELECT %s AS duration_ms
                      FROM fluxx_workflow_run
-                     WHERE workflow_name = :workflowName
-                       AND created_at >= :startAt
+                     WHERE created_at >= :startAt
+                       %s
+                       AND status IN (:finishedStatuses)
                        AND started_at IS NOT NULL
                        AND finished_at IS NOT NULL',
                     $this->durationExpression('started_at', 'finished_at'),
+                    $this->workflowNameCondition($workflowName),
                 ),
                 [
-                    'workflowName' => $workflowName,
+                    ...$this->workflowNameParameter($workflowName),
                     'startAt' => $startAt,
+                    // A failed run ends when it gets cleaned up, sometimes days later: its duration means nothing.
+                    'finishedStatuses' => [
+                        WorkflowRunStatus::Completed->value,
+                        WorkflowRunStatus::PartiallyFailed->value,
+                    ],
                 ],
                 [
                     'startAt' => Types::DATETIME_IMMUTABLE,
+                    'finishedStatuses' => ArrayParameterType::STRING,
                 ],
             ),
         );
@@ -411,116 +421,6 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
             ->select('COUNT(workflow_run.id)')
             ->getQuery()
             ->getSingleScalarResult();
-    }
-
-    /**
-     * @return array<string, array{executionCount: int, errorCount: int}>
-     */
-    public function aggregateCreatedSinceAll(DateTimeImmutable $startAt, string $bucket): array
-    {
-        $connection = $this->getEntityManager()->getConnection();
-        $bucketExpression = $this->bucketExpression('created_at', $bucket);
-        $rows = $connection->fetchAllAssociative(
-            sprintf(
-                'SELECT %1$s AS bucket_key, COUNT(*) AS execution_count, SUM(CASE WHEN status IN (:errorStatuses) THEN 1 ELSE 0 END) AS error_count
-                 FROM fluxx_workflow_run
-                 WHERE created_at >= :startAt
-                 GROUP BY %1$s',
-                $bucketExpression,
-            ),
-            [
-                'startAt' => $startAt,
-                'errorStatuses' => [
-                    WorkflowRunStatus::Failed->value,
-                    WorkflowRunStatus::PartiallyFailed->value,
-                ],
-            ],
-            [
-                'startAt' => Types::DATETIME_IMMUTABLE,
-                'errorStatuses' => ArrayParameterType::STRING,
-            ],
-        );
-
-        $bucketStats = [];
-
-        foreach ($rows as $row) {
-            $bucketKey = (string) ($row['bucket_key'] ?? '');
-
-            if ($bucketKey === '') {
-                continue;
-            }
-
-            $bucketStats[$bucketKey] = [
-                'executionCount' => (int) ($row['execution_count'] ?? 0),
-                'errorCount' => (int) ($row['error_count'] ?? 0),
-            ];
-        }
-
-        return $bucketStats;
-    }
-
-    /**
-     * @return array{
-     *     runCount: int,
-     *     failedCount: int,
-     *     partialFailedCount: int,
-     *     relaunchCount: int,
-     *     durations: list<int>
-     * }
-     */
-    public function summarizeCreatedSinceAll(DateTimeImmutable $startAt): array
-    {
-        $connection = $this->getEntityManager()->getConnection();
-        $metadataTextExpression = $this->jsonTextExpression('metadata');
-        $summary = $connection->fetchAssociative(
-            sprintf(
-                'SELECT
-                    COUNT(*) AS run_count,
-                    SUM(CASE WHEN status = :failedStatus THEN 1 ELSE 0 END) AS failed_count,
-                    SUM(CASE WHEN status = :partialFailedStatus THEN 1 ELSE 0 END) AS partial_failed_count,
-                    SUM(CASE WHEN %s LIKE :relaunchMarker THEN 1 ELSE 0 END) AS relaunch_count
-                 FROM fluxx_workflow_run
-                 WHERE created_at >= :startAt',
-                $metadataTextExpression,
-            ),
-            [
-                'startAt' => $startAt,
-                'failedStatus' => WorkflowRunStatus::Failed->value,
-                'partialFailedStatus' => WorkflowRunStatus::PartiallyFailed->value,
-                'relaunchMarker' => '%"relaunch":%',
-            ],
-            [
-                'startAt' => Types::DATETIME_IMMUTABLE,
-            ],
-        ) ?: [];
-
-        $durations = array_map(
-            static fn (mixed $durationMs): int => max((int) $durationMs, 0),
-            $connection->fetchFirstColumn(
-                sprintf(
-                    'SELECT %s AS duration_ms
-                     FROM fluxx_workflow_run
-                     WHERE created_at >= :startAt
-                       AND started_at IS NOT NULL
-                       AND finished_at IS NOT NULL',
-                    $this->durationExpression('started_at', 'finished_at'),
-                ),
-                [
-                    'startAt' => $startAt,
-                ],
-                [
-                    'startAt' => Types::DATETIME_IMMUTABLE,
-                ],
-            ),
-        );
-
-        return [
-            'runCount' => (int) ($summary['run_count'] ?? 0),
-            'failedCount' => (int) ($summary['failed_count'] ?? 0),
-            'partialFailedCount' => (int) ($summary['partial_failed_count'] ?? 0),
-            'relaunchCount' => (int) ($summary['relaunch_count'] ?? 0),
-            'durations' => $durations,
-        ];
     }
 
     /**
@@ -607,6 +507,19 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
         }
 
         return $queryBuilder;
+    }
+
+    private function workflowNameCondition(?string $workflowName): string
+    {
+        return $workflowName !== null ? 'AND workflow_name = :workflowName' : '';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function workflowNameParameter(?string $workflowName): array
+    {
+        return $workflowName !== null ? ['workflowName' => $workflowName] : [];
     }
 
     private function bucketExpression(string $column, string $bucket): string

@@ -1,16 +1,24 @@
 {% trans_default_domain 'fluxx' %}
+<div class="statistics-controls statistics-controls-top">
+    {% for range in statistics.ranges %}
+        <a href="{{ path(range_route, range_params|merge({'range': range.value})) }}"{% if range_tab_nav is defined %} data-tab-nav="{{ range_tab_nav }}"{% endif %} class="statistics-range{{ range.selected ? ' is-active' : '' }}">
+            {{ range.labelKey|trans }}
+        </a>
+    {% endfor %}
+</div>
+
 {% if statistics.isEmpty %}
     <section class="empty">
-        {{ 'statistics_index.empty'|trans }}
+        {{ 'statistics_chart.empty'|trans }}
     </section>
 {% else %}
     <div class="statistics-summary">
         <div class="statistics-summary-item">
-            <span class="statistics-summary-label">{{ 'statistics_index.executions_total'|trans }}</span>
+            <span class="statistics-summary-label">{{ 'statistics_chart.executions_total'|trans }}</span>
             <span class="statistics-summary-value">{{ statistics.executionTotal }}</span>
         </div>
         <div class="statistics-summary-item statistics-summary-item-error">
-            <span class="statistics-summary-label">{{ 'statistics_index.errors_total'|trans }}</span>
+            <span class="statistics-summary-label">{{ 'statistics_chart.errors_total'|trans }}</span>
             <span class="statistics-summary-value">{{ statistics.errorTotal }}</span>
         </div>
     </div>
@@ -25,29 +33,31 @@
     </div>
 
     <div class="statistics-chart-section">
-        <div class="statistics-controls">
-            {% for range in statistics.ranges %}
-                <a href="{{ path(range_route, range_params|merge({'range': range.value})) }}" class="statistics-range{{ range.selected ? ' is-active' : '' }}">
-                    {{ range.labelKey|trans }}
-                </a>
-            {% endfor %}
-        </div>
-
         <div class="statistics-chart">
             <div class="statistics-y-axis">
                 {% for tick in statistics.yAxisTicks %}
-                    <span>{{ tick }}</span>
+                    <span style="bottom: {{ tick / statistics.maxValue * 100 }}%;">{{ tick }}</span>
                 {% endfor %}
             </div>
 
             <div class="statistics-bars">
+                {% for tick in statistics.yAxisTicks %}
+                    {% if tick > 0 %}
+                        <span class="statistics-gridline" style="bottom: {{ tick / statistics.maxValue * 100 }}%;"></span>
+                    {% endif %}
+                {% endfor %}
+
                 {% for point in statistics.points %}
-                    <div class="statistics-bar-group">
-                        <div class="statistics-bar-stage">
-                            <div class="statistics-bar statistics-bar-executions" style="height: {{ point.executionHeightPercent }}%;" title="{{ point.label }}: {{ point.executionCount }} executions"></div>
-                            <div class="statistics-bar statistics-bar-errors" style="height: {{ point.errorHeightPercent }}%;" title="{{ point.label }}: {{ point.errorCount }} errors"></div>
-                        </div>
-                        <div class="statistics-axis-label">{{ point.axisLabel }}</div>
+                    <div class="statistics-bar-group" title="{{ 'statistics_chart.point_tooltip'|trans({'%label%': point.label|trans, '%executions%': point.executionCount, '%errors%': point.errorCount}) }}">
+                        {% if point.executionCount > 0 %}
+                            <div class="statistics-bar statistics-bar-executions" style="height: {{ point.executionHeightPercent }}%;"></div>
+                        {% endif %}
+                        {% if point.errorCount > 0 %}
+                            <div class="statistics-bar statistics-bar-errors" style="height: {{ point.errorHeightPercent }}%;"></div>
+                        {% endif %}
+                        {% if point.axisLabel %}
+                            <div class="statistics-axis-label">{{ point.axisLabel|trans }}</div>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>

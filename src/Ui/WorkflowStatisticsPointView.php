@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Fluxx\Ui;
 
+use Symfony\Component\Translation\TranslatableMessage;
+
 final readonly class WorkflowStatisticsPointView
 {
     public function __construct(
-        private string $label,
-        private string $axisLabel,
+        private TranslatableMessage $label,
+        private ?TranslatableMessage $axisLabel,
         private int $executionCount,
         private int $errorCount,
         private float $executionHeightPercent,
@@ -16,12 +18,12 @@ final readonly class WorkflowStatisticsPointView
     ) {
     }
 
-    public function label(): string
+    public function label(): TranslatableMessage
     {
         return $this->label;
     }
 
-    public function axisLabel(): string
+    public function axisLabel(): ?TranslatableMessage
     {
         return $this->axisLabel;
     }

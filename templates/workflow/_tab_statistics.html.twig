@@ -6,61 +6,14 @@
     </div>
 </div>
 
-{% if workflow.statistics.isEmpty %}
-    <section class="empty">
-        {{ 'workflow_show.statistics_empty'|trans }}
-    </section>
-{% else %}
-    <div class="statistics-summary">
-        <div class="statistics-summary-item">
-            <span class="statistics-summary-label">{{ 'workflow_show.executions_total'|trans }}</span>
-            <span class="statistics-summary-value">{{ workflow.statistics.executionTotal }}</span>
-        </div>
-        <div class="statistics-summary-item statistics-summary-item-error">
-            <span class="statistics-summary-label">{{ 'workflow_show.errors_total'|trans }}</span>
-            <span class="statistics-summary-value">{{ workflow.statistics.errorTotal }}</span>
-        </div>
-    </div>
+{% include '@Fluxx/_statistics_chart.html.twig' with {
+    statistics: workflow.statistics,
+    range_route: 'fluxx_workflow_tab_show',
+    range_params: {'code': workflow.code, 'tab': 'statistics', 'page': workflow.executionPage.currentPage},
+    range_tab_nav: 'statistics'
+} %}
 
-    <div class="statistics-summary statistics-summary-extended">
-        {% for metric in workflow.statistics.metrics %}
-            <div class="statistics-summary-item statistics-summary-item-{{ metric.tone }}">
-                <span class="statistics-summary-label">{{ metric.labelKey|trans }}</span>
-                <span class="statistics-summary-value">{{ metric.value }}</span>
-            </div>
-        {% endfor %}
-    </div>
-
-    <div class="statistics-chart-section">
-        <div class="statistics-controls">
-            {% for range in workflow.statistics.ranges %}
-                <a href="{{ path('fluxx_workflow_tab_show', {'code': workflow.code, 'tab': 'statistics', 'page': workflow.executionPage.currentPage, 'range': range.value}) }}" data-tab-nav="statistics" class="statistics-range{{ range.selected ? ' is-active' : '' }}">
-                    {{ range.labelKey|trans }}
-                </a>
-            {% endfor %}
-        </div>
-
-        <div class="statistics-chart">
-            <div class="statistics-y-axis">
-                {% for tick in workflow.statistics.yAxisTicks %}
-                    <span>{{ tick }}</span>
-                {% endfor %}
-            </div>
-
-            <div class="statistics-bars">
-                {% for point in workflow.statistics.points %}
-                    <div class="statistics-bar-group">
-                        <div class="statistics-bar-stage">
-                            <div class="statistics-bar statistics-bar-executions" style="height: {{ point.executionHeightPercent }}%;" title="{{ point.label }}: {{ point.executionCount }} executions"></div>
-                            <div class="statistics-bar statistics-bar-errors" style="height: {{ point.errorHeightPercent }}%;" title="{{ point.label }}: {{ point.errorCount }} errors"></div>
-                        </div>
-                        <div class="statistics-axis-label">{{ point.axisLabel }}</div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-
+{% if not workflow.statistics.isEmpty %}
     <section class="statistics-step-section">
         <div class="section-heading section-heading-compact">
             <div>

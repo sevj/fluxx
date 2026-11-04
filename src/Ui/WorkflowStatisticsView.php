@@ -23,6 +23,7 @@ final readonly class WorkflowStatisticsView
         private int $errorTotal,
         private int $maxValue,
         private array $yAxisTicks,
+        private ?string $workflowCode = null,
     ) {
     }
 
@@ -84,6 +85,11 @@ final readonly class WorkflowStatisticsView
     public function yAxisTicks(): array
     {
         return $this->yAxisTicks;
+    }
+
+    public function workflowCode(): ?string
+    {
+        return $this->workflowCode;
     }
 
     public function isEmpty(): bool
