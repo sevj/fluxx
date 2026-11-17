@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Fluxx\DependencyInjection;
 
-use Fluxx\Workflow\Message\BuildRunReportMessage;
 use Fluxx\Workflow\Report\RunReportSectionInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -40,8 +39,6 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
             ]);
         }
 
-        $config = $this->resolveFluxxConfig($container);
-
         if ($container->hasExtension('framework')) {
             $container->prependExtensionConfig('framework', [
                 'translator' => [
@@ -49,13 +46,10 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
                         __DIR__ . '/../../translations',
                     ],
                 ],
-                'messenger' => [
-                    'routing' => [
-                        BuildRunReportMessage::class => $config['runtime']['transport_name'] ?? 'fluxx',
-                    ],
-                ],
             ]);
         }
+
+        $config = $this->resolveFluxxConfig($container);
 
         if (($config['security']['enabled'] ?? true) && $container->hasExtension('security')) {
             $container->prependExtensionConfig('security', [

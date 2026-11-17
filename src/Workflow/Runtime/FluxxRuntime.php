@@ -32,6 +32,8 @@ use Fluxx\Workflow\WorkflowStepDefinition;
 use Fluxx\Workflow\Progress\StepProgressReporter;
 use Fluxx\Workflow\Step\WorkflowStepInput;
 use Fluxx\Workflow\Step\WorkflowStepInputPayload;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use RuntimeException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Throwable;
@@ -57,6 +59,7 @@ final class FluxxRuntime
         private int $maxPayloadRecords = 1000,
         private ?StepProgressReporter $stepProgressReporter = null,
         private ?MessageBusInterface $messageBus = null,
+        private LoggerInterface $logger = new NullLogger(),
     ) {
     }
 
@@ -673,8 +676,8 @@ final class FluxxRuntime
     }
 
     /**
-     * Requested once the final status is committed, so the report reads it and a failed build
-     * cannot touch the run.
+     * Requested once the final status is committed, so the report reads it. Called within the step's
+     * error handling, so a failed dispatch is only logged: it must never touch the completed run or step.
      */
     private function requestReport(WorkflowRun $workflowRun, WorkflowDefinition $definition): void
     {
@@ -682,7 +685,15 @@ final class FluxxRuntime
             return;
         }
 
-        $this->messageBus->dispatch(new BuildRunReportMessage($workflowRun->runId()));
+        try {
+            $this->messageBus->dispatch(new BuildRunReportMessage($workflowRun->runId()));
+        } catch (Throwable $throwable) {
+            $this->logger->error('The report of run "{run_id}" could not be requested: {message}. Build it with "fluxx:run:report {run_id}".', [
+                'run_id' => $workflowRun->runId(),
+                'message' => $throwable->getMessage(),
+                'exception' => $throwable,
+            ]);
+        }
     }
 
     /**

@@ -25,6 +25,7 @@ final readonly class RunReportBuilder
 {
     public const FORMAT_VERSION = 1;
     public const MAX_REJECTED_PER_OBJECT = 100;
+    public const MAX_ANOMALY_LINES = 20;
 
     public function __construct(
         private SynchronizationRegistry $registry,
@@ -44,7 +45,7 @@ final readonly class RunReportBuilder
         $stepRuns = $this->latestStepRunsByCode($run);
         $status = $this->reportedStatus($run, $stepRuns);
         $definition = $this->registry->has($run->workflowName()) ? $this->registry->get($run->workflowName())->definition() : null;
-        $criticalPath = $definition !== null ? CriticalPath::compute($definition, $stepRuns) : [];
+        $criticalPath = $definition !== null ? CriticalPath::compute($definition, $this->stepRunsOfThisRun($run, $stepRuns)) : [];
 
         $objects = [];
         $anomalies = [];
@@ -108,6 +109,34 @@ final readonly class RunReportBuilder
     }
 
     /**
+     * A relaunched run keeps the step runs it preserved with their original times: they did not take
+     * part in this run's duration.
+     *
+     * @param array<string, WorkflowStepRun> $stepRuns
+     * @return array<string, WorkflowStepRun>
+     */
+    private function stepRunsOfThisRun(WorkflowRun $run, array $stepRuns): array
+    {
+        $runStart = $run->startedAt();
+
+        return array_filter(
+            $stepRuns,
+            fn (WorkflowStepRun $stepRun): bool => $this->relaunchStatus($stepRun) !== 'preserved'
+                && ($runStart === null || $stepRun->finishedAt() === null || $stepRun->finishedAt() >= $runStart),
+        );
+    }
+
+    /**
+     * @return string|null "preserved" or "reset" for a step run of a relaunched run
+     */
+    private function relaunchStatus(WorkflowStepRun $stepRun): ?string
+    {
+        $status = $stepRun->metadata()['relaunch']['status'] ?? null;
+
+        return is_string($status) ? $status : null;
+    }
+
+    /**
      * @return array<string, WorkflowStepRun>
      */
     private function latestStepRunsByCode(WorkflowRun $run): array
@@ -158,12 +187,14 @@ final readonly class RunReportBuilder
             $this->addObjects($objects, $code, $stepReport->objectStats());
 
             foreach ($stepReport->anomalies() as $anomaly) {
+                $lines = array_filter($anomaly->lines, static fn (mixed $value): bool => is_int($value) || is_string($value));
                 $anomalies[] = [
                     'step' => $code,
                     'object' => $stepReport->objectStats()->label,
                     'title' => $anomaly->title,
                     'severity' => $anomaly->severity->value,
-                    'lines' => array_filter($anomaly->lines, static fn (mixed $value): bool => is_int($value) || is_string($value)),
+                    'lines' => array_slice($lines, 0, self::MAX_ANOMALY_LINES, true),
+                    'line_total' => count($lines),
                 ];
             }
 
@@ -270,6 +301,7 @@ final readonly class RunReportBuilder
                 : null,
             'report' => $source,
             'critical' => $critical,
+            'relaunch' => $this->relaunchStatus($stepRun),
         ];
     }
 
@@ -330,7 +362,7 @@ final readonly class RunReportBuilder
             'longest_step' => $this->stepWithHighest($steps, 'duration_ms'),
             'memory_peak_step' => $this->stepWithHighest($steps, 'memory_peak_bytes'),
             'critical_path_ms' => $criticalPath === [] ? null : $this->between(
-                $stepRuns[$criticalPath[0]]->startedAt(),
+                $this->latestOf($stepRuns[$criticalPath[0]]->startedAt(), $run->startedAt()),
                 $stepRuns[$criticalPath[array_key_last($criticalPath)]]->finishedAt(),
             ),
         ];
@@ -376,6 +408,13 @@ final readonly class RunReportBuilder
         }
 
         return $best['code'] ?? null;
+    }
+
+    private function latestOf(?DateTimeImmutable ...$dates): ?DateTimeImmutable
+    {
+        $dates = array_filter($dates);
+
+        return $dates === [] ? null : max($dates);
     }
 
     private function durationMs(WorkflowStepRun $stepRun): ?int

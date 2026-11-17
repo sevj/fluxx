@@ -158,7 +158,7 @@ final class RunReportBuilderTest extends TestCase
             array_column($report['steps'], 'report', 'code'),
         );
         self::assertSame(
-            [['step' => 'write_companies', 'object' => 'Companies', 'title' => 'Unresolved owners', 'severity' => 'warning', 'lines' => ['jdoe' => 3]]],
+            [['step' => 'write_companies', 'object' => 'Companies', 'title' => 'Unresolved owners', 'severity' => 'warning', 'lines' => ['jdoe' => 3], 'line_total' => 1]],
             $report['anomalies'],
         );
         self::assertSame(['read' => 10, 'created' => 10, 'updated' => 9, 'written' => 19, 'excluded' => 7, 'rejected' => 3], $report['summary']['objects']);
@@ -242,6 +242,7 @@ final class RunReportBuilderTest extends TestCase
             'throughput_per_second' => 4.0,
             'report' => 'none',
             'critical' => true,
+            'relaunch' => null,
         ], $report['steps'][1]);
         self::assertSame(['read', 'write'], $report['critical_path']);
         self::assertFalse($report['steps'][2]['critical']);
@@ -251,6 +252,59 @@ final class RunReportBuilderTest extends TestCase
         self::assertSame(110000, $report['summary']['critical_path_ms']);
         self::assertSame('Sync', $report['summary']['workflow_name']);
         self::assertSame(1, $report['format_version']);
+    }
+
+    #[Test]
+    public function anomaly_lines_are_capped_but_counted(): void
+    {
+        $run = $this->workflowRun(WorkflowRunStatus::Completed);
+        $lines = [];
+        foreach (range(1, 30) as $i) {
+            $lines['owner-' . $i] = $i;
+        }
+        $this->stepRun($run, 'write', 'write', 1, '00:00', '00:10')->replaceReport(StepReport::objects('Contacts')->anomaly('Unresolved owners', $lines)->toArray());
+
+        $anomaly = $this->builder()->build($run)['anomalies'][0];
+
+        self::assertCount(RunReportBuilder::MAX_ANOMALY_LINES, $anomaly['lines']);
+        self::assertSame(20, $anomaly['lines']['owner-20']);
+        self::assertSame(30, $anomaly['line_total']);
+    }
+
+    #[Test]
+    public function a_relaunched_run_leaves_its_preserved_steps_out_of_the_critical_path(): void
+    {
+        $run = new WorkflowRun('run-2', 'sync', 'src', 'tgt', 'relaunch');
+        $run->markRunning($this->at('10:00'));
+        $run->markCompleted($this->at('11:00'));
+        $this->stepRun($run, 'read', 'read', 1, '00:00', '05:00', ['relaunch' => ['status' => 'preserved', 'original_run_id' => 'run-1']]);
+        $this->stepRun($run, 'write', 'write', 2, '10:00', '10:30', ['relaunch' => ['status' => 'reset', 'mode' => 'step']]);
+        $this->stepRun($run, 'check', 'verify', 3, '10:00', '10:50');
+
+        $report = $this->builder($this->definition([
+            $this->step('read'),
+            $this->step('write', ['read']),
+            $this->step('verify', ['write']),
+        ]))->build($run);
+
+        self::assertSame(['write', 'verify'], $report['critical_path']);
+        self::assertSame(50000, $report['summary']['critical_path_ms']);
+        self::assertSame(['read' => 'preserved', 'write' => 'reset', 'verify' => null], array_column($report['steps'], 'relaunch', 'code'));
+        self::assertFalse($report['steps'][0]['critical']);
+    }
+
+    #[Test]
+    public function the_critical_path_starts_no_earlier_than_the_run(): void
+    {
+        $run = new WorkflowRun('run-2', 'sync', 'src', 'tgt', 'relaunch');
+        $run->markRunning($this->at('00:30'));
+        $run->markCompleted($this->at('01:00'));
+        $this->stepRun($run, 'read', 'read', 1, '00:00', '00:50');
+
+        $report = $this->builder($this->definition([$this->step('read')]))->build($run);
+
+        self::assertSame(['read'], $report['critical_path']);
+        self::assertSame(20000, $report['summary']['critical_path_ms']);
     }
 
     #[Test]

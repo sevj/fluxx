@@ -73,6 +73,7 @@ final class FluxxRuntimeTest extends TestCase
 {
     private WorkflowRunLookupInterface&MockObject $workflowRunRepository;
     private ?StepProgressReporter $stepProgressReporter = null;
+    private ?\Psr\Log\LoggerInterface $logger = null;
 
     /** @var list<WorkflowPayload> */
     private array $sourcePayloads = [];
@@ -192,6 +193,7 @@ final class FluxxRuntimeTest extends TestCase
             maxPayloadRecords: $this->maxPayloadRecords,
             stepProgressReporter: $this->stepProgressReporter,
             messageBus: $this->messageBus,
+            logger: $this->logger ?? new \Psr\Log\NullLogger(),
         );
     }
 
@@ -423,6 +425,42 @@ final class FluxxRuntimeTest extends TestCase
 
         self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
         self::assertSame('commit', end($sequenceAtDispatch));
+    }
+
+    #[Test]
+    public function a_failed_report_request_leaves_the_completed_run_and_step_untouched(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $logged = [];
+        $this->logger = new class($logged) extends \Psr\Log\AbstractLogger {
+            public function __construct(private array &$logged)
+            {
+            }
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->logged[] = [$level, $message, $context['run_id'] ?? null];
+            }
+        };
+        $report = StepReport::objects('Contacts')->created(2);
+        $this->registryWithHandler(new StubResultStep(new WorkflowStepResult(report: $report)), report: new WorkflowReportConfiguration());
+        $this->messageBus->expects(self::once())
+            ->method('dispatch')
+            ->with(self::isInstanceOf(BuildRunReportMessage::class))
+            ->willThrowException(new RuntimeException('Redis is down'));
+        $this->workflowExecutionLockManager->expects(self::once())->method('releaseForRun')->with($workflowRun, 'completed');
+
+        $next = $this->runtime->runStep('run-1', 'fetch');
+
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame([], $next);
+        self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
+        self::assertSame(WorkflowStepRunStatus::Completed, $stepRun->status());
+        self::assertSame(0, $stepRun->retryCount());
+        self::assertSame($report->toArray(), $stepRun->report());
+        self::assertNotContains('rollback', $this->transactionSequence);
+        self::assertSame([['error', 'The report of run "{run_id}" could not be requested: {message}. Build it with "fluxx:run:report {run_id}".', 'run-1']], $logged);
     }
 
     #[Test]
