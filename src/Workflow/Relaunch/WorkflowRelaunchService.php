@@ -99,7 +99,7 @@ final readonly class WorkflowRelaunchService
 
         $clonedStepRuns = $this->clonePreservedStepRuns($workflowRun, $plan, $originalRun, $originalStepRuns);
         $this->createResetTargetStepRuns($workflowRun, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
-        $this->cloneEntryPayloads($workflowRun, $plan, $originalRun, $clonedStepRuns);
+        $this->cloneEntryPayloads($workflowRun, $definition, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
         $this->cloneReadPayloads($workflowRun, $definition, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
 
         try {
@@ -252,12 +252,15 @@ final readonly class WorkflowRelaunchService
     }
 
     /**
+     * @param array<string, WorkflowStepRun> $originalStepRuns
      * @param array<string, WorkflowStepRun> $clonedStepRuns
      */
     private function cloneEntryPayloads(
         WorkflowRun $workflowRun,
+        WorkflowDefinition $definition,
         WorkflowRelaunchPlan $plan,
         WorkflowRun $originalRun,
+        array $originalStepRuns,
         array $clonedStepRuns,
     ): void {
         if ($plan->mode() === WorkflowRelaunchMode::Full) {
@@ -265,11 +268,11 @@ final readonly class WorkflowRelaunchService
         }
 
         foreach ($plan->entryStepCodes() as $entryStepCode) {
-            foreach ($this->workflowPayloadRepository->findByWorkflowRunAndTargetStepNameOrdered($originalRun, $entryStepCode) as $payload) {
-                $sourceStepCode = $payload->sourceStepRun()->stepName();
+            foreach ($definition->step($entryStepCode)->dependsOn() as $sourceStepCode) {
+                $originalStepRun = $originalStepRuns[$sourceStepCode] ?? null;
                 $sourceStepRun = $clonedStepRuns[$sourceStepCode] ?? null;
 
-                if ($sourceStepRun === null) {
+                if ($originalStepRun === null || $sourceStepRun === null) {
                     throw new RuntimeException(sprintf(
                         'Unable to relaunch workflow "%s": payload source step "%s" is missing from relaunch context.',
                         $workflowRun->workflowName(),
@@ -277,12 +280,43 @@ final readonly class WorkflowRelaunchService
                     ));
                 }
 
-                $this->clonePayload($workflowRun, $sourceStepRun, $originalRun, $payload, [
-                    'status' => 'reused_input',
-                    'entry_step_code' => $entryStepCode,
-                ]);
+                foreach ($this->workflowPayloadRepository->findBySourceStepRunOrdered($this->producerOf($originalStepRun)) as $payload) {
+                    if ($payload->targetStepName() !== $entryStepCode) {
+                        continue;
+                    }
+
+                    $this->clonePayload($workflowRun, $sourceStepRun, $originalRun, $payload, [
+                        'status' => 'reused_input',
+                        'entry_step_code' => $entryStepCode,
+                    ]);
+                }
             }
         }
+    }
+
+    /**
+     * A preserved step run only holds the outputs its own relaunch needed: the step run that actually
+     * executed, further back in the chain of relaunches, holds them all.
+     */
+    private function producerOf(WorkflowStepRun $stepRun): WorkflowStepRun
+    {
+        for ($depth = 0; $depth < 100; ++$depth) {
+            $relaunch = $stepRun->metadata()['relaunch'] ?? null;
+            $originalId = is_array($relaunch) && ($relaunch['status'] ?? null) === 'preserved' ? ($relaunch['original_step_run_id'] ?? null) : null;
+            $original = is_int($originalId) ? $this->entityManager->find(WorkflowStepRun::class, $originalId) : null;
+
+            if (!$original instanceof WorkflowStepRun) {
+                return $stepRun;
+            }
+
+            if (RunPayloadsPrunedException::isPruned($original->workflowRun()->status())) {
+                throw RunPayloadsPrunedException::forRun($original->workflowRun()->runId());
+            }
+
+            $stepRun = $original;
+        }
+
+        return $stepRun;
     }
 
     /**
@@ -322,7 +356,7 @@ final readonly class WorkflowRelaunchService
                 $payloads = AncestorPayloadSelector::select(
                     $definition,
                     $targetStepCode,
-                    $this->workflowPayloadRepository->findBySourceStepRunOrdered($originalStepRun),
+                    $this->workflowPayloadRepository->findBySourceStepRunOrdered($this->producerOf($originalStepRun)),
                 );
 
                 foreach ($payloads as $payload) {

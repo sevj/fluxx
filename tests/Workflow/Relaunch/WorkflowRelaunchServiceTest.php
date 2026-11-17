@@ -194,8 +194,13 @@ final class WorkflowRelaunchServiceTest extends TestCase
         $stepRunRepository = $this->createStub(WorkflowStepRunLookupInterface::class);
         $stepRunRepository->method('findByWorkflowRunOrdered')->willReturn(array_values($stepRuns));
         $payloadRepository = $this->createStub(WorkflowPayloadLookupInterface::class);
-        $payloadRepository->method('findByWorkflowRunAndTargetStepNameOrdered')->willReturn([$entryPayload]);
-        $payloadRepository->method('findBySourceStepRunOrdered')->willReturn([$firstOutput]);
+        $payloadRepository->method('findBySourceStepRunOrdered')->willReturnCallback(
+            static fn (WorkflowStepRun $source): array => match ($source->stepName()) {
+                'first' => [$firstOutput],
+                'second' => [$entryPayload],
+                default => [],
+            },
+        );
         $payloadStore = $this->createMock(WorkflowPayloadStoreInterface::class);
         $payloadStore->method('load')->willReturn(['records' => [['id' => 1]], 'metadata' => []]);
 
@@ -266,12 +271,10 @@ final class WorkflowRelaunchServiceTest extends TestCase
         $stepRunRepository = $this->createStub(WorkflowStepRunLookupInterface::class);
         $stepRunRepository->method('findByWorkflowRunOrdered')->willReturn(array_values($stepRuns));
         $payloadRepository = $this->createStub(WorkflowPayloadLookupInterface::class);
-        $payloadRepository->method('findByWorkflowRunAndTargetStepNameOrdered')->willReturnCallback(
-            fn (WorkflowRun $run, string $target): array => in_array($target, ['write_b', 'write_c'], true)
-                ? [$this->payload($stepRuns['read'], $target)]
-                : [],
+        $readOutputs = [$this->payload($stepRuns['read'], 'write_a'), $this->payload($stepRuns['read'], 'write_b'), $this->payload($stepRuns['read'], 'write_c')];
+        $payloadRepository->method('findBySourceStepRunOrdered')->willReturnCallback(
+            static fn (WorkflowStepRun $source): array => $source->stepName() === 'read' ? $readOutputs : [],
         );
-        $payloadRepository->method('findBySourceStepRunOrdered')->willReturn([$this->payload($stepRuns['read'], 'notes')]);
         $payloadStore = $this->createMock(WorkflowPayloadStoreInterface::class);
         $payloadStore->method('load')->willReturn(['records' => [['id' => 1]], 'metadata' => []]);
 
@@ -324,7 +327,7 @@ final class WorkflowRelaunchServiceTest extends TestCase
             $persisted,
         );
         self::assertSame(
-            ['read>write_b:reused_input', 'read>write_c:reused_input', 'read>notes:reused_ancestor_output'],
+            ['read>write_b:reused_input', 'read>write_c:reused_input', 'read>write_a:reused_ancestor_output'],
             $stored,
         );
         self::assertCount(2, $dispatched);

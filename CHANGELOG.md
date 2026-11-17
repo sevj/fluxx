@@ -36,6 +36,9 @@ of `README.md` for the definition of the public API.
   their old status, and two workers finalizing at once could miss each other's commit. The
   finalization now locks the run row (PostgreSQL) and reads the run and its step runs again.
 - A run whose payloads were pruned could still be cancelled.
+- Relaunching a run that was itself a relaunch could fail with "could not find the output of its
+  ancestor": a relaunched run only holds the outputs its own relaunched steps needed. A relaunch now
+  takes the outputs of a preserved step from the run that actually executed it.
 
 ## [1.18.0] - 2026-11-17
 
