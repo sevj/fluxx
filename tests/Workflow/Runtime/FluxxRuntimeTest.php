@@ -40,6 +40,8 @@ use Fluxx\Workflow\Progress\StepProgressStoreInterface;
 use Fluxx\Workflow\Report\ReportCarryingExceptionInterface;
 use Fluxx\Workflow\Report\Severity;
 use Fluxx\Workflow\Report\StepReport;
+use Fluxx\Workflow\Report\WorkflowReportConfiguration;
+use Fluxx\Workflow\Message\BuildRunReportMessage;
 use Fluxx\Workflow\Retry\WorkflowRetryBackoffStrategy;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
 use Fluxx\Workflow\Runtime\FluxxRuntime;
@@ -189,6 +191,7 @@ final class FluxxRuntimeTest extends TestCase
             idempotenceResolver: $idempotenceResolver,
             maxPayloadRecords: $this->maxPayloadRecords,
             stepProgressReporter: $this->stepProgressReporter,
+            messageBus: $this->messageBus,
         );
     }
 
@@ -386,6 +389,74 @@ final class FluxxRuntimeTest extends TestCase
 
         self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
         self::assertSame([], $result);
+    }
+
+    #[Test]
+    public function no_report_without_configuration(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->messageBus->expects(self::never())->method('dispatch');
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
+    }
+
+    #[Test]
+    public function a_completed_run_requests_its_report_once_its_status_is_committed(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->registryWithHandler(new StubResultStep(new WorkflowStepResult()), report: new WorkflowReportConfiguration());
+        $sequenceAtDispatch = null;
+        $this->messageBus->expects(self::once())
+            ->method('dispatch')
+            ->with(self::callback(static fn (object $message): bool => $message instanceof BuildRunReportMessage && $message->runId() === 'run-1'))
+            ->willReturnCallback(function (object $message) use (&$sequenceAtDispatch): Envelope {
+                $sequenceAtDispatch = $this->transactionSequence;
+
+                return new Envelope($message);
+            });
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
+        self::assertSame('commit', end($sequenceAtDispatch));
+    }
+
+    #[Test]
+    public function a_run_completed_with_warnings_requests_its_report(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = (new CheckReport())->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'));
+        $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)), report: new WorkflowReportConfiguration());
+        $this->messageBus->expects(self::once())
+            ->method('dispatch')
+            ->with(self::isInstanceOf(BuildRunReportMessage::class))
+            ->willReturnCallback(static fn (object $message): Envelope => new Envelope($message));
+
+        $this->runtime->runStep('run-1', 'verify');
+
+        self::assertSame(WorkflowRunStatus::CompletedWithWarnings, $workflowRun->status());
+    }
+
+    #[Test]
+    public function a_failed_run_requests_no_report(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = (new CheckReport())->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10'));
+        $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)), report: new WorkflowReportConfiguration());
+        $this->messageBus->expects(self::never())->method('dispatch');
+
+        try {
+            $this->runtime->runStep('run-1', 'verify');
+        } catch (WorkflowStepFailedException) {
+        }
+
+        self::assertSame(WorkflowRunStatus::Failed, $workflowRun->status());
     }
 
     #[Test]
@@ -1105,15 +1176,15 @@ final class FluxxRuntimeTest extends TestCase
         return new SynchronizationRegistry([$workflow]);
     }
 
-    private function registryWithHandler(ExecutableWorkflowStepInterface $handler, ?WorkflowRetryPolicy $retryPolicy = null, bool $withIdempotence = false, bool $transactional = true): void
+    private function registryWithHandler(ExecutableWorkflowStepInterface $handler, ?WorkflowRetryPolicy $retryPolicy = null, bool $withIdempotence = false, bool $transactional = true, ?WorkflowReportConfiguration $report = null): void
     {
         $workflow = $this->createMock(WorkflowInterface::class);
-        $workflow->method('definition')->willReturn($this->fixtureDefinition($handler, withIdempotence: $withIdempotence, retryPolicy: $retryPolicy, transactional: $transactional));
+        $workflow->method('definition')->willReturn($this->fixtureDefinition($handler, withIdempotence: $withIdempotence, retryPolicy: $retryPolicy, transactional: $transactional, report: $report));
 
         $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
     }
 
-    private function registryWithCheck(CheckStepInterface $handler, ?WorkflowRetryPolicy $retryPolicy = null): void
+    private function registryWithCheck(CheckStepInterface $handler, ?WorkflowRetryPolicy $retryPolicy = null, ?WorkflowReportConfiguration $report = null): void
     {
         $workflow = $this->createMock(WorkflowInterface::class);
         $workflow->method('definition')->willReturn(new WorkflowDefinition(
@@ -1122,6 +1193,7 @@ final class FluxxRuntimeTest extends TestCase
             sourceSystem: 'src',
             targetSystem: 'tgt',
             steps: [new WorkflowStepDefinition('verify', 'Verify', WorkflowStepType::Check, $handler, retryPolicy: $retryPolicy)],
+            report: $report,
         ));
 
         $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
@@ -1149,6 +1221,7 @@ final class FluxxRuntimeTest extends TestCase
         bool $withIdempotence = false,
         ?WorkflowRetryPolicy $retryPolicy = null,
         bool $transactional = true,
+        ?WorkflowReportConfiguration $report = null,
     ): WorkflowDefinition {
         $step = new WorkflowStepDefinition(
             code: 'fetch',
@@ -1167,6 +1240,7 @@ final class FluxxRuntimeTest extends TestCase
             sourceSystem: 'src',
             targetSystem: 'tgt',
             steps: [$step],
+            report: $report,
         );
     }
 

@@ -69,6 +69,19 @@ final readonly class StepReport
         return new self($this->objects, [...$this->anomalies, new Anomaly($title, $lines, $severity)]);
     }
 
+    public function objectStats(): ObjectStats
+    {
+        return $this->objects;
+    }
+
+    /**
+     * @return list<Anomaly>
+     */
+    public function anomalies(): array
+    {
+        return $this->anomalies;
+    }
+
     /**
      * @return array{v: int, kind: string, objects: array<string, mixed>, anomalies: list<array<string, mixed>>}
      */
@@ -109,6 +122,20 @@ final readonly class StepReport
             ObjectStats::fromArray($data['objects']),
             array_map(static fn (mixed $anomaly): Anomaly => Anomaly::fromArray(is_array($anomaly) ? $anomaly : throw new \InvalidArgumentException('Invalid anomaly.')), array_values($anomalies)),
         );
+    }
+
+    /**
+     * Reads a stored step run report: null when there is none or when it is not a step report.
+     *
+     * @param array<string, mixed>|null $data
+     */
+    public static function fromStored(?array $data): ?self
+    {
+        if ($data === null || ($data['kind'] ?? self::KIND) !== self::KIND) {
+            return null;
+        }
+
+        return self::fromArray($data);
     }
 
     /**

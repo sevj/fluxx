@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Workflow;
 
 use Fluxx\Workflow\Lock\WorkflowExecutionLockConfiguration;
+use Fluxx\Workflow\Report\WorkflowReportConfiguration;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
 use InvalidArgumentException;
 
@@ -28,6 +29,7 @@ final readonly class WorkflowDefinition
         private ?WorkflowRetryPolicy $retryPolicy = null,
         private ?string $description = null,
         private ?string $category = null,
+        private ?WorkflowReportConfiguration $report = null,
     ) {
         $stepMap = [];
 
@@ -126,6 +128,14 @@ final readonly class WorkflowDefinition
     public function category(): ?string
     {
         return $this->category;
+    }
+
+    /**
+     * Without it, no report is built for the runs of this workflow.
+     */
+    public function report(): ?WorkflowReportConfiguration
+    {
+        return $this->report;
     }
 
     /**

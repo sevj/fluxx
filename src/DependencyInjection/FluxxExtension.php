@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fluxx\DependencyInjection;
 
+use Fluxx\Workflow\Message\BuildRunReportMessage;
+use Fluxx\Workflow\Report\RunReportSectionInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
@@ -38,6 +40,8 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
             ]);
         }
 
+        $config = $this->resolveFluxxConfig($container);
+
         if ($container->hasExtension('framework')) {
             $container->prependExtensionConfig('framework', [
                 'translator' => [
@@ -45,10 +49,13 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
                         __DIR__ . '/../../translations',
                     ],
                 ],
+                'messenger' => [
+                    'routing' => [
+                        BuildRunReportMessage::class => $config['runtime']['transport_name'] ?? 'fluxx',
+                    ],
+                ],
             ]);
         }
-
-        $config = $this->resolveFluxxConfig($container);
 
         if (($config['security']['enabled'] ?? true) && $container->hasExtension('security')) {
             $container->prependExtensionConfig('security', [
@@ -85,6 +92,9 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('fluxx.runtime.defaults.max_payload_records', $config['runtime']['defaults']['max_payload_records']);
         $container->setParameter('fluxx.error_classification.enabled', $config['error_classification']['enabled']);
         $container->setParameter('fluxx.error_classification.business_exception_classes', $config['error_classification']['business_exception_classes']);
+
+        $container->registerForAutoconfiguration(RunReportSectionInterface::class)
+            ->addTag('fluxx.run_report_section');
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');

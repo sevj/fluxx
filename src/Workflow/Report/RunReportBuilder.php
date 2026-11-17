@@ -1,0 +1,405 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Fluxx\Workflow\Report;
+
+use DateTimeImmutable;
+use DateTimeInterface;
+use Fluxx\Entity\Enum\WorkflowRunStatus;
+use Fluxx\Entity\Enum\WorkflowStepRunStatus;
+use Fluxx\Entity\WorkflowRun;
+use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Repository\WorkflowStepRunLookupInterface;
+use Fluxx\Workflow\Check\CheckReport;
+use Fluxx\Workflow\SynchronizationRegistry;
+use Fluxx\Workflow\WorkflowDefinition;
+use Psr\Container\ContainerInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
+
+/**
+ * Builds the stored report of a completed run from its step runs. Content it cannot read is reported
+ * as such instead of failing the build.
+ */
+final readonly class RunReportBuilder
+{
+    public const FORMAT_VERSION = 1;
+    public const MAX_REJECTED_PER_OBJECT = 100;
+
+    public function __construct(
+        private SynchronizationRegistry $registry,
+        private WorkflowStepRunLookupInterface $stepRunLookup,
+        #[AutowireLocator('fluxx.run_report_section')]
+        private ContainerInterface $sections,
+    ) {
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws RunNotReportableException when the run did not complete
+     */
+    public function build(WorkflowRun $run): array
+    {
+        $stepRuns = $this->latestStepRunsByCode($run);
+        $status = $this->reportedStatus($run, $stepRuns);
+        $definition = $this->registry->has($run->workflowName()) ? $this->registry->get($run->workflowName())->definition() : null;
+        $criticalPath = $definition !== null ? CriticalPath::compute($definition, $stepRuns) : [];
+
+        $objects = [];
+        $anomalies = [];
+        $checks = [];
+        $unreadable = [];
+        $steps = [];
+
+        foreach ($stepRuns as $code => $stepRun) {
+            $source = $this->collectStepContent($stepRun, $objects, $anomalies, $checks, $unreadable);
+            $steps[] = $this->describeStep($definition, $stepRun, $source, in_array($code, $criticalPath, true));
+        }
+
+        $objects = array_values(array_map($this->finalizeObject(...), $objects));
+
+        return [
+            'format_version' => self::FORMAT_VERSION,
+            'summary' => $this->summarize($run, $definition, $status, $steps, $objects, $anomalies, $checks, $criticalPath, $stepRuns),
+            'objects' => $objects,
+            'steps' => $steps,
+            'critical_path' => $criticalPath,
+            'anomalies' => $anomalies,
+            'checks' => $checks,
+            'sections' => $this->buildSections($run, $definition),
+            'unreadable_step_reports' => $unreadable,
+        ];
+    }
+
+    /**
+     * Pruning payloads replaces the run status, so a pruned run is accepted when none of its steps
+     * failed or was cancelled, and its warning counter tells which completed status it had.
+     *
+     * @param array<string, WorkflowStepRun> $stepRuns
+     */
+    private function reportedStatus(WorkflowRun $run, array $stepRuns): WorkflowRunStatus
+    {
+        if ($run->status()->isCompleted()) {
+            return $run->status();
+        }
+
+        $interrupted = array_filter(
+            $stepRuns,
+            static fn (WorkflowStepRun $stepRun): bool => in_array($stepRun->status(), [WorkflowStepRunStatus::Failed, WorkflowStepRunStatus::Cancelled], true),
+        );
+
+        if ($run->status() === WorkflowRunStatus::PayloadsPruned && $stepRuns !== [] && $interrupted === []) {
+            return $run->warningCount() > 0 ? WorkflowRunStatus::CompletedWithWarnings : WorkflowRunStatus::Completed;
+        }
+
+        if ($run->status() === WorkflowRunStatus::PayloadsPruned) {
+            throw new RunNotReportableException(sprintf(
+                'Run "%s" did not complete (a step failed or was cancelled before its payloads were pruned): a report is only built for a completed run.',
+                $run->runId(),
+            ));
+        }
+
+        throw new RunNotReportableException(sprintf(
+            'Run "%s" has the status "%s": a report is only built for a completed run.',
+            $run->runId(),
+            $run->status()->value,
+        ));
+    }
+
+    /**
+     * @return array<string, WorkflowStepRun>
+     */
+    private function latestStepRunsByCode(WorkflowRun $run): array
+    {
+        $latest = [];
+
+        foreach ($this->stepRunLookup->findByWorkflowRunOrdered($run) as $stepRun) {
+            $latest[$stepRun->stepName()] = $stepRun;
+        }
+
+        return $latest;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $objects
+     * @param list<array<string, mixed>> $anomalies
+     * @param list<array<string, mixed>> $checks
+     * @param list<array{step: string, message: string}> $unreadable
+     * @return string where the step content came from: step, check, metadata, none or unreadable
+     */
+    private function collectStepContent(WorkflowStepRun $stepRun, array &$objects, array &$anomalies, array &$checks, array &$unreadable): string
+    {
+        $code = $stepRun->stepName();
+        $stored = $stepRun->report();
+
+        try {
+            $checkReport = CheckReport::fromStored($stored);
+            $stepReport = $checkReport === null ? StepReport::fromStored($stored) : null;
+
+            if ($stored !== null && $checkReport === null && $stepReport === null) {
+                throw new \InvalidArgumentException(sprintf('Unknown report kind "%s".', is_string($stored['kind'] ?? null) ? $stored['kind'] : get_debug_type($stored['kind'] ?? null)));
+            }
+        } catch (\InvalidArgumentException|\TypeError $exception) {
+            $unreadable[] = ['step' => $code, 'message' => $exception->getMessage()];
+
+            return 'unreadable';
+        }
+
+        if ($checkReport !== null) {
+            foreach ($checkReport->results() as $result) {
+                $checks[] = ['step' => $code] + $result->toArray();
+            }
+
+            return 'check';
+        }
+
+        if ($stepReport !== null) {
+            $this->addObjects($objects, $code, $stepReport->objectStats());
+
+            foreach ($stepReport->anomalies() as $anomaly) {
+                $anomalies[] = [
+                    'step' => $code,
+                    'object' => $stepReport->objectStats()->label,
+                    'title' => $anomaly->title,
+                    'severity' => $anomaly->severity->value,
+                    'lines' => array_filter($anomaly->lines, static fn (mixed $value): bool => is_int($value) || is_string($value)),
+                ];
+            }
+
+            return 'step';
+        }
+
+        $fallback = MetadataReportFallback::read($code, $stepRun->metadata());
+
+        if ($fallback === null) {
+            return 'none';
+        }
+
+        $this->addObjects($objects, $code, $fallback);
+
+        return 'metadata';
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $objects
+     */
+    private function addObjects(array &$objects, string $stepCode, ObjectStats $stats): void
+    {
+        $object = $objects[$stats->label] ?? [
+            'label' => $stats->label,
+            'read' => 0,
+            'created' => 0,
+            'updated' => 0,
+            'excluded' => [],
+            'rejected' => [],
+            'rejected_total' => 0,
+            'steps' => [],
+        ];
+
+        $object['read'] += $stats->read;
+        $object['created'] += $stats->created;
+        $object['updated'] += $stats->updated;
+
+        foreach ($stats->excluded as $reason => $count) {
+            if (is_int($count)) {
+                $object['excluded'][(string) $reason] = ($object['excluded'][(string) $reason] ?? 0) + $count;
+            }
+        }
+
+        foreach ($stats->rejected as $record) {
+            if (!is_array($record) || !is_string($record['message'] ?? null) || !(is_string($record['key'] ?? null) || is_int($record['key'] ?? null))) {
+                continue;
+            }
+
+            ++$object['rejected_total'];
+
+            if (count($object['rejected']) < self::MAX_REJECTED_PER_OBJECT) {
+                $object['rejected'][] = ['key' => (string) $record['key'], 'message' => $record['message'], 'step' => $stepCode];
+            }
+        }
+
+        if (!in_array($stepCode, $object['steps'], true)) {
+            $object['steps'][] = $stepCode;
+        }
+
+        $objects[$stats->label] = $object;
+    }
+
+    /**
+     * @param array<string, mixed> $object
+     * @return array<string, mixed>
+     */
+    private function finalizeObject(array $object): array
+    {
+        return [
+            'label' => $object['label'],
+            'read' => $object['read'],
+            'created' => $object['created'],
+            'updated' => $object['updated'],
+            'written' => $object['created'] + $object['updated'],
+            'excluded' => $object['excluded'],
+            'excluded_total' => array_sum($object['excluded']),
+            'rejected' => $object['rejected'],
+            'rejected_total' => $object['rejected_total'],
+            'steps' => $object['steps'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function describeStep(?WorkflowDefinition $definition, WorkflowStepRun $stepRun, string $source, bool $critical): array
+    {
+        $durationMs = $this->durationMs($stepRun);
+
+        return [
+            'code' => $stepRun->stepName(),
+            'name' => $this->stepName($definition, $stepRun->stepName()),
+            'type' => $stepRun->stepType(),
+            'status' => $stepRun->status()->value,
+            'started_at' => $stepRun->startedAt()?->format(DateTimeInterface::ATOM),
+            'finished_at' => $stepRun->finishedAt()?->format(DateTimeInterface::ATOM),
+            'duration_ms' => $durationMs,
+            'processed_count' => $stepRun->processedCount(),
+            'success_count' => $stepRun->successCount(),
+            'error_count' => $stepRun->errorCount(),
+            'memory_peak_bytes' => $stepRun->memoryPeakBytes(),
+            'throughput_per_second' => $durationMs !== null && $durationMs > 0
+                ? round($stepRun->processedCount() / ($durationMs / 1000), 2)
+                : null,
+            'report' => $source,
+            'critical' => $critical,
+        ];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $steps
+     * @param list<array<string, mixed>> $objects
+     * @param list<array<string, mixed>> $anomalies
+     * @param list<array<string, mixed>> $checks
+     * @param list<string> $criticalPath
+     * @param array<string, WorkflowStepRun> $stepRuns
+     * @return array<string, mixed>
+     */
+    private function summarize(
+        WorkflowRun $run,
+        ?WorkflowDefinition $definition,
+        WorkflowRunStatus $status,
+        array $steps,
+        array $objects,
+        array $anomalies,
+        array $checks,
+        array $criticalPath,
+        array $stepRuns,
+    ): array {
+        $sum = static fn (string $key): int => array_sum(array_column($objects, $key));
+        $countWhere = static fn (array $rows, string $key, string $value): int => count(array_filter($rows, static fn (array $row): bool => $row[$key] === $value));
+        $deviations = array_values(array_filter($checks, static fn (array $check): bool => $check['outcome'] === 'deviation'));
+
+        return [
+            'run_id' => $run->runId(),
+            'workflow_code' => $run->workflowName(),
+            'workflow_name' => $definition?->name() ?? $run->workflowName(),
+            'trigger' => $run->trigger(),
+            'status' => $status->value,
+            'started_at' => $run->startedAt()?->format(DateTimeInterface::ATOM),
+            'finished_at' => $run->finishedAt()?->format(DateTimeInterface::ATOM),
+            'duration_ms' => $this->between($run->startedAt(), $run->finishedAt()),
+            'warning_count' => $run->warningCount(),
+            'step_count' => count($steps),
+            'objects' => [
+                'read' => $sum('read'),
+                'created' => $sum('created'),
+                'updated' => $sum('updated'),
+                'written' => $sum('written'),
+                'excluded' => $sum('excluded_total'),
+                'rejected' => $sum('rejected_total'),
+            ],
+            'anomalies' => [
+                'total' => count($anomalies),
+                'blocking' => $countWhere($anomalies, 'severity', Severity::Blocking->value),
+                'warning' => $countWhere($anomalies, 'severity', Severity::Warning->value),
+            ],
+            'checks' => [
+                'total' => count($checks),
+                'deviations' => count($deviations),
+                'blocking_deviations' => $countWhere($deviations, 'severity', Severity::Blocking->value),
+                'warning_deviations' => $countWhere($deviations, 'severity', Severity::Warning->value),
+            ],
+            'longest_step' => $this->stepWithHighest($steps, 'duration_ms'),
+            'memory_peak_step' => $this->stepWithHighest($steps, 'memory_peak_bytes'),
+            'critical_path_ms' => $criticalPath === [] ? null : $this->between(
+                $stepRuns[$criticalPath[0]]->startedAt(),
+                $stepRuns[$criticalPath[array_key_last($criticalPath)]]->finishedAt(),
+            ),
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function buildSections(WorkflowRun $run, ?WorkflowDefinition $definition): array
+    {
+        $sections = [];
+
+        foreach ($definition?->report()?->sections() ?? [] as $class) {
+            $title = substr(strrchr('\\' . $class, '\\'), 1);
+
+            if (!$this->sections->has($class)) {
+                $sections[] = ReportSection::unavailable($title, sprintf('The section service "%s" is not registered.', $class))->toArray();
+
+                continue;
+            }
+
+            try {
+                $sections[] = $this->sections->get($class)->build($run)->toArray();
+            } catch (\Throwable $exception) {
+                $sections[] = ReportSection::unavailable($title, $exception->getMessage())->toArray();
+            }
+        }
+
+        return $sections;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $steps
+     */
+    private function stepWithHighest(array $steps, string $key): ?string
+    {
+        $best = null;
+
+        foreach ($steps as $step) {
+            if ($step[$key] !== null && ($best === null || $step[$key] > $best[$key])) {
+                $best = $step;
+            }
+        }
+
+        return $best['code'] ?? null;
+    }
+
+    private function durationMs(WorkflowStepRun $stepRun): ?int
+    {
+        return $stepRun->durationMs() ?? $this->between($stepRun->startedAt(), $stepRun->finishedAt());
+    }
+
+    private function between(?DateTimeImmutable $start, ?DateTimeImmutable $end): ?int
+    {
+        if ($start === null || $end === null) {
+            return null;
+        }
+
+        return max(0, (int) $end->format('Uv') - (int) $start->format('Uv'));
+    }
+
+    private function stepName(?WorkflowDefinition $definition, string $code): string
+    {
+        foreach ($definition?->steps() ?? [] as $step) {
+            if ($step->code() === $code) {
+                return $step->name();
+            }
+        }
+
+        return $code;
+    }
+}

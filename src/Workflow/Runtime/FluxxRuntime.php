@@ -22,6 +22,7 @@ use Fluxx\Workflow\Error\BusinessWorkflowException;
 use Fluxx\Workflow\Error\WorkflowDeferralInterface;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
+use Fluxx\Workflow\Message\BuildRunReportMessage;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
 use Fluxx\Workflow\Report\ReportCarryingExceptionInterface;
 use Fluxx\Workflow\Result\WorkflowStepResult;
@@ -32,6 +33,7 @@ use Fluxx\Workflow\Progress\StepProgressReporter;
 use Fluxx\Workflow\Step\WorkflowStepInput;
 use Fluxx\Workflow\Step\WorkflowStepInputPayload;
 use RuntimeException;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Throwable;
 
 final class FluxxRuntime
@@ -54,6 +56,7 @@ final class FluxxRuntime
         private WorkflowIdempotenceResolver $idempotenceResolver,
         private int $maxPayloadRecords = 1000,
         private ?StepProgressReporter $stepProgressReporter = null,
+        private ?MessageBusInterface $messageBus = null,
     ) {
     }
 
@@ -217,9 +220,13 @@ final class FluxxRuntime
                 return [];
             }
 
-            $this->finalizeWorkflowRunState($workflowRun, $definition);
+            $completed = $this->finalizeWorkflowRunState($workflowRun, $definition);
             $this->entityManager->flush();
             $this->entityManager->commit();
+
+            if ($completed) {
+                $this->requestReport($workflowRun, $definition);
+            }
 
             return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
         } catch (Throwable $throwable) {
@@ -318,13 +325,18 @@ final class FluxxRuntime
         $this->entityManager->beginTransaction();
 
         $completed = $this->idempotenceResolver->tryCompleteFromHit($workflowRun, $stepDefinition, $stepRun, $context, $input, $stepStartedAt);
+        $runCompleted = false;
 
         if ($completed) {
-            $this->finalizeWorkflowRunState($workflowRun, $definition);
+            $runCompleted = $this->finalizeWorkflowRunState($workflowRun, $definition);
             $this->entityManager->flush();
         }
 
         $this->entityManager->commit();
+
+        if ($runCompleted) {
+            $this->requestReport($workflowRun, $definition);
+        }
 
         return $completed;
     }
@@ -661,16 +673,30 @@ final class FluxxRuntime
     }
 
     /**
+     * Requested once the final status is committed, so the report reads it and a failed build
+     * cannot touch the run.
+     */
+    private function requestReport(WorkflowRun $workflowRun, WorkflowDefinition $definition): void
+    {
+        if ($definition->report() === null || $this->messageBus === null) {
+            return;
+        }
+
+        $this->messageBus->dispatch(new BuildRunReportMessage($workflowRun->runId()));
+    }
+
+    /**
      * @param array<string, mixed>|null $errorPayload
+     * @return bool whether the run has just completed, with or without warnings
      */
     private function finalizeWorkflowRunState(
         WorkflowRun $workflowRun,
         WorkflowDefinition $definition,
         ?string $errorMessage = null,
         ?array $errorPayload = null,
-    ): void {
+    ): bool {
         if ($this->cancellationSynchronizer->synchronizeIfNeeded($workflowRun)) {
-            return;
+            return false;
         }
 
         if (in_array($workflowRun->status(), [
@@ -680,7 +706,7 @@ final class FluxxRuntime
             WorkflowRunStatus::PartiallyFailed,
             WorkflowRunStatus::Cancelled,
         ], true)) {
-            return;
+            return false;
         }
 
         $latestStepRunsByCode = $this->latestStepRunsByCode($workflowRun);
@@ -694,28 +720,28 @@ final class FluxxRuntime
             if ($stepRun->status() === WorkflowStepRunStatus::Retrying) {
                 $workflowRun->markRetrying();
 
-                return;
+                return false;
             }
         }
 
         if ($decision === null) {
             $workflowRun->markRunning();
 
-            return;
+            return false;
         }
 
         if ($decision === WorkflowRunStatus::Completed) {
             $workflowRun->markCompleted();
             $this->workflowExecutionLockManager->releaseForRun($workflowRun, 'completed');
 
-            return;
+            return true;
         }
 
         if ($decision === WorkflowRunStatus::CompletedWithWarnings) {
             $workflowRun->markCompletedWithWarnings();
             $this->workflowExecutionLockManager->releaseForRun($workflowRun, 'completed_with_warnings');
 
-            return;
+            return true;
         }
 
         $resolvedFailure = $this->resolveFailureDetails($latestStepRunsByCode);
@@ -726,11 +752,13 @@ final class FluxxRuntime
             $workflowRun->markPartiallyFailed($message, errorPayload: $payload);
             $this->workflowExecutionLockManager->releaseForRun($workflowRun, 'partially_failed');
 
-            return;
+            return false;
         }
 
         $workflowRun->markFailed($message, errorPayload: $payload);
         $this->workflowExecutionLockManager->releaseForRun($workflowRun, 'failed');
+
+        return false;
     }
 
     /**
