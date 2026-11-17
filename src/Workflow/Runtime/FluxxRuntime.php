@@ -720,7 +720,13 @@ final class FluxxRuntime
             return false;
         }
 
-        $latestStepRunsByCode = $this->latestStepRunsByCode($workflowRun);
+        $this->entityManager->flush();
+
+        $latestStepRunsByCode = [];
+        foreach ($this->workflowStepRunRepository->lockRunAndFindStepRunsOrdered($workflowRun) as $stepRun) {
+            $latestStepRunsByCode[$stepRun->stepName()] = $stepRun;
+        }
+
         $decision = $this->workflowRunCompletionDecider->decide(
             $definition,
             $latestStepRunsByCode,

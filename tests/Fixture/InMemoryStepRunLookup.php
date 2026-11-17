@@ -42,6 +42,11 @@ final class InMemoryStepRunLookup implements WorkflowStepRunLookupInterface
         return $matching;
     }
 
+    public function lockRunAndFindStepRunsOrdered(WorkflowRun $workflowRun): array
+    {
+        return $this->findByWorkflowRunOrdered($workflowRun);
+    }
+
     public function findLatestByWorkflowRunAndStepName(WorkflowRun $workflowRun, string $stepName): ?WorkflowStepRun
     {
         $latest = null;

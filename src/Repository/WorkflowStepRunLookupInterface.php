@@ -14,6 +14,15 @@ interface WorkflowStepRunLookupInterface
      */
     public function findByWorkflowRunOrdered(WorkflowRun $workflowRun): array;
 
+    /**
+     * Locks the run row until the current transaction ends, then returns the step runs as
+     * stored, refreshing the ones already loaded: workers finalizing the same run take turns
+     * and each one decides from what the others committed.
+     *
+     * @return list<WorkflowStepRun>
+     */
+    public function lockRunAndFindStepRunsOrdered(WorkflowRun $workflowRun): array;
+
     public function findLatestByWorkflowRunAndStepName(WorkflowRun $workflowRun, string $stepName): ?WorkflowStepRun;
 
     /**

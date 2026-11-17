@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Fluxx\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
+use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
@@ -33,6 +35,27 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
             ->orderBy('workflow_step_run.position', SortDirection::Ascending)
             ->addOrderBy('workflow_step_run.id', SortDirection::Ascending)
             ->getQuery()
+            ->getResult();
+    }
+
+    public function lockRunAndFindStepRunsOrdered(WorkflowRun $workflowRun): array
+    {
+        $connection = $this->getEntityManager()->getConnection();
+
+        if ($workflowRun->id() !== null && !$connection->getDatabasePlatform() instanceof SQLitePlatform) {
+            $connection->executeQuery(
+                'SELECT id FROM fluxx_workflow_run WHERE id = :id FOR UPDATE',
+                ['id' => $workflowRun->id()],
+            )->fetchOne();
+        }
+
+        return $this->createQueryBuilder('workflow_step_run')
+            ->andWhere('workflow_step_run.workflowRun = :workflowRun')
+            ->setParameter('workflowRun', $workflowRun)
+            ->orderBy('workflow_step_run.position', SortDirection::Ascending)
+            ->addOrderBy('workflow_step_run.id', SortDirection::Ascending)
+            ->getQuery()
+            ->setHint(Query::HINT_REFRESH, true)
             ->getResult();
     }
 
