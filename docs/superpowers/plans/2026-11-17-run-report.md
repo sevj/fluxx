@@ -118,8 +118,23 @@
 - [ ] **Step 2: Run** — FAIL. **Step 3: Implement** selon la maquette (en-tête, 5 indicateurs, tableau des objets, frise via `RunTimeline` + chemin critique, 3 encarts, anomalies dépliables, contrôles, sections). **Step 4: Run** — PASS.
 - [ ] **Step 5: Commit** `Show the run report in the back office`.
 
+### Task 7: Finaliser un run qu'une branche en échec bloque
+
+**Contexte (preuve réelle) :** runs 363 et 367 d'`efficy_sync` (base `sipperec` du connecteur, lecture seule) : `hubspot_contact_write` `failed` à 17:19:13, `hubspot_fonction_write` `completed` à 17:20:15 ; le run est resté `running` sans plus aucun step actif jusqu'à `fluxx:runtime:self-heal`. `WorkflowRunCompletionDecider::decide()` renvoie `null` tant qu'un step est `running`/`runnable`/`waiting` ; un step dont une dépendance a échoué est `blocked`.
+
+**Files:** à déterminer par l'enquête — `src/Workflow/Runtime/WorkflowRunCompletionDecider.php`, `src/Workflow/Runtime/FluxxRuntime.php` (finalisation, `completionStepCodes`), tests `tests/Workflow/Runtime/*`.
+
+- [ ] **Step 1: Reproduire.** Charger en lecture seule les step runs du run 367 (`docker compose exec -T bdd psql -U app -d sipperec` depuis `/home/sevj/Projects/connector-sipperec`) et la définition `efficy_sync` (`src/Service/Workflow/Efficy/EfficySyncWorkflow.php` du connecteur) ; identifier quel step le décideur considère `running`/`runnable`/`waiting` et pourquoi (step jamais dispatché ? `completionStepCodes` ? ordre des finalisations entre deux workers ?). Écrire le test qui reproduit la topologie et l'enchaînement (une branche échoue pendant qu'une autre tourne encore, puis l'autre termine) — FAIL.
+- [ ] **Step 2: Corriger** pour que le run passe `partially_failed` (ou `failed`) dès qu'aucun step ne peut plus s'exécuter, quel que soit l'ordre d'arrivée des fins de steps entre workers. **Step 3:** suite complète verte. **Step 4: Commit** `Finalize runs blocked by a failed branch`.
+
+### Task 8: Commande d'annulation
+
+**Files:** Create `src/Command/CancelWorkflowRunCommand.php` (`fluxx:run:cancel <run-id> [--reason=] [--operator=]`, réutilise `WorkflowCancellationService::cancel($runId, 'cli', $reason, $operator)`, comme `WorkflowRunCancelController`), tests `tests/Command/*`, README (commandes).
+
+- [ ] **Step 1: Failing tests** — `cancels_an_active_run` (statut `cancelled`, verrou libéré) ; `refuses_a_finished_run` (code retour échec, message clair). **Step 2: Implement.** **Step 3:** suite verte. **Step 4: Commit** `Add a command to cancel a run`.
+
 ### Task 6: Documentation et version
 
-**Files:** `README.md` (déclarer un rapport, `StepReport`, Checks, statut avec avertissements, `fluxx:run:report`, montée de version SQL), `CHANGELOG.md` (`[1.19.0]`), `migrations/upgrade-1.19.0-postgresql.sql` relu en entier.
+**Files:** `README.md` (`fluxx:run:cancel`, finalisation des runs bloqués, déclarer un rapport, `StepReport`, Checks, statut avec avertissements, `fluxx:run:report`, montée de version SQL), `CHANGELOG.md` (`[1.19.0]`), `migrations/upgrade-1.19.0-postgresql.sql` relu en entier.
 
 - [ ] **Step 1:** Rédiger. **Step 2:** Suite complète verte. **Step 3: Commit** `Document run reports and check steps`.
