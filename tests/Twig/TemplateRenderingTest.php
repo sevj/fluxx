@@ -234,6 +234,8 @@ final class TemplateRenderingTest extends TestCase
         self::assertStringContainsString('Run report', $report);
         self::assertSame(5 + 3, substr_count($report, 'statistics-summary-label'), 'five indicators and three performance cards');
         self::assertStringContainsString('Unresolved owners', $report);
+        self::assertStringContainsString('Contacts ↔ Companies', $report);
+        self::assertStringContainsString('6 900', $report);
         self::assertStringContainsString('&lt;b&gt;x&lt;/b&gt;', $report);
         self::assertStringNotContainsString('<b>x</b>', $report);
         self::assertStringContainsString('Companies present', $report);

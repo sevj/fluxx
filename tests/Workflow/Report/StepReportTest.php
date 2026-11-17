@@ -12,6 +12,46 @@ use PHPUnit\Framework\TestCase;
 final class StepReportTest extends TestCase
 {
     #[Test]
+    public function links_round_trip_with_their_removed_count(): void
+    {
+        $report = StepReport::links('Contacts ↔ Companies')->read(12)->created(10)->removed(2)->excluded('Unknown company', 1);
+
+        $array = $report->toArray();
+
+        self::assertTrue($array['objects']['link']);
+        self::assertSame(2, $array['objects']['removed']);
+        self::assertEquals($report, StepReport::fromArray($array));
+    }
+
+    #[Test]
+    public function a_step_report_stored_before_links_reads_as_objects(): void
+    {
+        $array = StepReport::objects('Contacts')->created(1)->toArray();
+        unset($array['objects']['link'], $array['objects']['removed']);
+
+        $stats = StepReport::fromArray($array)->objectStats();
+
+        self::assertFalse($stats->link);
+        self::assertSame(0, $stats->removed);
+    }
+
+    #[Test]
+    public function only_links_can_be_removed(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        StepReport::objects('Contacts')->removed(1);
+    }
+
+    #[Test]
+    public function links_cannot_be_updated(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        StepReport::links('Contacts ↔ Companies')->updated(1);
+    }
+
+    #[Test]
     public function step_report_round_trips(): void
     {
         $report = StepReport::objects('Contacts')

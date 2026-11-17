@@ -20,6 +20,7 @@ final readonly class RunReportView
     /**
      * @param list<array{label: string, value: string, hint: ?string, hintParameters: array<string, string>, tone: ?string}> $kpis
      * @param list<array{label: string, read: string, excluded: string, written: string, created: string, rejected: string, duration: string, rate: ?string}> $objects
+     * @param list<array{label: string, read: string, excluded: string, written: string, removed: string, rejected: string, duration: string, rate: ?string}> $links
      * @param list<array{step: RunTimelineStepView, critical: bool, preserved: bool, duration: string, rate: ?string}> $timelineRows
      * @param list<array{name: string, duration: string}> $criticalPath
      * @param array{code: string, name: string, duration: string, processed: string, rate: ?string}|null $longestStep
@@ -39,6 +40,7 @@ final readonly class RunReportView
         public DateTimeImmutable $builtAt,
         public array $kpis,
         public array $objects,
+        public array $links,
         public bool $hasTiming,
         public array $timelineRows,
         public int $shortStepCount,
@@ -80,6 +82,7 @@ final readonly class RunReportView
         }
 
         $objects = self::rows($content, 'objects');
+        $links = self::rows($content, 'links');
         [$timelineRows, $shortStepCount, $shortPreservedCount] = self::timelineRows($timeline, $steps, self::stringList($content['critical_path'] ?? null));
 
         return new self(
@@ -90,8 +93,9 @@ final readonly class RunReportView
             startedAt: self::date($summary, 'started_at'),
             finishedAt: self::date($summary, 'finished_at'),
             builtAt: $report->builtAt(),
-            kpis: self::kpis($summary, $objects),
+            kpis: self::kpis($summary, $objects, $links),
             objects: array_map(static fn (array $object): array => self::objectRow($object, $steps), $objects),
+            links: array_map(static fn (array $link): array => self::linkRow($link, $steps), $links),
             hasTiming: $timeline->hasTiming(),
             timelineRows: $timelineRows,
             shortStepCount: $shortStepCount,
@@ -107,7 +111,7 @@ final readonly class RunReportView
             criticalPathShare: self::share(self::int($summary, 'critical_path_ms'), self::int($summary, 'duration_ms')),
             longestStep: self::longestStep($steps[self::string($summary, 'longest_step') ?? ''] ?? null),
             memoryPeak: self::memoryPeak($steps[self::string($summary, 'memory_peak_step') ?? ''] ?? null),
-            anomalies: [...self::declaredAnomalies($content), ...self::exclusions($objects), ...self::rejections($objects)],
+            anomalies: [...self::declaredAnomalies($content), ...self::exclusions([...$objects, ...$links]), ...self::rejections([...$objects, ...$links])],
             unreadableStepReports: array_values(array_map(
                 static fn (array $row): array => ['step' => self::string($row, 'step') ?? self::ABSENT, 'message' => self::string($row, 'message') ?? ''],
                 self::rows($content, 'unreadable_step_reports'),
@@ -120,10 +124,12 @@ final readonly class RunReportView
     /**
      * @param array<string, mixed> $summary
      * @param list<array<string, mixed>> $objects
+     * @param list<array<string, mixed>> $links
      * @return list<array{label: string, value: string, hint: ?string, hintParameters: array<string, string>, tone: ?string}>
      */
-    private static function kpis(array $summary, array $objects): array
+    private static function kpis(array $summary, array $objects, array $links): array
     {
+        $linkTotals = is_array($summary['links'] ?? null) && $links !== [] ? $summary['links'] : [];
         $totals = is_array($summary['objects'] ?? null) && $objects !== [] ? $summary['objects'] : [];
         $rejected = self::int($totals, 'rejected');
         $reasons = [];
@@ -157,9 +163,12 @@ final readonly class RunReportView
             ],
             [
                 'label' => 'run_report.kpi.links',
-                'value' => self::ABSENT,
-                'hint' => 'run_report.kpi.links_hint',
-                'hintParameters' => [],
+                'value' => self::number(self::int($linkTotals, 'written')),
+                'hint' => $links === [] ? 'run_report.kpi.links_absent_hint' : 'run_report.kpi.links_hint',
+                'hintParameters' => $links === [] ? [] : [
+                    '%count%' => self::number(count($links)),
+                    '%removed%' => self::number(self::int($linkTotals, 'removed')),
+                ],
                 'tone' => null,
             ],
             [
@@ -207,6 +216,27 @@ final readonly class RunReportView
             'rejected' => self::number(self::int($object, 'rejected_total')),
             'duration' => self::duration($durationMs),
             'rate' => $written !== null && $written > 0 && $durationMs !== null && $durationMs > 0 ? self::rate($written / ($durationMs / 1000)) : null,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $link
+     * @param array<string, array<string, mixed>> $steps
+     * @return array{label: string, read: string, excluded: string, written: string, removed: string, rejected: string, duration: string, rate: ?string}
+     */
+    private static function linkRow(array $link, array $steps): array
+    {
+        $row = self::objectRow($link, $steps);
+
+        return [
+            'label' => $row['label'],
+            'read' => $row['read'],
+            'excluded' => $row['excluded'],
+            'written' => $row['written'],
+            'removed' => self::number(self::int($link, 'removed')),
+            'rejected' => $row['rejected'],
+            'duration' => $row['duration'],
+            'rate' => $row['rate'],
         ];
     }
 

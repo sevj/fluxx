@@ -396,7 +396,8 @@ run_report:
         written: Objects written
         written_hint: '%count% object type(s)'
         links: Links
-        links_hint: No object is declared as a link
+        links_hint: '%count% link type(s), %removed% removed'
+        links_absent_hint: No step declared links
         rejected: Rejected
         rejected_hint: Records refused by the target
         excluded: Excluded
@@ -414,6 +415,18 @@ run_report:
         duration: Steps duration
         rate: Throughput
         note: 'Duration and throughput cover the steps that contributed to the object. "—" marks data the steps do not publish.'
+    links:
+        title: Links
+        subtitle: Associations declared by the steps, apart from the objects they join.
+        link: Link
+        read: Read
+        excluded: Excluded
+        written: Written
+        removed: Removed
+        rejected: Rejected
+        duration: Steps duration
+        rate: Throughput
+        note: 'Written counts the links sent, whether they existed or not. Duration and throughput cover the steps that declared the link.'
     performance:
         title: Performance
         subtitle: Steps lasting a minute or more over the run duration.

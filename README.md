@@ -273,6 +273,8 @@ new WorkflowDefinition(
 
 - A step describes what it did through `WorkflowStepResult::$report`:
   `StepReport::objects('Contacts')->created(20)->updated(29095)->excluded('Ended before 2018', 8)->rejected($rejected)->anomaly('Unresolved owners', ['K_USER 2' => 2781])`.
+  Associations are declared with `StepReport::links('Contacts ↔ Companies')->created(120)->removed(3)`:
+  they get their own *Links* block and indicator, apart from the objects.
   Steps without one are read from the metadata keys `created`, `updated`, `excluded`
   (reason => count) and `rejected_records` (`{key|efficy_key, message}`).
 - A section is a service implementing `RunReportSectionInterface` (autoconfigured) that returns a
@@ -319,7 +321,7 @@ The public API is the contract host applications integrate against. It consists 
   - `ReadStepInterface`, `WriteStepInterface`, `SplitterStepInterface`,
     `TransformStepInterface`, `LinkerStepInterface`, `IdempotentWorkflowStepInterface`
 - The enums `Fluxx\Entity\Enum\WorkflowRunStatus` and `Fluxx\Entity\Enum\WorkflowStepType`.
-- Run reports: `Fluxx\Workflow\Report\WorkflowReportConfiguration`, `StepReport`, `Severity`,
+- Run reports: `Fluxx\Workflow\Report\WorkflowReportConfiguration`, `StepReport` (objects and links), `Severity`,
   `RunReportSectionInterface` and `ReportSection`; checks: `Fluxx\Workflow\Check\CheckStepInterface`,
   `CheckReport`, `CheckResult` and `CheckOutcome`.
 

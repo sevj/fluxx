@@ -28,6 +28,15 @@ final readonly class StepReport
         return new self(new ObjectStats($label));
     }
 
+    /**
+     * Associations between objects, reported apart from the objects: created() counts the links
+     * written, removed() the ones taken off.
+     */
+    public static function links(string $label): self
+    {
+        return new self(new ObjectStats($label, link: true));
+    }
+
     public function read(int $count): self
     {
         return $this->withObjects(read: $count);
@@ -40,7 +49,20 @@ final readonly class StepReport
 
     public function updated(int $count): self
     {
+        if ($this->objects->link) {
+            throw new \LogicException('Links are created or removed, not updated.');
+        }
+
         return $this->withObjects(updated: $count);
+    }
+
+    public function removed(int $count): self
+    {
+        if (!$this->objects->link) {
+            throw new \LogicException('Only links can be removed: declare them with StepReport::links().');
+        }
+
+        return $this->withObjects(removed: $count);
     }
 
     public function excluded(string $reason, int $count): self
@@ -142,7 +164,7 @@ final readonly class StepReport
      * @param array<string, int>|null $excluded
      * @param list<array{key: string, message: string}>|null $rejected
      */
-    private function withObjects(?int $read = null, ?int $created = null, ?int $updated = null, ?array $excluded = null, ?array $rejected = null): self
+    private function withObjects(?int $read = null, ?int $created = null, ?int $updated = null, ?array $excluded = null, ?array $rejected = null, ?int $removed = null): self
     {
         return new self(
             new ObjectStats(
@@ -152,6 +174,8 @@ final readonly class StepReport
                 $updated ?? $this->objects->updated,
                 $excluded ?? $this->objects->excluded,
                 $rejected ?? $this->objects->rejected,
+                $this->objects->link,
+                $removed ?? $this->objects->removed,
             ),
             $this->anomalies,
         );

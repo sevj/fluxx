@@ -94,12 +94,14 @@ final readonly class RunReportBuilder
             $steps[] = $this->describeStep($definition, $stepRun, $source, in_array($code, $criticalPath, true));
         }
 
-        $objects = array_values(array_map($this->finalizeObject(...), $objects));
+        $links = array_values(array_map($this->finalizeLink(...), array_filter($objects, static fn (array $object): bool => $object['link'])));
+        $objects = array_values(array_map($this->finalizeObject(...), array_filter($objects, static fn (array $object): bool => !$object['link'])));
 
         return [
             'format_version' => self::FORMAT_VERSION,
-            'summary' => $this->summarize($run, $definition, $status, $steps, $objects, $anomalies, $checks, $criticalPath, $stepRuns),
+            'summary' => $this->summarize($run, $definition, $status, $steps, $objects, $links, $anomalies, $checks, $criticalPath, $stepRuns),
             'objects' => $objects,
+            'links' => $links,
             'steps' => $steps,
             'critical_path' => $criticalPath,
             'anomalies' => $anomalies,
@@ -248,8 +250,11 @@ final readonly class RunReportBuilder
      */
     private function addObjects(array &$objects, string $stepCode, ObjectStats $stats): void
     {
-        $object = $objects[$stats->label] ?? [
+        $key = ($stats->link ? 'link:' : 'object:') . $stats->label;
+        $object = $objects[$key] ?? [
             'label' => $stats->label,
+            'link' => $stats->link,
+            'removed' => 0,
             'read' => 0,
             'created' => 0,
             'updated' => 0,
@@ -262,6 +267,7 @@ final readonly class RunReportBuilder
         $object['read'] += $stats->read;
         $object['created'] += $stats->created;
         $object['updated'] += $stats->updated;
+        $object['removed'] += $stats->removed;
 
         foreach ($stats->excluded as $reason => $count) {
             if (is_int($count)) {
@@ -285,7 +291,7 @@ final readonly class RunReportBuilder
             $object['steps'][] = $stepCode;
         }
 
-        $objects[$stats->label] = $object;
+        $objects[$key] = $object;
     }
 
     /**
@@ -305,6 +311,25 @@ final readonly class RunReportBuilder
             'rejected' => $object['rejected'],
             'rejected_total' => $object['rejected_total'],
             'steps' => $object['steps'],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $link
+     * @return array<string, mixed>
+     */
+    private function finalizeLink(array $link): array
+    {
+        return [
+            'label' => $link['label'],
+            'read' => $link['read'],
+            'written' => $link['created'],
+            'removed' => $link['removed'],
+            'excluded' => $link['excluded'],
+            'excluded_total' => array_sum($link['excluded']),
+            'rejected' => $link['rejected'],
+            'rejected_total' => $link['rejected_total'],
+            'steps' => $link['steps'],
         ];
     }
 
@@ -339,6 +364,7 @@ final readonly class RunReportBuilder
     /**
      * @param list<array<string, mixed>> $steps
      * @param list<array<string, mixed>> $objects
+     * @param list<array<string, mixed>> $links
      * @param list<array<string, mixed>> $anomalies
      * @param list<array<string, mixed>> $checks
      * @param list<string> $criticalPath
@@ -351,12 +377,14 @@ final readonly class RunReportBuilder
         WorkflowRunStatus $status,
         array $steps,
         array $objects,
+        array $links,
         array $anomalies,
         array $checks,
         array $criticalPath,
         array $stepRuns,
     ): array {
         $sum = static fn (string $key): int => array_sum(array_column($objects, $key));
+        $sumLinks = static fn (string $key): int => array_sum(array_column($links, $key));
         $countWhere = static fn (array $rows, string $key, string $value): int => count(array_filter($rows, static fn (array $row): bool => $row[$key] === $value));
         $deviations = array_values(array_filter($checks, static fn (array $check): bool => $check['outcome'] === 'deviation'));
 
@@ -378,6 +406,13 @@ final readonly class RunReportBuilder
                 'written' => $sum('written'),
                 'excluded' => $sum('excluded_total'),
                 'rejected' => $sum('rejected_total'),
+            ],
+            'links' => [
+                'types' => count($links),
+                'written' => $sumLinks('written'),
+                'removed' => $sumLinks('removed'),
+                'excluded' => $sumLinks('excluded_total'),
+                'rejected' => $sumLinks('rejected_total'),
             ],
             'anomalies' => [
                 'total' => count($anomalies),

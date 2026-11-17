@@ -189,6 +189,37 @@ final class RunReportBuilderTest extends TestCase
     }
 
     #[Test]
+    public function links_are_reported_apart_from_objects_even_under_the_same_label(): void
+    {
+        $run = $this->workflowRun(WorkflowRunStatus::Completed);
+        $this->stepRun($run, 'write', 'write_companies', 1, '00:00', '00:10')->replaceReport(StepReport::objects('Companies')->created(3)->toArray());
+        $this->stepRun($run, 'linker', 'link_companies', 2, '00:10', '00:20')->replaceReport(
+            StepReport::links('Companies')->read(9)->created(7)->removed(2)->excluded('Unknown target', 1)
+                ->rejected([['key' => 'l-1', 'message' => 'Label refused']])->toArray(),
+        );
+        $this->stepRun($run, 'linker', 'link_companies_bis', 3, '00:20', '00:30')->replaceReport(StepReport::links('Companies')->created(1)->toArray());
+
+        $report = $this->builder()->build($run);
+
+        self::assertSame(['Companies'], array_column($report['objects'], 'label'));
+        self::assertSame(3, $report['objects'][0]['written']);
+        self::assertSame([[
+            'label' => 'Companies',
+            'read' => 9,
+            'written' => 8,
+            'removed' => 2,
+            'excluded' => ['Unknown target' => 1],
+            'excluded_total' => 1,
+            'rejected' => [['key' => 'l-1', 'message' => 'Label refused', 'step' => 'link_companies']],
+            'rejected_total' => 1,
+            'steps' => ['link_companies', 'link_companies_bis'],
+        ]], $report['links']);
+        self::assertSame(['types' => 1, 'written' => 8, 'removed' => 2, 'excluded' => 1, 'rejected' => 1], $report['summary']['links']);
+        self::assertSame(3, $report['summary']['objects']['written']);
+        self::assertSame(0, $report['summary']['objects']['rejected']);
+    }
+
+    #[Test]
     public function rejected_objects_are_capped_but_counted(): void
     {
         $run = $this->workflowRun(WorkflowRunStatus::Completed);

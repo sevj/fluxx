@@ -396,7 +396,8 @@ run_report:
         written: Objets écrits
         written_hint: '%count% type(s) d''objet'
         links: Liens
-        links_hint: Aucun objet n'est déclaré comme lien
+        links_hint: '%count% type(s) de lien, %removed% retiré(s)'
+        links_absent_hint: Aucune étape n'a déclaré de liens
         rejected: Refusés
         rejected_hint: Fiches refusées par la cible
         excluded: Exclus
@@ -414,6 +415,18 @@ run_report:
         duration: Durée des étapes
         rate: Débit
         note: 'Durée et débit portent sur les étapes qui ont alimenté l''objet. « — » : donnée que les étapes ne publient pas.'
+    links:
+        title: Liens
+        subtitle: Associations déclarées par les étapes, à part des objets qu'elles relient.
+        link: Lien
+        read: Lus
+        excluded: Exclus
+        written: Écrits
+        removed: Retirés
+        rejected: Refusés
+        duration: Durée des étapes
+        rate: Débit
+        note: 'Écrits compte les liens envoyés, qu''ils existent déjà ou non. Durée et débit portent sur les étapes qui ont déclaré le lien.'
     performance:
         title: Performances
         subtitle: Étapes d'une minute ou plus sur la durée de l'exécution.

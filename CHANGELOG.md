@@ -19,7 +19,8 @@ of `README.md` for the definition of the public API.
 - Run reports: a workflow declaring `report: new WorkflowReportConfiguration(...)` gets, for every run
   ending `completed` or `completed_with_warnings`, a stored report shown in a *Report* tab of the run
   page (objects, step durations and throughput, critical path, anomalies, checks, application
-  sections). Steps describe what they did with `StepReport`; the metadata keys `created`, `updated`,
+  sections). Steps describe what they did with `StepReport`, and associations with
+  `StepReport::links()`, shown in their own *Links* block; the metadata keys `created`, `updated`,
   `excluded` and `rejected_records` are read for steps that don't. `fluxx:run:report` and a *Rebuild
   the report* button build it again. Requires `migrations/upgrade-1.19.0-postgresql.sql`.
 - Check steps (`WorkflowStepType::Check`, `CheckStepInterface`, `CheckReport`): a blocking deviation

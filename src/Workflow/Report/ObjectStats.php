@@ -17,11 +17,13 @@ final readonly class ObjectStats
         public int $updated = 0,
         public array $excluded = [],
         public array $rejected = [],
+        public bool $link = false,
+        public int $removed = 0,
     ) {
     }
 
     /**
-     * @return array{label: string, read: int, created: int, updated: int, excluded: array<string, int>, rejected: list<array{key: string, message: string}>}
+     * @return array{label: string, read: int, created: int, updated: int, excluded: array<string, int>, rejected: list<array{key: string, message: string}>, link: bool, removed: int}
      */
     public function toArray(): array
     {
@@ -32,6 +34,8 @@ final readonly class ObjectStats
             'updated' => $this->updated,
             'excluded' => $this->excluded,
             'rejected' => $this->rejected,
+            'link' => $this->link,
+            'removed' => $this->removed,
         ];
     }
 
@@ -51,6 +55,8 @@ final readonly class ObjectStats
             updated: (int) ($data['updated'] ?? 0),
             excluded: $data['excluded'] ?? [],
             rejected: $data['rejected'] ?? [],
+            link: ($data['link'] ?? false) === true,
+            removed: (int) ($data['removed'] ?? 0),
         );
     }
 }

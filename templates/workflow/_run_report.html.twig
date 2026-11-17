@@ -91,6 +91,48 @@
         <p class="table-note">{{ 'run_report.objects.note'|trans }}</p>
     </section>
 
+    {% if report.links is not empty %}
+        <section class="section-card">
+            <div class="section-heading">
+                <div>
+                    <h2 class="section-title">{{ 'run_report.links.title'|trans }}</h2>
+                    <p class="subtitle section-subtitle">{{ 'run_report.links.subtitle'|trans }}</p>
+                </div>
+            </div>
+            <section class="workflow-list">
+                <table class="workflow-table-compact run-report-table">
+                    <thead>
+                        <tr>
+                            <th>{{ 'run_report.links.link'|trans }}</th>
+                            <th>{{ 'run_report.links.read'|trans }}</th>
+                            <th>{{ 'run_report.links.excluded'|trans }}</th>
+                            <th>{{ 'run_report.links.written'|trans }}</th>
+                            <th>{{ 'run_report.links.removed'|trans }}</th>
+                            <th>{{ 'run_report.links.rejected'|trans }}</th>
+                            <th>{{ 'run_report.links.duration'|trans }}</th>
+                            <th>{{ 'run_report.links.rate'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for link in report.links %}
+                            <tr>
+                                <td data-label="{{ 'run_report.links.link'|trans }}"><div class="workflow-name">{{ link.label }}</div></td>
+                                <td data-label="{{ 'run_report.links.read'|trans }}"><span class="metric-value">{{ link.read }}</span></td>
+                                <td data-label="{{ 'run_report.links.excluded'|trans }}"><span class="metric-value">{{ link.excluded }}</span></td>
+                                <td data-label="{{ 'run_report.links.written'|trans }}"><span class="metric-value">{{ link.written }}</span></td>
+                                <td data-label="{{ 'run_report.links.removed'|trans }}"><span class="metric-value">{{ link.removed }}</span></td>
+                                <td data-label="{{ 'run_report.links.rejected'|trans }}"><span class="metric-value{% if link.rejected not in ['0', constant('Fluxx\\Ui\\RunReportView::ABSENT')] %} metric-error{% endif %}">{{ link.rejected }}</span></td>
+                                <td data-label="{{ 'run_report.links.duration'|trans }}"><span class="metric-value">{{ link.duration }}</span></td>
+                                <td data-label="{{ 'run_report.links.rate'|trans }}"><span class="metric-value">{{ link.rate is null ? constant('Fluxx\\Ui\\RunReportView::ABSENT') : 'run_report.rate'|trans({'%rate%': link.rate}) }}</span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+            <p class="table-note">{{ 'run_report.links.note'|trans }}</p>
+        </section>
+    {% endif %}
+
     <section class="section-card run-timeline-card">
         <div class="section-heading">
             <div>

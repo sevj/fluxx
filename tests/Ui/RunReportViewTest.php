@@ -25,9 +25,21 @@ final class RunReportViewTest extends TestCase
         self::assertSame('completed_with_warnings', $view->status);
         self::assertSame('Efficy sync', $view->workflowName);
         self::assertSame(
-            ['1 min 41 s', '7 012', '—', '1', '2'],
+            ['1 min 41 s', '7 012', '6 900', '1', '2'],
             array_column($view->kpis, 'value'),
         );
+        self::assertSame('run_report.kpi.links_hint', $view->kpis[2]['hint']);
+        self::assertSame(['%count%' => '1', '%removed%' => '12'], $view->kpis[2]['hintParameters']);
+        self::assertSame([
+            'label' => 'Contacts ↔ Companies',
+            'read' => '6 912',
+            'excluded' => '0',
+            'written' => '6 900',
+            'removed' => '12',
+            'rejected' => '0',
+            'duration' => '1 min 30 s',
+            'rate' => '77',
+        ], $view->links[0]);
         self::assertSame('error', $view->kpis[3]['tone']);
         self::assertSame(['%reasons%' => 'No email'], $view->kpis[4]['hintParameters']);
 
@@ -69,12 +81,15 @@ final class RunReportViewTest extends TestCase
     {
         $content = $this->content();
         $content['objects'] = [];
+        $content['links'] = [];
         $content['critical_path'] = [];
         unset($content['summary']['duration_ms'], $content['summary']['critical_path_ms'], $content['summary']['longest_step'], $content['summary']['memory_peak_step']);
 
         $view = RunReportView::fromStored($this->report($content), $this->timeline([]));
 
         self::assertSame(['—', '—', '—', '—', '—'], array_column($view->kpis, 'value'));
+        self::assertSame('run_report.kpi.links_absent_hint', $view->kpis[2]['hint']);
+        self::assertSame([], $view->links);
         self::assertSame([], $view->criticalPath);
         self::assertSame('—', $view->criticalPathDuration);
         self::assertNull($view->criticalPathShare);
