@@ -527,6 +527,81 @@ final class FluxxRuntimeTest extends TestCase
     }
 
     #[Test]
+    public function a_failure_without_report_clears_the_report_of_a_previous_attempt(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = StepReport::objects('Contacts')->read(3)->toArray();
+        $attempt = 0;
+        $handler = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $handler->method('execute')->willReturnCallback(static function () use (&$attempt, $report): never {
+            throw ++$attempt === 1 ? new ReportCarryingFailure($report, WorkflowErrorCategory::Technical) : new BusinessStepFailure('plain');
+        });
+        $this->registryWithHandler($handler, retryPolicy: new WorkflowRetryPolicy(maxRetries: 3, delaySeconds: 60));
+        $this->messageBus->method('dispatch')->willReturnCallback(static fn (object $message): Envelope => new Envelope($message));
+
+        $this->runtime->runStep('run-1', 'fetch');
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame($report, $stepRun->report());
+
+        try {
+            $this->runtime->runStep('run-1', 'fetch');
+            self::fail('Expected the step to fail.');
+        } catch (WorkflowStepFailedException) {
+        }
+
+        self::assertSame(WorkflowStepRunStatus::Failed, $workflowRun->stepRuns()->last()->status());
+        self::assertNull($workflowRun->stepRuns()->last()->report());
+    }
+
+    #[Test]
+    public function the_connection_fallback_stores_the_report_of_a_failed_step(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        (new ReflectionProperty(WorkflowRun::class, 'id'))->setValue($workflowRun, 42);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = StepReport::objects('Contacts')->read(3)->toArray();
+
+        $this->flushOverride = function (): void {
+            static $flushCount = 0;
+
+            if (++$flushCount >= 2) {
+                throw new EntityManagerClosed('The EntityManager is closed.');
+            }
+        };
+        $this->rollbackOverride = function (): void {
+            throw new EntityManagerClosed('The EntityManager is closed.');
+        };
+
+        $statements = [];
+        $connection = $this->entityManager->getConnection();
+        $connection->method('executeStatement')->willReturnCallback(function (string $sql, array $parameters) use (&$statements): int {
+            $statements[] = [$sql, $parameters];
+
+            return 1;
+        });
+        $connection->method('fetchOne')->willReturn(null);
+        $connection->method('rollBack')->willReturnCallback(static function (): void {});
+
+        $handler = $this->createMock(ExecutableWorkflowStepInterface::class);
+        $handler->method('execute')->willReturnCallback(function () use ($workflowRun, $report): never {
+            (new ReflectionProperty(WorkflowStepRun::class, 'id'))->setValue($workflowRun->stepRuns()->first(), 7);
+
+            throw new ReportCarryingFailure($report);
+        });
+        $this->registryWithHandler($handler);
+
+        try {
+            $this->runtime->runStep('run-1', 'fetch');
+            self::fail('Expected the runtime to rethrow the bookkeeping error.');
+        } catch (EntityManagerClosed) {
+        }
+
+        self::assertStringStartsWith('UPDATE fluxx_workflow_step_run', $statements[0][0]);
+        self::assertSame(json_encode($report), $statements[0][1]['report']);
+    }
+
+    #[Test]
     public function it_does_not_execute_a_failed_step_again_while_a_sibling_branch_is_running(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
@@ -1174,7 +1249,7 @@ final class ReportCarryingFailure extends RuntimeException implements ReportCarr
     /**
      * @param array<string, mixed> $report
      */
-    public function __construct(private readonly array $report)
+    public function __construct(private readonly array $report, private readonly WorkflowErrorCategory $category = WorkflowErrorCategory::Business)
     {
         parent::__construct('blocking deviations');
     }
@@ -1186,7 +1261,7 @@ final class ReportCarryingFailure extends RuntimeException implements ReportCarr
 
     public function workflowErrorCategory(): WorkflowErrorCategory
     {
-        return WorkflowErrorCategory::Business;
+        return $this->category;
     }
 
     public function workflowErrorCode(): ?string

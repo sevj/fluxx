@@ -235,14 +235,13 @@ final class FluxxRuntime
         $retryPolicy = $this->retryScheduler->resolvePolicy($definition, $stepDefinition);
         $durationMs = $this->computeDurationMs($stepStartedAt);
         $memoryPeakBytes = $this->measurePeakMemoryBytes();
+        $report = $throwable instanceof ReportCarryingExceptionInterface ? $throwable->report() : null;
 
         try {
             $this->reconnectIfConnectionWasLost();
             $this->entityManager->beginTransaction();
 
-            if ($throwable instanceof ReportCarryingExceptionInterface) {
-                $stepRun->replaceReport($throwable->report());
-            }
+            $stepRun->replaceReport($report);
 
             if ($throwable instanceof WorkflowDeferralInterface) {
                 $this->retryScheduler->scheduleDeferral($workflowRun, $stepRun, $throwable, $throwable->getMessage(), $errorPayload, $durationMs, $memoryPeakBytes);
@@ -277,6 +276,7 @@ final class FluxxRuntime
                 message: $throwable->getMessage(),
                 durationMs: $durationMs,
                 memoryPeakBytes: $memoryPeakBytes,
+                report: $report,
             );
 
             throw $errorHandlingThrowable;
@@ -380,6 +380,7 @@ final class FluxxRuntime
         string $message,
         ?int $durationMs,
         ?int $memoryPeakBytes,
+        ?array $report = null,
     ): void {
         $workflowRunId = $workflowRun->id();
 
@@ -392,7 +393,7 @@ final class FluxxRuntime
 
             if ($stepRunId !== null) {
                 $connection->executeStatement(
-                    'UPDATE fluxx_workflow_step_run SET status = :step_status, error_message = :error_message, error_count = error_count + 1, duration_ms = COALESCE(duration_ms, :duration_ms), memory_peak_bytes = COALESCE(memory_peak_bytes, :memory_peak_bytes) WHERE id = :step_run_id AND status IN (:running_status, :retrying_status)',
+                    'UPDATE fluxx_workflow_step_run SET status = :step_status, error_message = :error_message, error_count = error_count + 1, duration_ms = COALESCE(duration_ms, :duration_ms), memory_peak_bytes = COALESCE(memory_peak_bytes, :memory_peak_bytes), report = :report WHERE id = :step_run_id AND status IN (:running_status, :retrying_status)',
                     [
                         'step_status' => WorkflowStepRunStatus::Failed->value,
                         'running_status' => WorkflowStepRunStatus::Running->value,
@@ -400,6 +401,7 @@ final class FluxxRuntime
                         'error_message' => $message,
                         'duration_ms' => $durationMs,
                         'memory_peak_bytes' => $memoryPeakBytes,
+                        'report' => $report === null ? null : json_encode($report, JSON_THROW_ON_ERROR),
                         'step_run_id' => $stepRunId,
                     ],
                 );
