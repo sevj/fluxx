@@ -11,7 +11,13 @@ use Fluxx\Workflow\Check\CheckOutcome;
 use Fluxx\Workflow\Check\CheckResult;
 use Fluxx\Workflow\Report\Severity;
 use Fluxx\Twig\DurationExtension;
+use Fluxx\Entity\WorkflowRun;
+use Fluxx\Entity\WorkflowRunReport;
+use Fluxx\Tests\Fixture\RunReportContent;
 use Fluxx\Ui\AssetVersion;
+use Fluxx\Ui\RunReportView;
+use Fluxx\Ui\RunTimelineStepView;
+use Fluxx\Ui\RunTimelineView;
 use Fluxx\Ui\WorkflowChoiceView;
 use Fluxx\Ui\WorkflowStatisticsPointView;
 use Fluxx\Ui\WorkflowStatisticsRangeView;
@@ -201,6 +207,68 @@ final class TemplateRenderingTest extends TestCase
 
         self::assertStringNotContainsString('Launch parameters', $html);
         self::assertStringNotContainsString('Relaunched as', $html);
+    }
+
+    #[Test]
+    public function report_tab_hidden_without_report(): void
+    {
+        $html = $this->twig(admin: true)->render('@Fluxx/workflow/run_show.html.twig', [
+            'run' => $this->runView('completed'),
+            'activeTab' => 'report',
+        ]);
+
+        self::assertStringNotContainsString('section-tabs', $html);
+        self::assertStringNotContainsString('run-report', $html);
+        self::assertStringContainsString('data-run-detail-content', $html);
+    }
+
+    #[Test]
+    public function the_report_tab_shows_the_stored_report_escaped(): void
+    {
+        $run = $this->runView('completed') + ['hasReport' => true, 'report' => $this->reportView()];
+        $twig = $this->twig(admin: false);
+
+        $report = $twig->render('@Fluxx/workflow/run_show.html.twig', ['run' => $run, 'activeTab' => 'report']);
+        $execution = $twig->render('@Fluxx/workflow/run_show.html.twig', ['run' => $run, 'activeTab' => 'execution']);
+
+        self::assertStringContainsString('section-tabs', $report);
+        self::assertStringContainsString('Run report', $report);
+        self::assertSame(5 + 3, substr_count($report, 'statistics-summary-label'), 'five indicators and three performance cards');
+        self::assertStringContainsString('Unresolved owners', $report);
+        self::assertStringContainsString('&lt;b&gt;x&lt;/b&gt;', $report);
+        self::assertStringNotContainsString('<b>x</b>', $report);
+        self::assertStringContainsString('Companies present', $report);
+        self::assertStringContainsString('Source unreachable', $report);
+        self::assertStringContainsString('is-critical', $report);
+        self::assertStringContainsString('2 other step(s) under one minute.', $report);
+        self::assertStringNotContainsString('data-run-detail-content', $report);
+
+        self::assertStringContainsString('section-tabs', $execution);
+        self::assertStringContainsString('data-run-detail-content', $execution);
+        self::assertStringNotContainsString('Unresolved owners', $execution);
+    }
+
+    #[Test]
+    public function an_unreadable_report_asks_to_be_rebuilt(): void
+    {
+        $html = $this->twig(admin: false, locale: 'fr')->render('@Fluxx/workflow/run_show.html.twig', [
+            'run' => $this->runView('completed') + ['hasReport' => true, 'report' => null],
+            'activeTab' => 'report',
+        ]);
+
+        self::assertStringContainsString('run-report-unavailable', $html);
+        self::assertStringContainsString('Reconstruisez-le', $html);
+    }
+
+    #[Test]
+    public function the_report_rebuild_button_is_reserved_to_admins_on_completed_runs(): void
+    {
+        foreach (['completed' => true, 'completed_with_warnings' => true, 'failed' => false, 'running' => false] as $status => $rebuildable) {
+            $context = ['run' => $this->runView($status) + ['reportRebuildable' => $rebuildable]];
+
+            self::assertSame($rebuildable, str_contains($this->twig(admin: true)->render('@Fluxx/workflow/run_show.html.twig', $context), 'fluxx_workflow_run_report_rebuild'), $status);
+            self::assertStringNotContainsString('fluxx_workflow_run_report_rebuild', $this->twig(admin: false)->render('@Fluxx/workflow/run_show.html.twig', $context));
+        }
     }
 
     #[Test]
@@ -464,6 +532,22 @@ final class TemplateRenderingTest extends TestCase
             'inputPayloads' => [],
             'outputPayloads' => [],
         ];
+    }
+
+    private function reportView(): RunReportView
+    {
+        $step = static fn (string $code, int $durationMs, float $left): RunTimelineStepView => new RunTimelineStepView(
+            $code, ucfirst($code), 'completed', 'neutral', null, 1, new DateTimeImmutable('2026-11-17 08:00:00'), null, $durationMs, $left, 40.0, false,
+        );
+
+        return RunReportView::fromStored(
+            new WorkflowRunReport(new WorkflowRun('run-1', 'efficy_sync', 'src', 'tgt', 'manual'), 1, RunReportContent::sample()),
+            new RunTimelineView(new DateTimeImmutable('2026-11-17 08:00:00'), new DateTimeImmutable('2026-11-17 08:01:41'), 101000, false, true, [
+                $step('read', 10000, 0.0),
+                $step('write', 90000, 10.0),
+                $step('verify', 5000, 10.0),
+            ]),
+        );
     }
 
     /**

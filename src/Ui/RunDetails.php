@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Fluxx\Ui;
 
 use Fluxx\Entity\WorkflowRun;
+use Fluxx\Entity\WorkflowRunReport;
 use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Repository\WorkflowRunReportRepository;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
@@ -21,6 +23,7 @@ final readonly class RunDetails
         private WorkflowRunRepository $workflowRunRepository,
         private WorkflowStepRunRepository $workflowStepRunRepository,
         private RunTimeline $runTimeline,
+        private WorkflowRunReportRepository $workflowRunReportRepository,
     ) {
     }
 
@@ -38,6 +41,8 @@ final readonly class RunDetails
         $relaunchMetadata = $run->relaunchMetadata();
         $cancellationMetadata = $run->cancellationMetadata();
         $stepRuns = $this->workflowStepRunRepository->findByWorkflowRunOrdered($run);
+        $timeline = $this->runTimeline->for($run, $stepRuns);
+        $storedReport = $this->workflowRunReportRepository->findOneByRun($run);
 
         return new RunDetailView(
             workflowCode: $definition->code(),
@@ -75,7 +80,7 @@ final readonly class RunDetails
             successTotal: $this->sumStepCount($run, static fn ($step) => $step->successCount()),
             errorTotal: $this->sumStepCount($run, static fn ($step) => $step->errorCount()),
             steps: $this->buildStepViews($run, $stepRuns),
-            timeline: $this->runTimeline->for($run, $stepRuns),
+            timeline: $timeline,
             active: $run->status()->isActive(),
             parameters: $run->launchParameters(),
             relaunches: array_map(
@@ -86,7 +91,21 @@ final readonly class RunDetails
                 ),
                 $this->workflowRunRepository->findRelaunchesOf($run),
             ),
+            hasReport: $storedReport !== null,
+            report: $storedReport !== null ? self::readReport($storedReport, $timeline) : null,
         );
+    }
+
+    /**
+     * A report the page cannot read is shown as unavailable instead of breaking the page.
+     */
+    private static function readReport(WorkflowRunReport $report, RunTimelineView $timeline): ?RunReportView
+    {
+        try {
+            return RunReportView::fromStored($report, $timeline);
+        } catch (UnreadableRunReportException|\TypeError|\ValueError) {
+            return null;
+        }
     }
 
     /**

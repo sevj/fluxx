@@ -375,6 +375,93 @@ run_show:
     duration: Durée
     memory: Mémoire
 
+run_report:
+    tabs_label: Vues de l'exécution
+    tab_execution: Exécution
+    tab_report: Rapport
+    rebuild: Reconstruire le rapport
+    title: Rapport d'exécution
+    built_at: 'Construit le %date%'
+    unavailable: 'Le rapport enregistré est illisible (construit par une autre version de Fluxx ou endommagé). Reconstruisez-le pour l''afficher.'
+    rate: '%rate% / s'
+    severity:
+        blocking: Bloquant
+        warning: Avertissement
+    kpi:
+        label: Synthèse
+        duration: Durée
+        duration_hint: '%steps% étape(s), %warnings% avertissement(s)'
+        written: Objets écrits
+        written_hint: '%count% type(s) d''objet'
+        links: Liens
+        links_hint: Aucun objet n'est déclaré comme lien
+        rejected: Refusés
+        rejected_hint: Fiches refusées par la cible
+        excluded: Exclus
+        excluded_hint: 'Par règle : %reasons%'
+    objects:
+        title: Objets
+        subtitle: Compteurs déclarés par les étapes ou lus dans leurs métadonnées normalisées.
+        empty: Aucune étape n'a déclaré de compteurs d'objets.
+        object: Objet
+        read: Lus
+        excluded: Exclus
+        written: Écrits
+        created: Dont créés
+        rejected: Refusés
+        duration: Durée des étapes
+        rate: Débit
+        note: 'Durée et débit portent sur les étapes qui ont alimenté l''objet. « — » : donnée que les étapes ne publient pas.'
+    performance:
+        title: Performances
+        subtitle: Étapes d'une minute ou plus sur la durée de l'exécution.
+        legend_critical: Chemin critique
+        legend_other: Autres étapes
+        short_steps: '%count% autre(s) étape(s) de moins d''une minute.'
+        short_steps_preserved: 'Dont %count% conservée(s) de l''exécution d''origine.'
+        critical_path: Chemin critique
+        critical_path_share: '%share% % de la durée de l''exécution'
+        longest_step: Étape la plus longue
+        processed: '%count% traités'
+        memory_peak: Pic mémoire
+    timeline:
+        preserved: conservée
+        preserved_title: Étape reprise de l'exécution d'origine, non rejouée par cette relance
+    anomalies:
+        title: Anomalies
+        subtitle: Anomalies déclarées par les étapes, exclusions et fiches refusées.
+        empty: Aucune anomalie remontée.
+        unreadable: 'Le rapport de ces étapes est illisible :'
+        line_count: '%count% ligne(s)'
+        record_count: '%count% fiche(s)'
+        hidden_lines: '%count% ligne(s) supplémentaire(s) non conservée(s).'
+        excluded_title: Exclus par règle
+        excluded_kind: Règle
+        rejected_title: 'Fiches refusées : %object%'
+        rejected_kind: Refusés
+    checks:
+        title: Contrôles
+        subtitle: Contrôles exécutés par les étapes de contrôle.
+        empty: Aucune étape de contrôle n'a été exécutée.
+        step: Étape
+        name: Contrôle
+        severity: Sévérité
+        outcome: Résultat
+        expected: Attendu
+        actual: Constaté
+        samples: Échantillons
+        outcome_ok: OK
+        outcome_deviation: Écart
+    sections:
+        subtitle: Section fournie par l'application
+        unavailable: 'Cette section est indisponible.'
+        empty: Rien à signaler.
+    flash:
+        rebuilt: 'Le rapport de l''exécution %runId% a été reconstruit.'
+        not_reportable: 'L''exécution %runId% ne s''est pas terminée : aucun rapport ne peut être construit.'
+        rebuild_failed: 'Le rapport de l''exécution %runId% n''a pas pu être reconstruit. L''erreur a été journalisée.'
+        run_not_found: 'Exécution %runId% introuvable.'
+
 workflow_status:
     pending: En attente
     relaunched: Relancée

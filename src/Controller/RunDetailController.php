@@ -7,6 +7,7 @@ namespace Fluxx\Controller;
 use Fluxx\Ui\RunDetails;
 use InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -20,7 +21,7 @@ final class RunDetailController extends AbstractController
     ) {
     }
 
-    public function __invoke(string $workflowCode, string $runId): Response
+    public function __invoke(string $workflowCode, string $runId, Request $request): Response
     {
         try {
             $run = $this->runDetails->forWorkflowCodeAndRunId($workflowCode, $runId);
@@ -33,6 +34,7 @@ final class RunDetailController extends AbstractController
 
         return $this->render('@Fluxx/workflow/run_show.html.twig', [
             'run' => $run,
+            'activeTab' => $run->hasReport() && $request->query->get('tab') === 'report' ? 'report' : 'execution',
         ]);
     }
 }

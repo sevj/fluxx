@@ -54,6 +54,8 @@ final readonly class RunDetailView
         private bool $active,
         private array $parameters,
         private array $relaunches,
+        private bool $hasReport = false,
+        private ?RunReportView $report = null,
     ) {
     }
 
@@ -263,5 +265,26 @@ final readonly class RunDetailView
     public function relaunches(): array
     {
         return $this->relaunches;
+    }
+
+    /**
+     * True when a report is stored for the run, even one the page cannot read.
+     */
+    public function hasReport(): bool
+    {
+        return $this->hasReport;
+    }
+
+    /**
+     * Null when no report is stored or when the stored one has to be rebuilt.
+     */
+    public function report(): ?RunReportView
+    {
+        return $this->report;
+    }
+
+    public function isReportRebuildable(): bool
+    {
+        return in_array($this->status, ['completed', 'completed_with_warnings'], true);
     }
 }

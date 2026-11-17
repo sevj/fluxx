@@ -14,7 +14,10 @@ use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\Enum\WorkflowStepType;
 use Fluxx\Entity\WorkflowRun;
+use Fluxx\Entity\WorkflowRunReport;
+use Fluxx\Repository\WorkflowRunReportRepository;
 use Fluxx\Repository\WorkflowRunRepository;
+use Fluxx\Tests\Fixture\RunReportContent;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
 use Fluxx\Tests\Fixture\FixtureWorkflow;
@@ -108,6 +111,39 @@ final class RunDetailsDatabaseTest extends TestCase
         self::assertSame(['siret' => '123'], json_decode((string) $details->parametersJson(), true));
     }
 
+    #[Test]
+    public function it_loads_the_stored_report_of_the_run(): void
+    {
+        $run = $this->workflowRun('run-1');
+        $this->entityManager->persist($run);
+        $this->entityManager->persist(new WorkflowRunReport($run, 1, RunReportContent::sample()));
+        $this->entityManager->persist($this->workflowRun('run-2'));
+        $this->entityManager->flush();
+
+        $details = $this->details('run-1');
+
+        self::assertTrue($details->hasReport());
+        self::assertSame('Efficy sync', $details->report()?->workflowName);
+        self::assertFalse($this->details('run-2')->hasReport());
+        self::assertNull($this->details('run-2')->report());
+    }
+
+    #[Test]
+    public function an_unreadable_report_is_flagged_without_breaking_the_page(): void
+    {
+        $run = $this->workflowRun('run-1');
+        $this->entityManager->persist($run);
+        $this->entityManager->persist(new WorkflowRunReport($run, 1, ['format_version' => 1, 'summary' => ['status' => 'completed', 'objects' => 'oops'], 'steps' => 'oops', 'anomalies' => [['lines' => 'oops']]]));
+        $this->entityManager->flush();
+        $this->connection->executeStatement("UPDATE fluxx_workflow_run_report SET format_version = 2");
+        $this->entityManager->clear();
+
+        $details = $this->details('run-1');
+
+        self::assertTrue($details->hasReport());
+        self::assertNull($details->report());
+    }
+
     private function details(string $runId): RunDetailView
     {
         $definition = new WorkflowDefinition(
@@ -133,6 +169,7 @@ final class RunDetailsDatabaseTest extends TestCase
             workflowRunRepository: $runRepository,
             workflowStepRunRepository: new WorkflowStepRunRepository($registry),
             runTimeline: new RunTimeline($synchronizationRegistry, $stepTypes),
+            workflowRunReportRepository: new WorkflowRunReportRepository($registry),
         ))->forWorkflowCodeAndRunId('contacts', $runId);
     }
 

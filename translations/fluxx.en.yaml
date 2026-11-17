@@ -375,6 +375,93 @@ run_show:
     duration: Duration
     memory: Memory
 
+run_report:
+    tabs_label: Run views
+    tab_execution: Execution
+    tab_report: Report
+    rebuild: Rebuild the report
+    title: Run report
+    built_at: 'Built on %date%'
+    unavailable: 'The stored report cannot be read (it was built by another version of Fluxx or is damaged). Rebuild it to see it.'
+    rate: '%rate% / s'
+    severity:
+        blocking: Blocking
+        warning: Warning
+    kpi:
+        label: Summary
+        duration: Duration
+        duration_hint: '%steps% step(s), %warnings% warning(s)'
+        written: Objects written
+        written_hint: '%count% object type(s)'
+        links: Links
+        links_hint: No object is declared as a link
+        rejected: Rejected
+        rejected_hint: Records refused by the target
+        excluded: Excluded
+        excluded_hint: 'By rule: %reasons%'
+    objects:
+        title: Objects
+        subtitle: Counters declared by the steps or read from their normalized metadata.
+        empty: No step declared object counters.
+        object: Object
+        read: Read
+        excluded: Excluded
+        written: Written
+        created: Of which created
+        rejected: Rejected
+        duration: Steps duration
+        rate: Throughput
+        note: 'Duration and throughput cover the steps that contributed to the object. "—" marks data the steps do not publish.'
+    performance:
+        title: Performance
+        subtitle: Steps lasting a minute or more over the run duration.
+        legend_critical: Critical path
+        legend_other: Other steps
+        short_steps: '%count% other step(s) under one minute.'
+        short_steps_preserved: '%count% of them preserved from the original run.'
+        critical_path: Critical path
+        critical_path_share: '%share% % of the run duration'
+        longest_step: Longest step
+        processed: '%count% processed'
+        memory_peak: Memory peak
+    timeline:
+        preserved: preserved
+        preserved_title: Step kept from the original run, not executed again by this relaunch
+    anomalies:
+        title: Anomalies
+        subtitle: Anomalies declared by the steps, exclusions and rejected records.
+        empty: No anomaly was reported.
+        unreadable: 'The report of these steps could not be read:'
+        line_count: '%count% line(s)'
+        record_count: '%count% record(s)'
+        hidden_lines: '%count% more line(s) not stored.'
+        excluded_title: Excluded by rule
+        excluded_kind: Rule
+        rejected_title: 'Rejected records: %object%'
+        rejected_kind: Rejected
+    checks:
+        title: Checks
+        subtitle: Controls run by the check steps.
+        empty: No check step ran.
+        step: Step
+        name: Control
+        severity: Severity
+        outcome: Outcome
+        expected: Expected
+        actual: Actual
+        samples: Samples
+        outcome_ok: OK
+        outcome_deviation: Deviation
+    sections:
+        subtitle: Section provided by the application
+        unavailable: 'This section is unavailable.'
+        empty: Nothing to report.
+    flash:
+        rebuilt: 'The report of run %runId% was rebuilt.'
+        not_reportable: 'Run %runId% did not complete: no report can be built for it.'
+        rebuild_failed: 'The report of run %runId% could not be rebuilt. The error was logged.'
+        run_not_found: 'Run %runId% was not found.'
+
 workflow_status:
     pending: Pending
     relaunched: Relaunched
