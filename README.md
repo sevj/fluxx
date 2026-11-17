@@ -290,12 +290,14 @@ new WorkflowDefinition(
 ### Check steps
 
 A step of type `WorkflowStepType::Check` implements `CheckStepInterface` and returns a `CheckReport`
-of `CheckResult`s: a name, a `Severity` (`Blocking` or `Warning`), an outcome, the expected and actual
-values and up to 20 sample keys. Checks must only read.
+of `CheckResult`s: a name, an outcome, the expected and actual values, up to 20 sample keys and,
+optionally, a `subject` (the object or area checked, used to group results) and a `hint` saying in one
+sentence what a deviation means. Checks must only read.
 
-- A blocking deviation fails the step without retry; its checks are kept and shown on the step page.
-- Warning deviations complete the step and the run as `completed_with_warnings`; downstream steps
-  still run, the daily recap lists the deviations and the run keeps a `warning_count`.
+- A check never fails a run: it runs once the work is done, so failing would protect nothing and hide
+  the report. Deviations complete the step and the run as `completed_with_warnings`; downstream steps
+  still run, the daily recap lists the deviations and the run keeps a `warning_count`. A condition that
+  must stop a run belongs in a regular step that fails.
 - A check step that returns no check fails. Check steps cannot be idempotent.
 - Report strings are cleaned of invalid UTF-8 before they are stored.
 

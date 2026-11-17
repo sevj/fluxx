@@ -214,7 +214,7 @@ final readonly class WorkflowRelaunchService
     private function warningCountOf(WorkflowStepRun $stepRun): int
     {
         try {
-            $deviations = count(CheckReport::fromStored($stepRun->report())?->warningDeviations() ?? []);
+            $deviations = count(CheckReport::fromStored($stepRun->report())?->deviations() ?? []);
         } catch (\InvalidArgumentException) {
             $deviations = 0;
         }

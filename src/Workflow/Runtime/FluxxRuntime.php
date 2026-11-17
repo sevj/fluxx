@@ -15,7 +15,6 @@ use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Repository\WorkflowStepRunLookupInterface;
-use Fluxx\Workflow\Check\CheckFailedException;
 use Fluxx\Workflow\Context\WorkflowContext;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\BusinessWorkflowException;
@@ -147,10 +146,6 @@ final class FluxxRuntime
                 throw new BusinessWorkflowException(sprintf('Check step "%s" returned no checks.', $stepCode), 'check_without_checks');
             }
 
-            if ($checkReport !== null && $checkReport->blockingDeviations() !== []) {
-                throw new CheckFailedException($checkReport);
-            }
-
             $stepRun->replaceMetadata($result->metadata());
             $stepRun->replaceReport($checkReport?->toArray() ?? $result->report()?->toArray());
             $this->idempotenceResolver->applyKey($stepDefinition, $stepRun, $context, $input);
@@ -203,7 +198,7 @@ final class FluxxRuntime
                 }
             }
 
-            $warningCount = count($checkReport?->warningDeviations() ?? []);
+            $warningCount = count($checkReport?->deviations() ?? []);
             $markOutcome = $warningCount > 0 ? $stepRun->markCompletedWithWarnings(...) : $stepRun->markCompleted(...);
             $markOutcome(
                 processedCount: $result->processedCount(),

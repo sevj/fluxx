@@ -30,7 +30,7 @@ final class RunReportContent
                 'objects' => ['read' => 10000, 'created' => 4, 'updated' => 7008, 'written' => 7012, 'excluded' => 2, 'rejected' => 1],
                 'links' => ['types' => 1, 'written' => 6900, 'removed' => 12, 'excluded' => 0, 'rejected' => 0],
                 'anomalies' => ['total' => 1, 'blocking' => 0, 'warning' => 1],
-                'checks' => ['total' => 1, 'deviations' => 1, 'blocking_deviations' => 1, 'warning_deviations' => 0],
+                'checks' => ['total' => 1, 'deviations' => 1],
                 'longest_step' => 'write',
                 'memory_peak_step' => 'write',
                 'critical_path_ms' => 100000,
@@ -68,7 +68,7 @@ final class RunReportContent
                 ['step' => 'write', 'object' => 'Contacts', 'title' => 'Unresolved owners', 'severity' => 'warning', 'lines' => ['jdoe' => 3005, '<b>x</b>' => 'unknown'], 'line_total' => 25],
             ],
             'checks' => [
-                ['step' => 'verify', 'name' => 'Companies present', 'severity' => 'blocking', 'outcome' => 'deviation', 'expected' => '12', 'actual' => '10', 'samples' => ['c-9']],
+                ['step' => 'verify', 'subject' => 'Companies', 'name' => 'Companies present', 'hint' => 'Fewer companies than in Efficy.', 'outcome' => 'deviation', 'expected' => '12', 'actual' => '10', 'samples' => ['c-9']],
             ],
             'sections' => [
                 ['title' => 'Mailing', 'available' => true, 'message' => null, 'lines' => [['label' => 'Sent', 'detail' => '12', 'status' => 'ok']]],

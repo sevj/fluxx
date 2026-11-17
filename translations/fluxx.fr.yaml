@@ -460,7 +460,6 @@ run_report:
         empty: Aucune étape de contrôle n'a été exécutée.
         step: Étape
         name: Contrôle
-        severity: Sévérité
         outcome: Résultat
         expected: Attendu
         actual: Constaté
@@ -594,13 +593,10 @@ step_run_show:
     checks_title: Contrôles
     checks_subtitle: Contrôles exécutés par cette étape, avec la valeur attendue et la valeur constatée.
     check_name: Contrôle
-    check_severity: Sévérité
     check_outcome: Résultat
     check_expected: Attendu
     check_actual: Constaté
     check_samples: Échantillons
-    check_severity_blocking: Bloquant
-    check_severity_warning: Avertissement
     check_outcome_ok: OK
     check_outcome_deviation: Écart
     check_report_unreadable: Le rapport de contrôle enregistré n'a pas pu être lu.
@@ -825,8 +821,6 @@ email_recap:
     check_expected: attendu
     check_actual: constaté
     check_report_unreadable: Le rapport de contrôle enregistré sur cette étape n'a pas pu être lu.
-    check_severity_blocking: bloquant
-    check_severity_warning: avertissement
     summary: Résumé
     total_runs: Total des exécutions
     processed_records: Enregistrements traités

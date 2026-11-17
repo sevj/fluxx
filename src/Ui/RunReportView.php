@@ -27,7 +27,7 @@ final readonly class RunReportView
      * @param array{code: string, name: string, value: string}|null $memoryPeak
      * @param list<array{title: ?string, titleKey: ?string, source: string, tone: string, kindKey: string, countKey: string, count: string, lines: list<array{key: string, value: string}>, hiddenLines: int}> $anomalies
      * @param list<array{step: string, message: string}> $unreadableStepReports
-     * @param list<array{step: string, name: string, severityKey: string, outcomeKey: string, tone: string, expected: string, actual: string, samples: list<string>}> $checks
+     * @param list<array{step: string, subject: ?string, name: string, hint: ?string, outcomeKey: string, tone: string, expected: string, actual: string, samples: list<string>}> $checks
      * @param list<array{title: string, available: bool, message: ?string, lines: list<array{label: string, detail: ?string, status: ?string, tone: string}>}> $sections
      */
     public function __construct(
@@ -449,19 +449,19 @@ final readonly class RunReportView
 
     /**
      * @param array<string, mixed> $check
-     * @return array{step: string, name: string, severityKey: string, outcomeKey: string, tone: string, expected: string, actual: string, samples: list<string>}
+     * @return array{step: string, subject: ?string, name: string, hint: ?string, outcomeKey: string, tone: string, expected: string, actual: string, samples: list<string>}
      */
     private static function checkRow(array $check): array
     {
-        $blocking = ($check['severity'] ?? null) === 'blocking';
         $ok = ($check['outcome'] ?? null) === 'ok';
 
         return [
             'step' => self::string($check, 'step') ?? self::ABSENT,
+            'subject' => self::string($check, 'subject'),
             'name' => self::string($check, 'name') ?? self::ABSENT,
-            'severityKey' => $blocking ? 'run_report.severity.blocking' : 'run_report.severity.warning',
+            'hint' => self::string($check, 'hint'),
             'outcomeKey' => $ok ? 'run_report.checks.outcome_ok' : 'run_report.checks.outcome_deviation',
-            'tone' => $ok ? 'completed' : ($blocking ? 'failed' : 'completed-with-warnings'),
+            'tone' => $ok ? 'completed' : 'completed-with-warnings',
             'expected' => self::string($check, 'expected') ?? self::ABSENT,
             'actual' => self::string($check, 'actual') ?? self::ABSENT,
             'samples' => self::stringList($check['samples'] ?? null),

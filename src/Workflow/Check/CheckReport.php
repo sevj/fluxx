@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow\Check;
 
-use Fluxx\Workflow\Report\Severity;
-
 /**
  * The controls run by a check step. The stored format is versioned by the "v" key and tagged by "kind",
  * since the step run report column holds either a step report or a check report.
@@ -44,17 +42,9 @@ final readonly class CheckReport
     /**
      * @return list<CheckResult>
      */
-    public function blockingDeviations(): array
+    public function deviations(): array
     {
-        return $this->deviations(Severity::Blocking);
-    }
-
-    /**
-     * @return list<CheckResult>
-     */
-    public function warningDeviations(): array
-    {
-        return $this->deviations(Severity::Warning);
+        return array_values(array_filter($this->results, static fn (CheckResult $result): bool => $result->isDeviation()));
     }
 
     /**
@@ -104,16 +94,5 @@ final readonly class CheckReport
         }
 
         return self::fromArray($data);
-    }
-
-    /**
-     * @return list<CheckResult>
-     */
-    private function deviations(Severity $severity): array
-    {
-        return array_values(array_filter(
-            $this->results,
-            static fn (CheckResult $result): bool => $result->isDeviation() && $result->severity === $severity,
-        ));
     }
 }

@@ -266,7 +266,6 @@
                         <tr>
                             <th>{{ 'run_report.checks.step'|trans }}</th>
                             <th>{{ 'run_report.checks.name'|trans }}</th>
-                            <th>{{ 'run_report.checks.severity'|trans }}</th>
                             <th>{{ 'run_report.checks.outcome'|trans }}</th>
                             <th>{{ 'run_report.checks.expected'|trans }}</th>
                             <th>{{ 'run_report.checks.actual'|trans }}</th>
@@ -277,8 +276,7 @@
                         {% for check in report.checks %}
                             <tr>
                                 <td data-label="{{ 'run_report.checks.step'|trans }}"><span class="item-code">{{ check.step }}</span></td>
-                                <td data-label="{{ 'run_report.checks.name'|trans }}"><div class="workflow-name">{{ check.name }}</div></td>
-                                <td data-label="{{ 'run_report.checks.severity'|trans }}">{{ check.severityKey|trans }}</td>
+                                <td data-label="{{ 'run_report.checks.name'|trans }}"><div class="workflow-name">{% if check.subject %}{{ check.subject }} · {% endif %}{{ check.name }}</div>{% if check.hint %}<div class="run-report-hint">{{ check.hint }}</div>{% endif %}</td>
                                 <td data-label="{{ 'run_report.checks.outcome'|trans }}"><span class="status-badge status-badge-{{ check.tone }}">{{ check.outcomeKey|trans }}</span></td>
                                 <td data-label="{{ 'run_report.checks.expected'|trans }}">{{ check.expected }}</td>
                                 <td data-label="{{ 'run_report.checks.actual'|trans }}">{{ check.actual }}</td>

@@ -102,8 +102,8 @@ final class TemplateRenderingTest extends TestCase
     public function a_check_step_shows_its_controls(): void
     {
         $stepRun = $this->stepRun('failed', true) + ['checks' => [
-            new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10', ['k-1', 'k-2']),
-            new CheckResult('Main role set', Severity::Warning, CheckOutcome::Ok, '4', '4'),
+            new CheckResult('Companies present', CheckOutcome::Deviation, '12', '10', ['k-1', 'k-2']),
+            new CheckResult('Main role set', CheckOutcome::Ok, '4', '4'),
         ]];
 
         $html = $this->twig(admin: false)->render('@Fluxx/workflow/step_run_show.html.twig', ['stepRun' => $stepRun]);
@@ -140,11 +140,11 @@ final class TemplateRenderingTest extends TestCase
             statusCounts: ['failed' => 1, 'completed_with_warnings' => 1],
             workflowCounts: [],
             erroredRuns: [['runId' => 'run-f', 'workflow' => 'contacts', 'status' => 'failed', 'createdAt' => new DateTimeImmutable(), 'error' => 'x', 'steps' => [
-                $step('failed', [['name' => 'Companies present', 'severity' => 'blocking', 'expected' => '12', 'actual' => '10']]),
+                $step('failed', [['name' => 'Companies present', 'subject' => 'Companies', 'expected' => '12', 'actual' => '10']]),
                 $step('failed', [], true),
             ]]],
             warningRuns: [['runId' => 'run-w', 'workflow' => 'contacts', 'status' => 'completed_with_warnings', 'createdAt' => new DateTimeImmutable(), 'warningCount' => 1, 'steps' => [
-                $step('completed_with_warnings', [['name' => 'Main role set', 'severity' => 'warning', 'expected' => '4', 'actual' => '3']]),
+                $step('completed_with_warnings', [['name' => 'Main role set', 'subject' => null, 'expected' => '4', 'actual' => '3']]),
             ]]],
             processedCount: 2,
             successCount: 2,

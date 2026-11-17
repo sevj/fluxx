@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Fluxx\Tests\Workflow\Check;
 
 use Fluxx\Entity\Enum\WorkflowStepType;
-use Fluxx\Workflow\Check\CheckFailedException;
 use Fluxx\Workflow\Check\CheckOutcome;
 use Fluxx\Workflow\Check\CheckReport;
 use Fluxx\Workflow\Check\CheckResult;
@@ -27,7 +26,7 @@ final class CheckReportTest extends TestCase
     {
         $samples = array_map(static fn (int $i): string => 'key-'.$i, range(1, 35));
 
-        $result = new CheckResult('No duplicate', Severity::Blocking, CheckOutcome::Deviation, '0', '35', $samples);
+        $result = new CheckResult('No duplicate', CheckOutcome::Deviation, '0', '35', $samples);
 
         self::assertCount(20, $result->samples);
         self::assertSame('key-20', $result->samples[19]);
@@ -38,8 +37,8 @@ final class CheckReportTest extends TestCase
     public function check_report_round_trips(): void
     {
         $report = (new CheckReport())
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3', ['c-9']));
+            ->add(new CheckResult('Companies present', CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3', ['c-9']));
 
         $array = $report->toArray();
 
@@ -50,23 +49,22 @@ final class CheckReportTest extends TestCase
     }
 
     #[Test]
-    public function deviations_are_split_by_severity(): void
+    public function deviations_list_the_results_out_of_bounds(): void
     {
         $report = (new CheckReport())
-            ->add(new CheckResult('a', Severity::Blocking, CheckOutcome::Ok))
-            ->add(new CheckResult('b', Severity::Blocking, CheckOutcome::Deviation))
-            ->add(new CheckResult('c', Severity::Warning, CheckOutcome::Deviation))
-            ->add(new CheckResult('d', Severity::Warning, CheckOutcome::Ok));
+            ->add(new CheckResult('a', CheckOutcome::Ok))
+            ->add(new CheckResult('b', CheckOutcome::Deviation))
+            ->add(new CheckResult('c', CheckOutcome::Deviation))
+            ->add(new CheckResult('d', CheckOutcome::Ok));
 
-        self::assertSame(['b'], array_map(static fn (CheckResult $r): string => $r->name, $report->blockingDeviations()));
-        self::assertSame(['c'], array_map(static fn (CheckResult $r): string => $r->name, $report->warningDeviations()));
+        self::assertSame(['b', 'c'], array_map(static fn (CheckResult $r): string => $r->name, $report->deviations()));
     }
 
     #[Test]
     public function add_does_not_mutate_the_original(): void
     {
         $base = new CheckReport();
-        $base->add(new CheckResult('a', Severity::Warning, CheckOutcome::Ok));
+        $base->add(new CheckResult('a', CheckOutcome::Ok));
 
         self::assertSame([], $base->results());
     }
@@ -107,7 +105,7 @@ final class CheckReportTest extends TestCase
         foreach ([
             ['v' => 2, 'kind' => 'check', 'checks' => []],
             ['v' => 1, 'kind' => 'check'],
-            ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'fatal', 'outcome' => 'ok']]],
+            ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'outcome' => 'ok', 'hint' => ['x']]]],
             ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'maybe']]],
             ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'ok', 'samples' => [['nested']]]]],
             ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'ok', 'samples' => 'k-1']]],
@@ -123,17 +121,12 @@ final class CheckReportTest extends TestCase
     }
 
     #[Test]
-    public function the_failure_lists_blocking_deviations_and_keeps_the_report(): void
+    public function subject_and_hint_round_trip_and_a_legacy_severity_is_ignored(): void
     {
-        $report = (new CheckReport())
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10'))
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'));
+        $result = new CheckResult('Pipeline', CheckOutcome::Deviation, '0', '22', ['g-1'], subject: 'Grants', hint: 'Rule R-24 does not cover them.');
 
-        $exception = new CheckFailedException($report);
-
-        self::assertSame('Blocking checks in deviation: Companies present (expected: 12, actual: 10)', $exception->getMessage());
-        self::assertSame(WorkflowErrorCategory::Business, $exception->workflowErrorCategory());
-        self::assertSame($report->toArray(), $exception->report());
+        self::assertEquals($result, CheckResult::fromArray($result->toArray()));
+        self::assertNull(CheckResult::fromArray(['name' => 'a', 'severity' => 'blocking', 'outcome' => 'ok'])->subject);
     }
 
     #[Test]
@@ -155,7 +148,7 @@ final class CheckReportTest extends TestCase
     #[Test]
     public function integer_samples_are_kept_as_strings(): void
     {
-        $result = new CheckResult('No duplicate', Severity::Blocking, CheckOutcome::Deviation, '0', '2', [1042, 1043.5, 'k-3']);
+        $result = new CheckResult('No duplicate', CheckOutcome::Deviation, '0', '2', [1042, 1043.5, 'k-3']);
         $report = (new CheckReport())->add($result);
 
         self::assertSame(['1042', '1043.5', 'k-3'], $result->samples);

@@ -257,9 +257,9 @@ final class WorkflowRelaunchServiceTest extends TestCase
         $readReport = StepReport::objects('Contacts')->read(1)->toArray();
         $stepRuns['read']->replaceReport($readReport);
         $checkReport = (new CheckReport())
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'))
-            ->add(new CheckResult('Properties copied', Severity::Warning, CheckOutcome::Deviation, '50', '48'))
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3'))
+            ->add(new CheckResult('Properties copied', CheckOutcome::Deviation, '50', '48'))
+            ->add(new CheckResult('Companies present', CheckOutcome::Ok, '12', '12'))
             ->toArray();
         $stepRuns['write_a']->replaceReport($checkReport);
 

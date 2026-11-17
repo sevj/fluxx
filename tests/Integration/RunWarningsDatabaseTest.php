@@ -110,7 +110,7 @@ final class RunWarningsDatabaseTest extends TestCase
         self::assertSame(2, $recap->warningRuns()[0]['warningCount']);
         self::assertSame(['check'], array_column($recap->warningRuns()[0]['steps'], 'code'));
         self::assertSame(
-            [['name' => 'Main role set', 'severity' => 'warning', 'expected' => '4', 'actual' => '3']],
+            [['name' => 'Main role set', 'subject' => null, 'expected' => '4', 'actual' => '3']],
             $recap->warningRuns()[0]['steps'][0]['checkDeviations'],
         );
     }
@@ -174,18 +174,18 @@ final class RunWarningsDatabaseTest extends TestCase
         $check = new WorkflowStepRun($run, 'check', 'verify', 1);
         $check->markRunning();
         $check->replaceReport((new CheckReport())
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10'))
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'))
-            ->add(new CheckResult('Pipelines set', Severity::Blocking, CheckOutcome::Ok, '5', '5'))
+            ->add(new CheckResult('Companies present', CheckOutcome::Deviation, '12', '10'))
+            ->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3'))
+            ->add(new CheckResult('Pipelines set', CheckOutcome::Ok, '5', '5'))
             ->toArray());
-        $check->markFailed('Blocking checks in deviation: Companies present (expected: 12, actual: 10)');
+        $check->markFailed('HubSpot unavailable after its checks were recorded');
 
         $corrupted = new WorkflowStepRun($run, 'check', 'verify_links', 2);
         $corrupted->markRunning();
         $corrupted->replaceReport(['v' => 1, 'kind' => 'check', 'checks' => 'broken']);
         $corrupted->markFailed('boom');
 
-        $run->markFailed('Blocking checks in deviation');
+        $run->markFailed('HubSpot unavailable');
         $this->entityManager->persist($run);
         $this->entityManager->persist($check);
         $this->entityManager->persist($corrupted);
@@ -195,8 +195,8 @@ final class RunWarningsDatabaseTest extends TestCase
 
         self::assertSame(
             [
-                ['name' => 'Companies present', 'severity' => 'blocking', 'expected' => '12', 'actual' => '10'],
-                ['name' => 'Main role set', 'severity' => 'warning', 'expected' => '4', 'actual' => '3'],
+                ['name' => 'Companies present', 'subject' => null, 'expected' => '12', 'actual' => '10'],
+                ['name' => 'Main role set', 'subject' => null, 'expected' => '4', 'actual' => '3'],
             ],
             $steps[0]['checkDeviations'],
         );
@@ -217,8 +217,8 @@ final class RunWarningsDatabaseTest extends TestCase
         $check = new WorkflowStepRun($run, 'check', 'check', 2);
         $check->markRunning();
         $check->replaceReport((new CheckReport())
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3', ['c-9']))
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3', ['c-9']))
+            ->add(new CheckResult('Companies present', CheckOutcome::Ok, '12', '12'))
             ->toArray());
         $check->markCompletedWithWarnings(processedCount: 3, successCount: 3);
 

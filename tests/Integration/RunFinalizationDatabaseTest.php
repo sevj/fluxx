@@ -178,7 +178,7 @@ final class RunFinalizationDatabaseTest extends TestCase
         $run = $this->storeRun();
         $this->connection->executeStatement('UPDATE fluxx_workflow_run SET warning_count = 2 WHERE id = :id', ['id' => $run->id()]);
 
-        $this->runCheckStep(new CheckResult('Contacts without company', Severity::Warning, CheckOutcome::Deviation, '0', '4', ['K-1']));
+        $this->runCheckStep(new CheckResult('Contacts without company', CheckOutcome::Deviation, '0', '4', ['K-1']));
 
         self::assertSame(3, (int) $this->connection->fetchOne('SELECT warning_count FROM fluxx_workflow_run WHERE id = :id', ['id' => $run->id()]));
         self::assertSame('completed_with_warnings', $this->connection->fetchOne('SELECT status FROM fluxx_workflow_run WHERE id = :id', ['id' => $run->id()]));
@@ -189,7 +189,7 @@ final class RunFinalizationDatabaseTest extends TestCase
     {
         $run = $this->storeRun();
 
-        $this->runCheckStep(new CheckResult("Soci\xE9t\xE9s", Severity::Warning, CheckOutcome::Deviation, '0', '1', ["Mairie d'\xC9pinay"]));
+        $this->runCheckStep(new CheckResult("Soci\xE9t\xE9s", CheckOutcome::Deviation, '0', '1', ["Mairie d'\xC9pinay"]));
 
         self::assertSame('completed_with_warnings', $this->connection->fetchOne("SELECT status FROM fluxx_workflow_step_run WHERE step_name = 'verify'"));
         self::assertSame('completed_with_warnings', $this->connection->fetchOne('SELECT status FROM fluxx_workflow_run WHERE id = :id', ['id' => $run->id()]));

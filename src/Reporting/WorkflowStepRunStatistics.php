@@ -206,7 +206,7 @@ final readonly class WorkflowStepRunStatistics
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
      *     errorDetails: list<string>,
-     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>,
+     *     checkDeviations: list<array{name: string, subject: ?string, expected: ?string, actual: ?string}>,
      *     checkReportUnreadable: bool
      * }>>
      */
@@ -235,7 +235,7 @@ final readonly class WorkflowStepRunStatistics
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
      *     errorDetails: list<string>,
-     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>,
+     *     checkDeviations: list<array{name: string, subject: ?string, expected: ?string, actual: ?string}>,
      *     checkReportUnreadable: bool
      * }>>
      */
@@ -261,7 +261,7 @@ final readonly class WorkflowStepRunStatistics
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
      *     errorDetails: list<string>,
-     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>,
+     *     checkDeviations: list<array{name: string, subject: ?string, expected: ?string, actual: ?string}>,
      *     checkReportUnreadable: bool
      * }>>
      */
@@ -353,7 +353,7 @@ final readonly class WorkflowStepRunStatistics
     }
 
     /**
-     * @return list<array{name: string, severity: string, expected: ?string, actual: ?string}>|null null when a check report is stored but cannot be read
+     * @return list<array{name: string, subject: ?string, expected: ?string, actual: ?string}>|null null when a check report is stored but cannot be read
      */
     private function checkDeviations(mixed $storedReport): ?array
     {
@@ -368,7 +368,7 @@ final readonly class WorkflowStepRunStatistics
         return array_values(array_map(
             static fn (CheckResult $result): array => [
                 'name' => $result->name,
-                'severity' => $result->severity->value,
+                'subject' => $result->subject,
                 'expected' => $result->expected,
                 'actual' => $result->actual,
             ],

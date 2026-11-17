@@ -275,7 +275,6 @@
                         <thead>
                             <tr>
                                 <th>{{ 'step_run_show.check_name'|trans }}</th>
-                                <th>{{ 'step_run_show.check_severity'|trans }}</th>
                                 <th>{{ 'step_run_show.check_outcome'|trans }}</th>
                                 <th>{{ 'step_run_show.check_expected'|trans }}</th>
                                 <th>{{ 'step_run_show.check_actual'|trans }}</th>
@@ -284,10 +283,9 @@
                         </thead>
                         <tbody>
                             {% for check in stepRun.checks %}
-                                {% set outcome_badge = check.outcome.value == 'ok' ? 'completed' : (check.severity.value == 'blocking' ? 'failed' : 'completed-with-warnings') %}
+                                {% set outcome_badge = check.outcome.value == 'ok' ? 'completed' : 'completed-with-warnings' %}
                                 <tr>
-                                    <td data-label="{{ 'step_run_show.check_name'|trans }}"><div class="workflow-name">{{ check.name }}</div></td>
-                                    <td data-label="{{ 'step_run_show.check_severity'|trans }}">{{ ('step_run_show.check_severity_' ~ check.severity.value)|trans }}</td>
+                                    <td data-label="{{ 'step_run_show.check_name'|trans }}"><div class="workflow-name">{% if check.subject %}{{ check.subject }} · {% endif %}{{ check.name }}</div>{% if check.hint %}<div class="run-report-hint">{{ check.hint }}</div>{% endif %}</td>
                                     <td data-label="{{ 'step_run_show.check_outcome'|trans }}"><span class="status-badge status-badge-{{ outcome_badge }}">{{ ('step_run_show.check_outcome_' ~ check.outcome.value)|trans }}</span></td>
                                     <td data-label="{{ 'step_run_show.check_expected'|trans }}">{{ check.expected ?? '—' }}</td>
                                     <td data-label="{{ 'step_run_show.check_actual'|trans }}">{{ check.actual ?? '—' }}</td>

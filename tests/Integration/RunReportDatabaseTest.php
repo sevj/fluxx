@@ -222,7 +222,7 @@ final class RunReportDatabaseTest extends TestCase
 
         $verify = new WorkflowStepRun($run, 'check', 'verify', 3);
         $verify->markRunning($origin->modify('+10 seconds'));
-        $verify->replaceReport((new CheckReport())->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'))->toArray());
+        $verify->replaceReport((new CheckReport())->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3'))->toArray());
         $verify->markCompletedWithWarnings(1, 1, durationMs: 5000, finishedAt: $origin->modify('+15 seconds'));
 
         $run->incrementWarningCount();

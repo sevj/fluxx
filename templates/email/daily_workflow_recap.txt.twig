@@ -35,7 +35,7 @@
     {{ detail }}
 {% endfor %}
 {% for deviation in step.checkDeviations|default([]) %}
-    * {{ 'email_recap.check_deviation'|trans }}: {{ deviation.name }} ({{ ('email_recap.check_severity_' ~ deviation.severity)|trans }}) | {{ 'email_recap.check_expected'|trans }}={{ deviation.expected ?? '-' }} | {{ 'email_recap.check_actual'|trans }}={{ deviation.actual ?? '-' }}
+    * {{ 'email_recap.check_deviation'|trans }}: {% if deviation.subject %}{{ deviation.subject }} · {% endif %}{{ deviation.name }} | {{ 'email_recap.check_expected'|trans }}={{ deviation.expected ?? '-' }} | {{ 'email_recap.check_actual'|trans }}={{ deviation.actual ?? '-' }}
 {% endfor %}
 {% if step.checkReportUnreadable|default(false) %}
     * {{ 'email_recap.check_report_unreadable'|trans }}
@@ -53,7 +53,7 @@
 {% for step in run.steps %}
   - {{ 'email_recap.step'|trans }} {{ step.code }} ({{ step.type }}) | {{ ('workflow_status.' ~ step.status)|trans }}
 {% for deviation in step.checkDeviations|default([]) %}
-    * {{ 'email_recap.check_deviation'|trans }}: {{ deviation.name }} ({{ ('email_recap.check_severity_' ~ deviation.severity)|trans }}) | {{ 'email_recap.check_expected'|trans }}={{ deviation.expected ?? '-' }} | {{ 'email_recap.check_actual'|trans }}={{ deviation.actual ?? '-' }}
+    * {{ 'email_recap.check_deviation'|trans }}: {% if deviation.subject %}{{ deviation.subject }} · {% endif %}{{ deviation.name }} | {{ 'email_recap.check_expected'|trans }}={{ deviation.expected ?? '-' }} | {{ 'email_recap.check_actual'|trans }}={{ deviation.actual ?? '-' }}
 {% endfor %}
 {% if step.checkReportUnreadable|default(false) %}
     * {{ 'email_recap.check_report_unreadable'|trans }}

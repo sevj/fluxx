@@ -8,8 +8,8 @@ use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
 
 /**
  * Handler of a check step: it only reads the target system and returns a result carrying a {@see CheckReport}.
- * Fluxx decides the step status from it: a blocking deviation fails the step without retry,
- * a warning deviation completes it with warnings. Fluxx cannot enforce that the step stays read-only.
+ * A check reports, it never fails the run: any deviation completes the step and the run with warnings,
+ * since everything it checks is already done. Fluxx cannot enforce that the step stays read-only.
  */
 interface CheckStepInterface extends ExecutableWorkflowStepInterface
 {

@@ -460,7 +460,6 @@ run_report:
         empty: No check step ran.
         step: Step
         name: Control
-        severity: Severity
         outcome: Outcome
         expected: Expected
         actual: Actual
@@ -594,13 +593,10 @@ step_run_show:
     checks_title: Checks
     checks_subtitle: Controls run by this check step, with what was expected and what was found.
     check_name: Control
-    check_severity: Severity
     check_outcome: Outcome
     check_expected: Expected
     check_actual: Actual
     check_samples: Samples
-    check_severity_blocking: Blocking
-    check_severity_warning: Warning
     check_outcome_ok: OK
     check_outcome_deviation: Deviation
     check_report_unreadable: The stored check report could not be read.
@@ -825,8 +821,6 @@ email_recap:
     check_expected: expected
     check_actual: actual
     check_report_unreadable: The check report stored on this step could not be read.
-    check_severity_blocking: blocking
-    check_severity_warning: warning
     summary: Summary
     total_runs: Total runs
     processed_records: Processed records

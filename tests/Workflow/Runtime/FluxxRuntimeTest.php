@@ -22,7 +22,6 @@ use Fluxx\Tests\Fixture\RunInterruptingStep;
 use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Tests\Fixture\InMemoryStepRunLookup;
 use Fluxx\Tests\Fixture\StubIdempotentStep;
-use Fluxx\Workflow\Check\CheckFailedException;
 use Fluxx\Workflow\Check\CheckOutcome;
 use Fluxx\Workflow\Check\CheckReport;
 use Fluxx\Workflow\Check\CheckResult;
@@ -468,7 +467,7 @@ final class FluxxRuntimeTest extends TestCase
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
-        $report = (new CheckReport())->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'));
+        $report = (new CheckReport())->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3'));
         $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)), report: new WorkflowReportConfiguration());
         $this->messageBus->expects(self::once())
             ->method('dispatch')
@@ -485,8 +484,7 @@ final class FluxxRuntimeTest extends TestCase
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
-        $report = (new CheckReport())->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10'));
-        $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)), report: new WorkflowReportConfiguration());
+        $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: new CheckReport())), report: new WorkflowReportConfiguration());
         $this->messageBus->expects(self::never())->method('dispatch');
 
         try {
@@ -541,32 +539,24 @@ final class FluxxRuntimeTest extends TestCase
     }
 
     #[Test]
-    public function blocking_deviation_fails_step_without_retry(): void
+    public function deviations_never_fail_the_step(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
         $report = (new CheckReport())
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10', ['k-1', 'k-2']))
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'));
+            ->add(new CheckResult('Companies present', CheckOutcome::Deviation, '12', '10', ['k-1', 'k-2']))
+            ->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3'))
+            ->add(new CheckResult('Contacts present', CheckOutcome::Ok, '5', '5'));
         $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)), new WorkflowRetryPolicy(maxRetries: 3, delaySeconds: 60));
 
-        $this->messageBus->expects(self::never())->method('dispatch');
-        $this->workflowPayloadStore->expects(self::never())->method('storeStepInput');
-
-        try {
-            $this->runtime->runStep('run-1', 'verify');
-            self::fail('Expected the blocking deviation to fail the step.');
-        } catch (WorkflowStepFailedException $exception) {
-            self::assertInstanceOf(CheckFailedException::class, $exception->failure());
-        }
+        $this->runtime->runStep('run-1', 'verify');
 
         $stepRun = $workflowRun->stepRuns()->first();
-        self::assertSame(WorkflowStepRunStatus::Failed, $stepRun->status());
+        self::assertSame(WorkflowStepRunStatus::CompletedWithWarnings, $stepRun->status());
         self::assertSame(0, $stepRun->retryCount());
-        self::assertSame('Blocking checks in deviation: Companies present (expected: 12, actual: 10)', $stepRun->errorMessage());
         self::assertSame($report->toArray(), $stepRun->report());
-        self::assertSame(WorkflowRunStatus::Failed, $workflowRun->status());
-        self::assertSame(0, $workflowRun->warningCount());
+        self::assertSame(WorkflowRunStatus::CompletedWithWarnings, $workflowRun->status());
+        self::assertSame(2, $workflowRun->warningCount());
     }
 
     #[Test]
@@ -575,9 +565,9 @@ final class FluxxRuntimeTest extends TestCase
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
         $report = (new CheckReport())
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3', ['c-9']))
-            ->add(new CheckResult('Properties copied', Severity::Warning, CheckOutcome::Deviation, '50', '48'));
+            ->add(new CheckResult('Companies present', CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3', ['c-9']))
+            ->add(new CheckResult('Properties copied', CheckOutcome::Deviation, '50', '48'));
         $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)));
 
         $this->runtime->runStep('run-1', 'verify');
@@ -595,8 +585,8 @@ final class FluxxRuntimeTest extends TestCase
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
         $report = (new CheckReport())
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Ok, '4', '4'));
+            ->add(new CheckResult('Companies present', CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', CheckOutcome::Ok, '4', '4'));
         $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)));
 
         $this->runtime->runStep('run-1', 'verify');
@@ -1500,7 +1490,7 @@ final class ReportCarryingFailure extends RuntimeException implements ReportCarr
      */
     public function __construct(private readonly array $report, private readonly WorkflowErrorCategory $category = WorkflowErrorCategory::Business)
     {
-        parent::__construct('blocking deviations');
+        parent::__construct('failure carrying a report');
     }
 
     public function report(): array

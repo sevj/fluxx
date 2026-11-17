@@ -70,7 +70,9 @@ final class RunReportViewTest extends TestCase
         self::assertSame([['key' => 'Contacts · No email', 'value' => '2']], $excluded['lines']);
         self::assertSame([['key' => 'c-1', 'value' => 'Invalid email']], $rejected['lines']);
 
-        self::assertSame('failed', $view->checks[0]['tone']);
+        self::assertSame('completed-with-warnings', $view->checks[0]['tone']);
+        self::assertSame('Companies', $view->checks[0]['subject']);
+        self::assertSame('Fewer companies than in Efficy.', $view->checks[0]['hint']);
         self::assertSame(['c-9'], $view->checks[0]['samples']);
         self::assertSame('completed', $view->sections[0]['lines'][0]['tone']);
         self::assertFalse($view->sections[1]['available']);

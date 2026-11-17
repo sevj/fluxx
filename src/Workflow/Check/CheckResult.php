@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow\Check;
 
-use Fluxx\Workflow\Report\Severity;
-
 /**
- * One control of a check step: what was expected, what was found and a few offending samples.
+ * One control of a check step: what was expected, what was found and a few offending samples. A deviation
+ * is reported, never raised: it completes the run with warnings. The subject (the object or area checked)
+ * groups results in the report, and the hint says in one sentence what a deviation means.
  */
 final readonly class CheckResult
 {
@@ -21,11 +21,12 @@ final readonly class CheckResult
      */
     public function __construct(
         public string $name,
-        public Severity $severity,
         public CheckOutcome $outcome,
         public ?string $expected = null,
         public ?string $actual = null,
         array $samples = [],
+        public ?string $subject = null,
+        public ?string $hint = null,
     ) {
         $this->samples = array_map(
             static fn (mixed $sample): string => is_scalar($sample) && !is_bool($sample)
@@ -41,17 +42,18 @@ final readonly class CheckResult
     }
 
     /**
-     * @return array{name: string, severity: string, outcome: string, expected: ?string, actual: ?string, samples: list<string>}
+     * @return array{name: string, outcome: string, expected: ?string, actual: ?string, samples: list<string>, subject: ?string, hint: ?string}
      */
     public function toArray(): array
     {
         return [
             'name' => $this->name,
-            'severity' => $this->severity->value,
             'outcome' => $this->outcome->value,
             'expected' => $this->expected,
             'actual' => $this->actual,
             'samples' => $this->samples,
+            'subject' => $this->subject,
+            'hint' => $this->hint,
         ];
     }
 
@@ -64,12 +66,10 @@ final readonly class CheckResult
             throw new \InvalidArgumentException('Check result without name.');
         }
 
-        $severity = Severity::tryFrom((string) ($data['severity'] ?? ''))
-            ?? throw new \InvalidArgumentException('Unknown check severity.');
         $outcome = CheckOutcome::tryFrom((string) ($data['outcome'] ?? ''))
             ?? throw new \InvalidArgumentException('Unknown check outcome.');
 
-        foreach (['expected', 'actual'] as $key) {
+        foreach (['expected', 'actual', 'subject', 'hint'] as $key) {
             if (($data[$key] ?? null) !== null && !is_string($data[$key])) {
                 throw new \InvalidArgumentException(sprintf('Check "%s" must be a string or null.', $key));
             }
@@ -81,6 +81,14 @@ final readonly class CheckResult
             throw new \InvalidArgumentException('Check samples must be a list.');
         }
 
-        return new self($data['name'], $severity, $outcome, $data['expected'] ?? null, $data['actual'] ?? null, array_values($samples));
+        return new self(
+            $data['name'],
+            $outcome,
+            $data['expected'] ?? null,
+            $data['actual'] ?? null,
+            array_values($samples),
+            $data['subject'] ?? null,
+            $data['hint'] ?? null,
+        );
     }
 }

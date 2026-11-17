@@ -424,8 +424,6 @@ final readonly class RunReportBuilder
             'checks' => [
                 'total' => count($checks),
                 'deviations' => count($deviations),
-                'blocking_deviations' => $countWhere($deviations, 'severity', Severity::Blocking->value),
-                'warning_deviations' => $countWhere($deviations, 'severity', Severity::Warning->value),
             ],
             'longest_step' => $this->stepWithHighest($steps, 'duration_ms'),
             'memory_peak_step' => $this->stepWithHighest($steps, 'memory_peak_bytes'),

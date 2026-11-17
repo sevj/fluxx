@@ -23,8 +23,9 @@ of `README.md` for the definition of the public API.
   `StepReport::links()`, shown in their own *Links* block; the metadata keys `created`, `updated`,
   `excluded` and `rejected_records` are read for steps that don't. `fluxx:run:report` and a *Rebuild
   the report* button build it again. Requires `migrations/upgrade-1.19.0-postgresql.sql`.
-- Check steps (`WorkflowStepType::Check`, `CheckStepInterface`, `CheckReport`): a blocking deviation
-  fails the step without retry, warning deviations complete it with warnings.
+- Check steps (`WorkflowStepType::Check`, `CheckStepInterface`, `CheckReport`): read-only controls whose
+  deviations complete the step and the run with warnings, never fail them. A `CheckResult` can carry a
+  `subject` and a `hint` shown in the report.
 - `completed_with_warnings` status for steps and runs, a `warning_count` kept after payload pruning,
   and the runs with warnings in the daily recap.
 - `fluxx:run:cancel` cancels an active run from the command line.

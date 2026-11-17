@@ -255,17 +255,17 @@ final class RunReportBuilderTest extends TestCase
     {
         $run = $this->workflowRun(WorkflowRunStatus::CompletedWithWarnings);
         $this->stepRun($run, 'check', 'verify', 1, '00:00', '00:10')->replaceReport((new CheckReport())
-            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
-            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3', ['c-9']))
+            ->add(new CheckResult('Companies present', CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', CheckOutcome::Deviation, '4', '3', ['c-9']))
             ->toArray());
 
         $report = $this->builder()->build($run);
 
         self::assertSame(
-            ['step' => 'verify', 'name' => 'Main role set', 'severity' => 'warning', 'outcome' => 'deviation', 'expected' => '4', 'actual' => '3', 'samples' => ['c-9']],
+            ['step' => 'verify', 'name' => 'Main role set', 'outcome' => 'deviation', 'expected' => '4', 'actual' => '3', 'samples' => ['c-9'], 'subject' => null, 'hint' => null],
             $report['checks'][1],
         );
-        self::assertSame(['total' => 2, 'deviations' => 1, 'blocking_deviations' => 0, 'warning_deviations' => 1], $report['summary']['checks']);
+        self::assertSame(['total' => 2, 'deviations' => 1], $report['summary']['checks']);
     }
 
     #[Test]
