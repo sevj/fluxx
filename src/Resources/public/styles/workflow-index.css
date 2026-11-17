@@ -3476,3 +3476,7 @@ td .run-flow .system-chip {
     gap: 8px;
     min-width: 0;
 }
+
+.run-report-unavailable-action {
+    margin-top: 10px;
+}

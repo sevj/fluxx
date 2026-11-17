@@ -71,6 +71,24 @@ final class RunReportBuilderTest extends TestCase
     }
 
     #[Test]
+    public function only_completed_and_pruned_runs_are_reportable(): void
+    {
+        foreach (WorkflowRunStatus::cases() as $status) {
+            $run = $this->workflowRun($status);
+
+            if ($status === WorkflowRunStatus::PayloadsPruned) {
+                $this->prune($run);
+            }
+
+            self::assertSame(
+                $status->isCompleted() || $status === WorkflowRunStatus::PayloadsPruned,
+                RunReportBuilder::isReportable($run),
+                $status->value,
+            );
+        }
+    }
+
+    #[Test]
     public function a_pruned_run_without_failed_step_is_reported_with_its_warnings(): void
     {
         $run = $this->workflowRun(WorkflowRunStatus::CompletedWithWarnings);

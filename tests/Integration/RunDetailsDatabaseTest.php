@@ -120,10 +120,14 @@ final class RunDetailsDatabaseTest extends TestCase
         $this->entityManager->persist($this->workflowRun('run-2'));
         $this->entityManager->flush();
 
-        $details = $this->details('run-1');
+        $details = $this->details('run-1', 'report');
 
         self::assertTrue($details->hasReport());
+        self::assertSame('report', $details->activeTab());
         self::assertSame('Efficy sync', $details->report()?->workflowName);
+        self::assertNull($this->details('run-1')->report(), 'the report is only read on its tab');
+        self::assertSame('execution', $this->details('run-1')->activeTab());
+        self::assertSame('execution', $this->details('run-2', 'report')->activeTab());
         self::assertFalse($this->details('run-2')->hasReport());
         self::assertNull($this->details('run-2')->report());
     }
@@ -138,13 +142,65 @@ final class RunDetailsDatabaseTest extends TestCase
         $this->connection->executeStatement("UPDATE fluxx_workflow_run_report SET format_version = 2");
         $this->entityManager->clear();
 
-        $details = $this->details('run-1');
+        $details = $this->details('run-1', 'report');
 
         self::assertTrue($details->hasReport());
+        self::assertSame('report', $details->activeTab());
         self::assertNull($details->report());
     }
 
-    private function details(string $runId): RunDetailView
+    #[Test]
+    public function a_run_with_warnings_opens_on_its_report(): void
+    {
+        $warned = $this->workflowRun('run-1');
+        $warned->markRunning();
+        $warned->incrementWarningCount();
+        $warned->markCompletedWithWarnings();
+        $completed = $this->workflowRun('run-2');
+        $completed->markRunning();
+        $completed->markCompleted();
+        $unreported = $this->workflowRun('run-3');
+        $unreported->markRunning();
+        $unreported->markCompletedWithWarnings();
+        foreach ([$warned, $completed, $unreported] as $run) {
+            $this->entityManager->persist($run);
+        }
+        $this->entityManager->persist(new WorkflowRunReport($warned, 1, RunReportContent::sample()));
+        $this->entityManager->persist(new WorkflowRunReport($completed, 1, RunReportContent::sample()));
+        $this->entityManager->flush();
+
+        self::assertSame('report', $this->details('run-1')->activeTab());
+        self::assertNotNull($this->details('run-1')->report());
+        self::assertSame('execution', $this->details('run-1', 'execution')->activeTab());
+        self::assertSame('execution', $this->details('run-2')->activeTab());
+        self::assertSame('execution', $this->details('run-3')->activeTab());
+    }
+
+    #[Test]
+    public function completed_and_pruned_runs_can_have_their_report_rebuilt(): void
+    {
+        $completed = $this->workflowRun('run-1');
+        $completed->markRunning();
+        $completed->markCompleted();
+        $failed = $this->workflowRun('run-2');
+        $failed->markRunning();
+        $failed->markFailed('boom');
+        $pruned = $this->workflowRun('run-3');
+        $pruned->markRunning();
+        $pruned->markCompleted();
+        foreach ([$completed, $failed, $pruned] as $run) {
+            $this->entityManager->persist($run);
+        }
+        $this->entityManager->flush();
+        $this->connection->executeStatement("UPDATE fluxx_workflow_run SET status = 'payloads_pruned' WHERE run_id = 'run-3'");
+        $this->entityManager->clear();
+
+        self::assertTrue($this->details('run-1')->isReportRebuildable());
+        self::assertFalse($this->details('run-2')->isReportRebuildable());
+        self::assertTrue($this->details('run-3')->isReportRebuildable());
+    }
+
+    private function details(string $runId, ?string $tab = null): RunDetailView
     {
         $definition = new WorkflowDefinition(
             code: 'contacts',
@@ -170,7 +226,7 @@ final class RunDetailsDatabaseTest extends TestCase
             workflowStepRunRepository: new WorkflowStepRunRepository($registry),
             runTimeline: new RunTimeline($synchronizationRegistry, $stepTypes),
             workflowRunReportRepository: new WorkflowRunReportRepository($registry),
-        ))->forWorkflowCodeAndRunId('contacts', $runId);
+        ))->forWorkflowCodeAndRunId('contacts', $runId, $tab);
     }
 
     /**

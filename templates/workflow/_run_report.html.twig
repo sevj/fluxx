@@ -4,7 +4,12 @@
 {% if report is null %}
     <section class="section-card">
         <div class="detail-message detail-message-warning run-report-unavailable">
-            <div class="detail-message-body">{{ 'run_report.unavailable'|trans }}</div>
+            {% if is_granted('ROLE_ADMIN') and run.reportRebuildable %}
+                <div class="detail-message-body">{{ 'run_report.unavailable'|trans }}</div>
+                <div class="run-report-unavailable-action">{% include '@Fluxx/workflow/_run_report_rebuild_form.html.twig' %}</div>
+            {% else %}
+                <div class="detail-message-body">{{ 'run_report.unavailable_read_only'|trans({'%command%': 'fluxx:run:report ' ~ run.runId}) }}</div>
+            {% endif %}
         </div>
     </section>
 {% else %}

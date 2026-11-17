@@ -213,8 +213,7 @@ final class TemplateRenderingTest extends TestCase
     public function report_tab_hidden_without_report(): void
     {
         $html = $this->twig(admin: true)->render('@Fluxx/workflow/run_show.html.twig', [
-            'run' => $this->runView('completed'),
-            'activeTab' => 'report',
+            'run' => $this->runView('completed') + ['activeTab' => 'report'],
         ]);
 
         self::assertStringNotContainsString('section-tabs', $html);
@@ -228,8 +227,8 @@ final class TemplateRenderingTest extends TestCase
         $run = $this->runView('completed') + ['hasReport' => true, 'report' => $this->reportView()];
         $twig = $this->twig(admin: false);
 
-        $report = $twig->render('@Fluxx/workflow/run_show.html.twig', ['run' => $run, 'activeTab' => 'report']);
-        $execution = $twig->render('@Fluxx/workflow/run_show.html.twig', ['run' => $run, 'activeTab' => 'execution']);
+        $report = $twig->render('@Fluxx/workflow/run_show.html.twig', ['run' => $run + ['activeTab' => 'report']]);
+        $execution = $twig->render('@Fluxx/workflow/run_show.html.twig', ['run' => $run + ['activeTab' => 'execution']]);
 
         self::assertStringContainsString('section-tabs', $report);
         self::assertStringContainsString('Run report', $report);
@@ -249,21 +248,26 @@ final class TemplateRenderingTest extends TestCase
     }
 
     #[Test]
-    public function an_unreadable_report_asks_to_be_rebuilt(): void
+    public function an_unreadable_report_offers_the_rebuild_only_to_admins(): void
     {
-        $html = $this->twig(admin: false, locale: 'fr')->render('@Fluxx/workflow/run_show.html.twig', [
-            'run' => $this->runView('completed') + ['hasReport' => true, 'report' => null],
-            'activeTab' => 'report',
-        ]);
+        $context = ['run' => $this->runView('completed') + ['hasReport' => true, 'report' => null, 'activeTab' => 'report', 'reportRebuildable' => true]];
 
-        self::assertStringContainsString('run-report-unavailable', $html);
-        self::assertStringContainsString('Reconstruisez-le', $html);
+        $admin = $this->twig(admin: true, locale: 'fr')->render('@Fluxx/workflow/run_show.html.twig', $context);
+        $user = $this->twig(admin: false, locale: 'fr')->render('@Fluxx/workflow/run_show.html.twig', $context);
+        $unavailable = static fn (string $html): string => substr($html, (int) strpos($html, 'run-report-unavailable'));
+
+        self::assertStringContainsString('Reconstruisez-le', $admin);
+        self::assertStringContainsString('fluxx_workflow_run_report_rebuild', $unavailable($admin));
+        self::assertStringContainsString('run-report-unavailable', $user);
+        self::assertStringNotContainsString('Reconstruisez-le', $user);
+        self::assertStringContainsString('fluxx:run:report run-1', $user);
+        self::assertStringNotContainsString('fluxx_workflow_run_report_rebuild', $user);
     }
 
     #[Test]
     public function the_report_rebuild_button_is_reserved_to_admins_on_completed_runs(): void
     {
-        foreach (['completed' => true, 'completed_with_warnings' => true, 'failed' => false, 'running' => false] as $status => $rebuildable) {
+        foreach (['completed' => true, 'completed_with_warnings' => true, 'payloads_pruned' => true, 'failed' => false, 'running' => false] as $status => $rebuildable) {
             $context = ['run' => $this->runView($status) + ['reportRebuildable' => $rebuildable]];
 
             self::assertSame($rebuildable, str_contains($this->twig(admin: true)->render('@Fluxx/workflow/run_show.html.twig', $context), 'fluxx_workflow_run_report_rebuild'), $status);

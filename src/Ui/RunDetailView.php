@@ -56,6 +56,8 @@ final readonly class RunDetailView
         private array $relaunches,
         private bool $hasReport = false,
         private ?RunReportView $report = null,
+        private bool $reportRebuildable = false,
+        private string $activeTab = RunDetails::TAB_EXECUTION,
     ) {
     }
 
@@ -276,7 +278,7 @@ final readonly class RunDetailView
     }
 
     /**
-     * Null when no report is stored or when the stored one has to be rebuilt.
+     * Null when no report is stored, when the stored one has to be rebuilt, or when the report tab is not shown.
      */
     public function report(): ?RunReportView
     {
@@ -285,6 +287,11 @@ final readonly class RunDetailView
 
     public function isReportRebuildable(): bool
     {
-        return in_array($this->status, ['completed', 'completed_with_warnings'], true);
+        return $this->reportRebuildable;
+    }
+
+    public function activeTab(): string
+    {
+        return $this->activeTab;
     }
 }

@@ -24,7 +24,8 @@ final class RunDetailController extends AbstractController
     public function __invoke(string $workflowCode, string $runId, Request $request): Response
     {
         try {
-            $run = $this->runDetails->forWorkflowCodeAndRunId($workflowCode, $runId);
+            $tab = $request->query->get('tab');
+            $run = $this->runDetails->forWorkflowCodeAndRunId($workflowCode, $runId, is_string($tab) ? $tab : null);
         } catch (InvalidArgumentException $exception) {
             throw $this->createNotFoundException(
                 sprintf('Run "%s/%s" was not found.', $workflowCode, $runId),
@@ -34,7 +35,6 @@ final class RunDetailController extends AbstractController
 
         return $this->render('@Fluxx/workflow/run_show.html.twig', [
             'run' => $run,
-            'activeTab' => $run->hasReport() && $request->query->get('tab') === 'report' ? 'report' : 'execution',
         ]);
     }
 }

@@ -383,6 +383,7 @@ run_report:
     title: Rapport d'exécution
     built_at: 'Construit le %date%'
     unavailable: 'Le rapport enregistré est illisible (construit par une autre version de Fluxx ou endommagé). Reconstruisez-le pour l''afficher.'
+    unavailable_read_only: 'Le rapport enregistré est illisible (construit par une autre version de Fluxx ou endommagé). Un administrateur peut le reconstruire depuis cette page ou avec « %command% ».'
     rate: '%rate% / s'
     severity:
         blocking: Bloquant

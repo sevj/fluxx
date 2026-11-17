@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Ui;
 
+use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowRunReport;
 use Fluxx\Entity\WorkflowStepRun;
@@ -11,12 +12,16 @@ use Fluxx\Repository\WorkflowRunReportRepository;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
+use Fluxx\Workflow\Report\RunReportBuilder;
 use Fluxx\Workflow\SynchronizationRegistry;
 use DateTimeImmutable;
 use InvalidArgumentException;
 
 final readonly class RunDetails
 {
+    public const TAB_EXECUTION = 'execution';
+    public const TAB_REPORT = 'report';
+
     public function __construct(
         private SynchronizationRegistry $registry,
         private StepTypeRegistry $stepTypeRegistry,
@@ -27,7 +32,11 @@ final readonly class RunDetails
     ) {
     }
 
-    public function forWorkflowCodeAndRunId(string $workflowCode, string $runId): RunDetailView
+    /**
+     * @param string|null $requestedTab the tab asked in the URL; without one, a run that completed with
+     *                                  warnings opens on its report so the warnings are seen
+     */
+    public function forWorkflowCodeAndRunId(string $workflowCode, string $runId, ?string $requestedTab = null): RunDetailView
     {
         $workflow = $this->registry->get($workflowCode);
         $definition = $workflow->definition();
@@ -43,6 +52,7 @@ final readonly class RunDetails
         $stepRuns = $this->workflowStepRunRepository->findByWorkflowRunOrdered($run);
         $timeline = $this->runTimeline->for($run, $stepRuns);
         $storedReport = $this->workflowRunReportRepository->findOneByRun($run);
+        $activeTab = self::resolveTab($storedReport !== null, $requestedTab, $run->status() === WorkflowRunStatus::CompletedWithWarnings);
 
         return new RunDetailView(
             workflowCode: $definition->code(),
@@ -92,8 +102,23 @@ final readonly class RunDetails
                 $this->workflowRunRepository->findRelaunchesOf($run),
             ),
             hasReport: $storedReport !== null,
-            report: $storedReport !== null ? self::readReport($storedReport, $timeline) : null,
+            report: $storedReport !== null && $activeTab === self::TAB_REPORT ? self::readReport($storedReport, $timeline) : null,
+            reportRebuildable: RunReportBuilder::isReportable($run),
+            activeTab: $activeTab,
         );
+    }
+
+    private static function resolveTab(bool $hasReport, ?string $requestedTab, bool $completedWithWarnings): string
+    {
+        if (!$hasReport) {
+            return self::TAB_EXECUTION;
+        }
+
+        return match ($requestedTab) {
+            self::TAB_REPORT => self::TAB_REPORT,
+            self::TAB_EXECUTION => self::TAB_EXECUTION,
+            default => $completedWithWarnings ? self::TAB_REPORT : self::TAB_EXECUTION,
+        };
     }
 
     /**

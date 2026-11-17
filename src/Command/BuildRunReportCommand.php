@@ -43,6 +43,12 @@ final class BuildRunReportCommand extends Command
             return Command::FAILURE;
         }
 
+        if (!RunReportBuilder::isReportable($run)) {
+            $io->error(sprintf('Run "%s" has the status "%s": a report is only built for a completed run.', $runId, $run->status()->value));
+
+            return Command::FAILURE;
+        }
+
         try {
             $content = $this->builder->build($run);
         } catch (RunNotReportableException $exception) {

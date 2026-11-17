@@ -153,6 +153,30 @@ final class WorkflowRunReportRebuildControllerTest extends TestCase
     }
 
     #[Test]
+    public function a_run_of_another_workflow_is_treated_as_not_found(): void
+    {
+        $this->storeRun('run-1', completed: true);
+
+        $response = $this->invoke($this->controller(), workflowCode: 'other');
+
+        self::assertSame(self::REDIRECT, $response->getTargetUrl());
+        self::assertSame(0, $this->reportCount());
+        self::assertSame(['run_report.flash.run_not_found'], $this->flashKeys('error'));
+    }
+
+    #[Test]
+    public function a_pruned_run_gets_its_report_rebuilt(): void
+    {
+        $this->storeRun('run-1', completed: true);
+        $this->connection->executeStatement("UPDATE fluxx_workflow_run SET status = 'payloads_pruned'");
+
+        $this->invoke($this->controller());
+
+        self::assertSame(1, $this->reportCount());
+        self::assertSame(['run_report.flash.rebuilt'], $this->flashKeys('success'));
+    }
+
+    #[Test]
     public function a_build_failure_is_flashed_and_logged_instead_of_failing_the_request(): void
     {
         $this->storeRun('run-1', completed: true);
@@ -168,7 +192,7 @@ final class WorkflowRunReportRebuildControllerTest extends TestCase
         self::assertStringContainsString('could not be rebuilt', $this->logged[0]);
     }
 
-    private function invoke(WorkflowRunReportRebuildController $controller, string $token = 'valid'): \Symfony\Component\HttpFoundation\RedirectResponse
+    private function invoke(WorkflowRunReportRebuildController $controller, string $token = 'valid', string $workflowCode = 'sync'): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         $request = Request::create('/fluxx/workflow/sync/run/run-1/report/rebuild', 'POST', ['_token' => $token, '_redirect' => self::REDIRECT]);
         $request->setSession($this->session);
@@ -184,7 +208,7 @@ final class WorkflowRunReportRebuildControllerTest extends TestCase
             'router' => fn (): UrlGeneratorInterface => $this->createStub(UrlGeneratorInterface::class),
         ]));
 
-        return $controller('sync', 'run-1', $request);
+        return $controller($workflowCode, 'run-1', $request);
     }
 
     private function controller(?WorkflowStepRunLookupInterface $stepRunLookup = null): WorkflowRunReportRebuildController

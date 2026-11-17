@@ -36,6 +36,15 @@ final readonly class RunReportBuilder
     }
 
     /**
+     * Whether a report can be asked for the run: completed, or pruned after it ended. A pruned run
+     * whose steps were interrupted is still refused by build().
+     */
+    public static function isReportable(WorkflowRun $run): bool
+    {
+        return $run->status()->isCompleted() || $run->status() === WorkflowRunStatus::PayloadsPruned;
+    }
+
+    /**
      * @return array<string, mixed>
      *
      * @throws RunNotReportableException when the run did not complete
@@ -81,6 +90,14 @@ final readonly class RunReportBuilder
      */
     private function reportedStatus(WorkflowRun $run, array $stepRuns): WorkflowRunStatus
     {
+        if (!self::isReportable($run)) {
+            throw new RunNotReportableException(sprintf(
+                'Run "%s" has the status "%s": a report is only built for a completed run.',
+                $run->runId(),
+                $run->status()->value,
+            ));
+        }
+
         if ($run->status()->isCompleted()) {
             return $run->status();
         }
@@ -90,21 +107,13 @@ final readonly class RunReportBuilder
             static fn (WorkflowStepRun $stepRun): bool => in_array($stepRun->status(), [WorkflowStepRunStatus::Failed, WorkflowStepRunStatus::Cancelled], true),
         );
 
-        if ($run->status() === WorkflowRunStatus::PayloadsPruned && $stepRuns !== [] && $interrupted === []) {
+        if ($stepRuns !== [] && $interrupted === []) {
             return $run->warningCount() > 0 ? WorkflowRunStatus::CompletedWithWarnings : WorkflowRunStatus::Completed;
         }
 
-        if ($run->status() === WorkflowRunStatus::PayloadsPruned) {
-            throw new RunNotReportableException(sprintf(
-                'Run "%s" did not complete (a step failed or was cancelled before its payloads were pruned): a report is only built for a completed run.',
-                $run->runId(),
-            ));
-        }
-
         throw new RunNotReportableException(sprintf(
-            'Run "%s" has the status "%s": a report is only built for a completed run.',
+            'Run "%s" did not complete (a step failed or was cancelled before its payloads were pruned): a report is only built for a completed run.',
             $run->runId(),
-            $run->status()->value,
         ));
     }
 

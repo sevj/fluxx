@@ -1,0 +1,10 @@
+{% trans_default_domain 'fluxx' %}
+{% import '@Fluxx/_icons.html.twig' as icons %}
+<form method="post" action="{{ path('fluxx_workflow_run_report_rebuild', {'workflowCode': run.workflowCode, 'runId': run.runId}) }}" class="inline-action-form">
+    <input type="hidden" name="_token" value="{{ csrf_token('fluxx.report.rebuild.' ~ run.runId) }}">
+    <input type="hidden" name="_redirect" value="{{ path('fluxx_workflow_run_show', {'workflowCode': run.workflowCode, 'runId': run.runId, 'tab': 'report'}) }}">
+    <button type="submit" class="secondary-button">
+        <span class="button-icon" aria-hidden="true">{{ icons.icon('refresh-cw') }}</span>
+        <span class="button-label">{{ 'run_report.rebuild'|trans }}</span>
+    </button>
+</form>
