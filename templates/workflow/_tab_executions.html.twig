@@ -35,7 +35,7 @@
             <span class="run-filter-label">{{ 'workflow_show.execution_filter_status_label'|trans }}</span>
             <select name="status" class="search-input">
                 <option value="">{{ 'workflow_show.execution_filter_status_all'|trans }}</option>
-                {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'failed', 'partially_failed'] %}
+                {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'completed_with_warnings', 'failed', 'partially_failed'] %}
                     <option value="{{ status }}"{{ executionFilters.status == status ? ' selected' : '' }}>
                         {{ ('workflow_status.' ~ status)|trans }}
                     </option>
@@ -85,7 +85,7 @@
 {% else %}
     <div class="execution-status-legend" aria-label="{{ 'workflow_show.execution_status_legend'|trans }}">
         <span class="execution-status-legend-label">{{ 'workflow_show.execution_status_legend'|trans }}</span>
-        {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'failed'] %}
+        {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'completed_with_warnings', 'failed'] %}
             <span class="execution-status-legend-item">
                 <span class="step-status-dot step-status-dot-inline step-status-dot-{{ status|replace({'_': '-'}) }}" aria-hidden="true"></span>
                 <span>{{ ('workflow_status.' ~ status)|trans }}</span>

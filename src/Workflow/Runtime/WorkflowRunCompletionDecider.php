@@ -24,6 +24,7 @@ final class WorkflowRunCompletionDecider
     {
         $this->stepStates = [];
         $completedCount = 0;
+        $hasWarningStep = false;
         $failedCount = 0;
         $hasRunningStep = false;
         $hasRunnablePendingStep = false;
@@ -34,6 +35,7 @@ final class WorkflowRunCompletionDecider
 
             if ($stepState === 'completed') {
                 ++$completedCount;
+                $hasWarningStep = $hasWarningStep || $latestStepRunsByCode[$stepCode]->status() === WorkflowStepRunStatus::CompletedWithWarnings;
                 continue;
             }
 
@@ -58,7 +60,7 @@ final class WorkflowRunCompletionDecider
         }
 
         if ($completedCount === count($targetStepCodes)) {
-            return WorkflowRunStatus::Completed;
+            return $hasWarningStep ? WorkflowRunStatus::CompletedWithWarnings : WorkflowRunStatus::Completed;
         }
 
         if ($hasRunningStep || $hasRunnablePendingStep || $hasWaitingPendingStep) {
@@ -91,7 +93,7 @@ final class WorkflowRunCompletionDecider
         $stepRun = $latestStepRunsByCode[$stepCode] ?? null;
         $status = $stepRun?->status();
 
-        if ($status === WorkflowStepRunStatus::Completed) {
+        if ($status?->isCompleted() === true) {
             return $this->stepStates[$stepCode] = 'completed';
         }
 

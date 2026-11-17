@@ -17,6 +17,7 @@
     --green: #62d332;
     --red: #e0655a;
     --amber: #d9a441;
+    --orange: #ef8a3c;
     --purple: #b18cf0;
     --pink: #f28ab5;
     --blue: #6aa6ff;
@@ -42,6 +43,7 @@
     --green: #2f7d32;
     --red: #c0392b;
     --amber: #9a6b0b;
+    --orange: #b9560f;
     --purple: #6d4fc4;
     --pink: #b8367a;
     --blue: #2d5fc9;
@@ -1245,6 +1247,10 @@ td .system-chip,
     color: var(--green);
 }
 
+.status-badge-completed-with-warnings {
+    color: var(--orange);
+}
+
 .status-badge-failed,
 .status-badge-partially-failed,
 .status-chip.is-disabled {
@@ -2104,6 +2110,10 @@ td .run-flow .system-chip {
     background: var(--green);
 }
 
+.step-status-dot-completed-with-warnings {
+    background: var(--orange);
+}
+
 .step-status-dot-failed {
     background: var(--red);
 }
@@ -2352,6 +2362,12 @@ td .run-flow .system-chip {
     border-color: color-mix(in srgb, var(--green) 45%, transparent);
     background: color-mix(in srgb, var(--green) 16%, var(--surface));
     color: var(--green);
+}
+
+.run-timeline-bar.step-status-bar-completed-with-warnings {
+    border-color: color-mix(in srgb, var(--orange) 45%, transparent);
+    background: color-mix(in srgb, var(--orange) 16%, var(--surface));
+    color: var(--orange);
 }
 
 .run-timeline-bar.step-status-bar-failed,

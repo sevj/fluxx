@@ -19,7 +19,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class PruneRunsCommand extends Command
 {
     private const DEFAULT_RETENTION_DAYS = 30;
-    private const TERMINAL_STATUSES = ['completed', 'failed', 'partially_failed', 'cancelled', 'payloads_pruned'];
+    private const TERMINAL_STATUSES = ['completed', 'completed_with_warnings', 'failed', 'partially_failed', 'cancelled', 'payloads_pruned'];
 
     public function __construct(
         private readonly WorkflowRunRepository $runRepository,
@@ -32,7 +32,7 @@ final class PruneRunsCommand extends Command
         $this
             ->addOption('older-than', null, InputOption::VALUE_REQUIRED, 'Delete runs created before this many days ago.', self::DEFAULT_RETENTION_DAYS)
             ->addOption('before', null, InputOption::VALUE_REQUIRED, 'Delete runs created before this date (Y-m-d). Overrides --older-than.')
-            ->addOption('status', null, InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED, 'Restrict to these terminal statuses (defaults to completed, failed, partially_failed, cancelled).', [])
+            ->addOption('status', null, InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED, 'Restrict to these terminal statuses (defaults to completed, completed_with_warnings, failed, partially_failed, cancelled).', [])
             ->addOption('workflow', null, InputOption::VALUE_REQUIRED, 'Restrict pruning to the given workflow code.')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Report the count that would be deleted without actually deleting.');
     }

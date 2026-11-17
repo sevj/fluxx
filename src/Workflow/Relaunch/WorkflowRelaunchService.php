@@ -144,7 +144,7 @@ final readonly class WorkflowRelaunchService
     {
         return array_keys(array_filter(
             $stepRuns,
-            static fn (WorkflowStepRun $stepRun): bool => $stepRun->status() === WorkflowStepRunStatus::Completed,
+            static fn (WorkflowStepRun $stepRun): bool => $stepRun->status()->isCompleted(),
         ));
     }
 
@@ -181,7 +181,10 @@ final readonly class WorkflowRelaunchService
                 metadata: $this->buildPreservedStepMetadata($originalStepRun, $originalRun),
             );
             $clonedStepRun->markRunning($originalStepRun->startedAt());
-            $clonedStepRun->markCompleted(
+            $markCompleted = $originalStepRun->status() === WorkflowStepRunStatus::CompletedWithWarnings
+                ? $clonedStepRun->markCompletedWithWarnings(...)
+                : $clonedStepRun->markCompleted(...);
+            $markCompleted(
                 processedCount: $originalStepRun->processedCount(),
                 successCount: $originalStepRun->successCount(),
                 errorCount: $originalStepRun->errorCount(),

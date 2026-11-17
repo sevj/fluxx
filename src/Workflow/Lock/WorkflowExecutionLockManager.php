@@ -109,6 +109,7 @@ final readonly class WorkflowExecutionLockManager implements WorkflowExecutionLo
 
         if (in_array($ownerRun->status(), [
             WorkflowRunStatus::Completed,
+            WorkflowRunStatus::CompletedWithWarnings,
             WorkflowRunStatus::Cancelled,
             WorkflowRunStatus::Failed,
             WorkflowRunStatus::PartiallyFailed,

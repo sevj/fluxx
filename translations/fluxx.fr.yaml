@@ -219,6 +219,7 @@ statistics_index:
     apply_filter: Appliquer
 
 run_index:
+    warning_count: '%count% avertissement(s)'
     title: Toutes les exécutions
     heading: Toutes les exécutions
     filter_search_label: Recherche
@@ -381,6 +382,7 @@ workflow_status:
     running: En cours
     cancelled: Annulée
     completed: Terminée
+    completed_with_warnings: Terminée avec avertissements
     failed: Échouée
     partially_failed: Échec partiel
     payloads_pruned: Payloads purgés
@@ -700,6 +702,9 @@ email_recap:
     errored_section: Erreurs
     no_failed_step: Aucune étape échouée enregistrée pour cette exécution.
     no_failed_run: Aucune exécution échouée.
+    warning_section: Avertissements
+    no_warning_run: Aucune exécution avec avertissements.
+    warning_count_label: avertissements
     summary: Résumé
     total_runs: Total des exécutions
     processed_records: Enregistrements traités

@@ -208,6 +208,57 @@ final readonly class WorkflowStepRunStatistics
      */
     public function findErroredStepRowsByWorkflowRunsGrouped(array $workflowRuns): array
     {
+        return $this->findStepRowsByWorkflowRunsAndStatusesGrouped($workflowRuns, [
+            WorkflowStepRunStatus::Failed,
+            WorkflowStepRunStatus::Retrying,
+            WorkflowStepRunStatus::Cancelled,
+        ]);
+    }
+
+    /**
+     * @param list<WorkflowRun> $workflowRuns
+     * @return array<string, list<array{
+     *     code: string,
+     *     type: string,
+     *     status: string,
+     *     processed: int,
+     *     success: int,
+     *     errors: int,
+     *     durationMs: ?int,
+     *     memoryPeakBytes: ?int,
+     *     retries: int,
+     *     startedAt: ?DateTimeImmutable,
+     *     finishedAt: ?DateTimeImmutable,
+     *     error: ?string,
+     *     errorDetails: list<string>
+     * }>>
+     */
+    public function findWarningStepRowsByWorkflowRunsGrouped(array $workflowRuns): array
+    {
+        return $this->findStepRowsByWorkflowRunsAndStatusesGrouped($workflowRuns, [WorkflowStepRunStatus::CompletedWithWarnings]);
+    }
+
+    /**
+     * @param list<WorkflowRun> $workflowRuns
+     * @param list<WorkflowStepRunStatus> $statuses
+     * @return array<string, list<array{
+     *     code: string,
+     *     type: string,
+     *     status: string,
+     *     processed: int,
+     *     success: int,
+     *     errors: int,
+     *     durationMs: ?int,
+     *     memoryPeakBytes: ?int,
+     *     retries: int,
+     *     startedAt: ?DateTimeImmutable,
+     *     finishedAt: ?DateTimeImmutable,
+     *     error: ?string,
+     *     errorDetails: list<string>
+     * }>>
+     */
+    private function findStepRowsByWorkflowRunsAndStatusesGrouped(array $workflowRuns, array $statuses): array
+    {
         [$workflowRunIds, $runIdsByDatabaseId] = $this->extractWorkflowRunIdentifiers($workflowRuns);
 
         if ($workflowRunIds === []) {
@@ -236,11 +287,7 @@ final readonly class WorkflowStepRunStatistics
              ORDER BY workflow_step_run.workflow_run_id ASC, workflow_step_run.id ASC',
             [
                 'workflowRunIds' => $workflowRunIds,
-                'statuses' => [
-                    WorkflowStepRunStatus::Failed->value,
-                    WorkflowStepRunStatus::Retrying->value,
-                    WorkflowStepRunStatus::Cancelled->value,
-                ],
+                'statuses' => array_map(static fn (WorkflowStepRunStatus $status): string => $status->value, $statuses),
             ],
             [
                 'workflowRunIds' => ArrayParameterType::INTEGER,

@@ -52,7 +52,7 @@ final readonly class ActiveRunsViewFactory
         foreach ($latestByStepName as $stepRun) {
             $status = $stepRun->status();
 
-            if ($status === WorkflowStepRunStatus::Completed) {
+            if ($status->isCompleted()) {
                 ++$completedSteps;
                 continue;
             }
@@ -164,7 +164,7 @@ final readonly class ActiveRunsViewFactory
     private function activityKind(WorkflowStepRun $stepRun): string
     {
         return match ($stepRun->status()) {
-            WorkflowStepRunStatus::Completed => 'completed',
+            WorkflowStepRunStatus::Completed, WorkflowStepRunStatus::CompletedWithWarnings => 'completed',
             WorkflowStepRunStatus::Failed => 'failed',
             WorkflowStepRunStatus::Running => 'running',
             WorkflowStepRunStatus::Retrying, WorkflowStepRunStatus::Relaunched => 'retrying',

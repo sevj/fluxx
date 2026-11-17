@@ -91,7 +91,7 @@ final class WorkflowRunRepositoryTest extends TestCase
                 [
                     'workflowName' => 'workflow',
                     'startAt' => new DateTimeImmutable('2026-07-01 00:00:00'),
-                    'finishedStatuses' => ['completed', 'partially_failed'],
+                    'finishedStatuses' => ['completed', 'completed_with_warnings', 'partially_failed'],
                 ],
                 [
                     'startAt' => Types::DATETIME_IMMUTABLE,

@@ -68,6 +68,7 @@ final class FluxxRuntime
 
         if (in_array($workflowRun->status(), [
             WorkflowRunStatus::Completed,
+            WorkflowRunStatus::CompletedWithWarnings,
             WorkflowRunStatus::Failed,
             WorkflowRunStatus::PartiallyFailed,
             WorkflowRunStatus::Cancelled,
@@ -80,7 +81,7 @@ final class FluxxRuntime
         $stepDefinition = $definition->step($stepCode);
 
         $existingStepRun = $this->workflowStepRunRepository->findLatestByWorkflowRunAndStepName($workflowRun, $stepCode);
-        if ($existingStepRun?->status() === WorkflowStepRunStatus::Completed) {
+        if ($existingStepRun?->status()->isCompleted() === true) {
             return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
         }
 
@@ -399,10 +400,11 @@ final class FluxxRuntime
             }
 
             $hasCompletedStepRun = (bool) $connection->fetchOne(
-                'SELECT 1 FROM fluxx_workflow_step_run WHERE workflow_run_id = :workflow_run_id AND status = :completed_status LIMIT 1',
+                'SELECT 1 FROM fluxx_workflow_step_run WHERE workflow_run_id = :workflow_run_id AND status IN (:completed_status, :completed_with_warnings_status) LIMIT 1',
                 [
                     'workflow_run_id' => $workflowRunId,
                     'completed_status' => WorkflowStepRunStatus::Completed->value,
+                    'completed_with_warnings_status' => WorkflowStepRunStatus::CompletedWithWarnings->value,
                 ],
             );
 
@@ -648,6 +650,7 @@ final class FluxxRuntime
 
         if (in_array($workflowRun->status(), [
             WorkflowRunStatus::Completed,
+            WorkflowRunStatus::CompletedWithWarnings,
             WorkflowRunStatus::Failed,
             WorkflowRunStatus::PartiallyFailed,
             WorkflowRunStatus::Cancelled,
@@ -679,6 +682,13 @@ final class FluxxRuntime
         if ($decision === WorkflowRunStatus::Completed) {
             $workflowRun->markCompleted();
             $this->workflowExecutionLockManager->releaseForRun($workflowRun, 'completed');
+
+            return;
+        }
+
+        if ($decision === WorkflowRunStatus::CompletedWithWarnings) {
+            $workflowRun->markCompletedWithWarnings();
+            $this->workflowExecutionLockManager->releaseForRun($workflowRun, 'completed_with_warnings');
 
             return;
         }

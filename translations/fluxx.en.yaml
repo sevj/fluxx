@@ -219,6 +219,7 @@ statistics_index:
     apply_filter: Apply
 
 run_index:
+    warning_count: '%count% warning(s)'
     title: All runs
     heading: All runs
     filter_search_label: Search
@@ -381,6 +382,7 @@ workflow_status:
     running: Running
     cancelled: Cancelled
     completed: Completed
+    completed_with_warnings: Completed with warnings
     failed: Failed
     partially_failed: Partially failed
     payloads_pruned: Payloads pruned
@@ -700,6 +702,9 @@ email_recap:
     errored_section: Errors
     no_failed_step: No failed step stored for this run.
     no_failed_run: No failed run.
+    warning_section: Warnings
+    no_warning_run: No run with warnings.
+    warning_count_label: warnings
     summary: Summary
     total_runs: Total runs
     processed_records: Processed records

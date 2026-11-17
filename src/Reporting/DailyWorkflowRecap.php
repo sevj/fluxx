@@ -12,6 +12,7 @@ final readonly class DailyWorkflowRecap
      * @param array<string, int> $statusCounts
      * @param array<string, array{total: int, statuses: array<string, int>, errors: int}> $workflowCounts
      * @param list<array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, error: ?string, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}>}> $erroredRuns
+     * @param list<array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, warningCount: int, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}>}> $warningRuns
      */
     public function __construct(
         private DateTimeImmutable $from,
@@ -19,6 +20,7 @@ final readonly class DailyWorkflowRecap
         private array $statusCounts,
         private array $workflowCounts,
         private array $erroredRuns,
+        private array $warningRuns,
         private int $processedCount,
         private int $successCount,
         private int $errorCount,
@@ -39,6 +41,9 @@ final readonly class DailyWorkflowRecap
 
     /** @return list<array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, error: ?string, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}>}> */
     public function erroredRuns(): array { return $this->erroredRuns; }
+
+    /** @return list<array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, warningCount: int, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}>}> */
+    public function warningRuns(): array { return $this->warningRuns; }
 
     public function totalRuns(): int { return array_sum($this->statusCounts); }
 

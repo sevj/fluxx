@@ -78,7 +78,7 @@
                         <span class="run-filter-label">{{ 'run_index.filter_status_label'|trans }}</span>
                         <select name="status" class="search-input">
                             <option value="">{{ 'run_index.filter_status_all'|trans }}</option>
-                            {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'failed', 'partially_failed'] %}
+                            {% for status in ['pending', 'relaunched', 'retrying', 'running', 'cancelled', 'completed', 'completed_with_warnings', 'failed', 'partially_failed'] %}
                                 <option value="{{ status }}"{{ executionFilters.status == status ? ' selected' : '' }}>
                                     {{ ('workflow_status.' ~ status)|trans }}
                                 </option>

@@ -69,7 +69,7 @@ final class InMemoryStepRunLookup implements WorkflowStepRunLookupInterface
                 continue;
             }
 
-            if ($stepRun->status()->value !== 'completed') {
+            if (!$stepRun->status()->isCompleted()) {
                 continue;
             }
 

@@ -55,6 +55,7 @@ CREATE TABLE fluxx_workflow_run (
     lock_scope    VARCHAR(40) DEFAULT NULL,
     error_message TEXT DEFAULT NULL,
     synchronous   BOOLEAN NOT NULL DEFAULT FALSE,
+    warning_count INT DEFAULT 0 NOT NULL,
     PRIMARY KEY (id)
 );
 CREATE UNIQUE INDEX uniq_fluxx_workflow_run_run_id ON fluxx_workflow_run (run_id);

@@ -12,5 +12,15 @@ enum WorkflowStepRunStatus: string
     case Running = 'running';
     case Cancelled = 'cancelled';
     case Completed = 'completed';
+    case CompletedWithWarnings = 'completed_with_warnings';
     case Failed = 'failed';
+
+    /**
+     * Whether the step has finished successfully, with or without warnings:
+     * either way its downstream steps can run.
+     */
+    public function isCompleted(): bool
+    {
+        return $this === self::Completed || $this === self::CompletedWithWarnings;
+    }
 }

@@ -84,10 +84,10 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
         $stepRuns = $this->createQueryBuilder('workflow_step_run')
             ->andWhere('workflow_step_run.workflowRun = :workflowRun')
             ->andWhere('workflow_step_run.stepName IN (:stepNames)')
-            ->andWhere('workflow_step_run.status = :status')
+            ->andWhere('workflow_step_run.status IN (:statuses)')
             ->setParameter('workflowRun', $workflowRun)
             ->setParameter('stepNames', $stepNames)
-            ->setParameter('status', WorkflowStepRunStatus::Completed)
+            ->setParameter('statuses', [WorkflowStepRunStatus::Completed, WorkflowStepRunStatus::CompletedWithWarnings])
             ->orderBy('workflow_step_run.id', SortDirection::Descending)
             ->getQuery()
             ->getResult();

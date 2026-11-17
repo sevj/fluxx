@@ -222,7 +222,7 @@ final class WorkflowRelaunchServiceTest extends TestCase
     }
 
     #[Test]
-    public function a_resume_keeps_the_completed_branch_and_restarts_every_failed_one(): void
+    public function a_resume_keeps_the_completed_branches_with_their_warnings_and_restarts_every_failed_one(): void
     {
         $original = $this->createRun(WorkflowRunStatus::PartiallyFailed);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($original);
@@ -238,12 +238,14 @@ final class WorkflowRelaunchServiceTest extends TestCase
         ]));
 
         $stepRuns = [];
-        foreach (['read' => true, 'write_a' => true, 'write_b' => false, 'write_c' => false] as $code => $completed) {
+        foreach (['read' => 'completed', 'write_a' => 'warnings', 'write_b' => 'failed', 'write_c' => 'failed'] as $code => $outcome) {
             $stepRun = new WorkflowStepRun($original, 'read', $code, count($stepRuns) + 1);
             $stepRun->markRunning();
-            $completed
-                ? $stepRun->markCompleted(processedCount: 1, successCount: 1, errorCount: 0)
-                : $stepRun->markFailed('boom');
+            match ($outcome) {
+                'completed' => $stepRun->markCompleted(processedCount: 1, successCount: 1, errorCount: 0),
+                'warnings' => $stepRun->markCompletedWithWarnings(processedCount: 1, successCount: 1, errorCount: 0),
+                'failed' => $stepRun->markFailed('boom'),
+            };
             $stepRuns[$code] = $stepRun;
         }
 
@@ -297,7 +299,7 @@ final class WorkflowRelaunchServiceTest extends TestCase
         $service->relaunch('run-1', WorkflowRelaunchMode::Resume);
 
         self::assertSame(
-            ['read:completed', 'write_a:completed', 'write_b:relaunched', 'write_c:relaunched', 'notes:relaunched'],
+            ['read:completed', 'write_a:completed_with_warnings', 'write_b:relaunched', 'write_c:relaunched', 'notes:relaunched'],
             $persisted,
         );
         self::assertSame(
@@ -335,6 +337,7 @@ final class WorkflowRelaunchServiceTest extends TestCase
             WorkflowRunStatus::Retrying => $run->markRetrying(),
             WorkflowRunStatus::Relaunched => $run->markRelaunched(),
             WorkflowRunStatus::Completed => $run->markCompleted(),
+            WorkflowRunStatus::CompletedWithWarnings => $run->markCompletedWithWarnings(),
             WorkflowRunStatus::Failed => $run->markFailed(),
             WorkflowRunStatus::Cancelled => $run->markCancelled(),
             WorkflowRunStatus::PartiallyFailed => $run->markPartiallyFailed(),

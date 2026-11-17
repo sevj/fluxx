@@ -74,6 +74,9 @@
                             <span class="status-badge status-badge-{{ run.status|replace({'_': '-'}) }}">
                                 {{ ('workflow_status.' ~ run.status)|trans }}
                             </span>
+                            {% if run.warningCount > 0 %}
+                                <span class="status-badge status-badge-completed-with-warnings" title="{{ 'run_index.warning_count'|trans({'%count%': run.warningCount}) }}">{{ run.warningCount }}</span>
+                            {% endif %}
                             {% if run.lockKey and run.status in ['pending', 'relaunched', 'retrying', 'running'] %}
                                 <span class="lock-badge" title="{{ 'run_index.locked'|trans({'%key%': run.lockKey}) }}" aria-label="{{ 'run_index.locked'|trans({'%key%': run.lockKey}) }}">{{ icons.icon('lock') }}</span>
                             {% endif %}

@@ -27,6 +27,7 @@ final readonly class RunTimeline
         $now = new \DateTimeImmutable();
         $terminalStatuses = [
             WorkflowRunStatus::Completed,
+            WorkflowRunStatus::CompletedWithWarnings,
             WorkflowRunStatus::Failed,
             WorkflowRunStatus::PartiallyFailed,
             WorkflowRunStatus::Cancelled,

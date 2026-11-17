@@ -316,6 +316,30 @@ final class FluxxRuntimeTest extends TestCase
     }
 
     #[Test]
+    public function downstream_runs_after_warning_step(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Running);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->registryWithHandlerAndDownstream(new StubStepHandler(new WorkflowStepResult(records: [['id' => 1]], processedCount: 1, successCount: 1)));
+
+        $warningStep = new WorkflowStepRun($workflowRun, 'read', 'fetch', 1);
+        $warningStep->markRunning();
+        $warningStep->markCompletedWithWarnings(processedCount: 1, successCount: 1);
+        $this->stepRunLookup->add($warningStep);
+
+        self::assertSame([['code' => 'write', 'type' => 'write']], $this->runtime->runStep('run-1', 'fetch'));
+
+        $this->workflowExecutionLockManager->expects(self::once())->method('releaseForRun')->with($workflowRun, 'completed_with_warnings');
+
+        $this->runtime->runStep('run-1', 'write');
+
+        self::assertSame(WorkflowStepRunStatus::Completed, $this->stepRunLookup->findLatestByWorkflowRunAndStepName($workflowRun, 'write')?->status());
+        self::assertSame(WorkflowRunStatus::CompletedWithWarnings, $workflowRun->status());
+        self::assertTrue($workflowRun->status()->isRelaunchable());
+        self::assertSame([], $this->runtime->runStep('run-1', 'write'));
+    }
+
+    #[Test]
     public function it_returns_no_steps_when_run_is_already_terminal(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Completed);
@@ -883,6 +907,7 @@ final class FluxxRuntimeTest extends TestCase
             WorkflowRunStatus::Pending => null,
             WorkflowRunStatus::Running => $workflowRun->markRunning(),
             WorkflowRunStatus::Completed => $workflowRun->markCompleted(),
+            WorkflowRunStatus::CompletedWithWarnings => $workflowRun->markCompletedWithWarnings(),
             WorkflowRunStatus::Failed => $workflowRun->markFailed('error'),
             WorkflowRunStatus::PartiallyFailed => $workflowRun->markPartiallyFailed('error'),
             WorkflowRunStatus::Cancelled => $workflowRun->markCancelled(),

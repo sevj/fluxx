@@ -24,6 +24,7 @@ final readonly class RunRowView
         private ?DateTimeImmutable $startedAt,
         private ?DateTimeImmutable $finishedAt,
         private ?string $errorMessage,
+        private int $warningCount = 0,
     ) {
     }
 
@@ -109,5 +110,10 @@ final readonly class RunRowView
     public function errorMessage(): ?string
     {
         return $this->errorMessage;
+    }
+
+    public function warningCount(): int
+    {
+        return $this->warningCount;
     }
 }

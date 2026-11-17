@@ -119,6 +119,21 @@
                             {% else %}
                                 <div style="padding:12px; border:1px solid #263244; border-radius:10px; background:#18212d; color:#9bacc2;">{{ 'email_recap.no_failed_run'|trans }}</div>
                             {% endfor %}
+
+                            <h2 style="margin:24px 0 10px; color:#edf3fb; font-size:18px;">{{ 'email_recap.warning_section'|trans }}</h2>
+                            {% for run in recap.warningRuns %}
+                                <div style="margin-bottom:8px; padding:12px; border:1px solid rgba(239,138,60,0.32); border-radius:10px; background:rgba(239,138,60,0.14); color:#fdba74;">
+                                    <strong>{{ run.workflow }}</strong> · {{ ('workflow_status.' ~ run.status)|trans }} · {{ run.runId }}<br>
+                                    <span style="font-size:13px;">{{ run.createdAt|date('Y-m-d H:i') }} · {{ 'email_recap.warning_count_label'|trans }} {{ run.warningCount }}</span>
+                                    {% for step in run.steps %}
+                                        <div style="margin-top:10px; padding:10px; border:1px solid rgba(239,138,60,0.24); border-radius:8px; background:rgba(11,17,24,0.32); color:#edf3fb;">
+                                            <strong>{{ step.code }}</strong> · {{ step.type }} · {{ ('workflow_status.' ~ step.status)|trans }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div style="padding:12px; border:1px solid #263244; border-radius:10px; background:#18212d; color:#9bacc2;">{{ 'email_recap.no_warning_run'|trans }}</div>
+                            {% endfor %}
                         </td>
                     </tr>
                 </table>

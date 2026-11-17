@@ -333,6 +333,7 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
                     // A failed run ends when it gets cleaned up, sometimes days later: its duration means nothing.
                     'finishedStatuses' => [
                         WorkflowRunStatus::Completed->value,
+                        WorkflowRunStatus::CompletedWithWarnings->value,
                         WorkflowRunStatus::PartiallyFailed->value,
                     ],
                 ],
@@ -466,7 +467,12 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
                 ->setParameter('workflowName', $filters->workflowCode());
         }
 
-        if ($filters->status() !== null) {
+        if ($filters->status() === WorkflowRunStatus::CompletedWithWarnings->value) {
+            $queryBuilder
+                ->andWhere('workflow_run.status = :status OR (workflow_run.status = :prunedStatus AND workflow_run.warningCount > 0)')
+                ->setParameter('status', $filters->status())
+                ->setParameter('prunedStatus', WorkflowRunStatus::PayloadsPruned);
+        } elseif ($filters->status() !== null) {
             $queryBuilder
                 ->andWhere('workflow_run.status = :status')
                 ->setParameter('status', $filters->status());

@@ -79,6 +79,72 @@ final class WorkflowRunCompletionDeciderTest extends TestCase
         self::assertSame(WorkflowRunStatus::Failed, $decision);
     }
 
+    #[Test]
+    public function decider_treats_warning_step_as_done(): void
+    {
+        $definition = $this->branchingDefinition();
+        $warningStep = $this->completedStepRun('run-1', 'branch_a', 2);
+        $warningStep->markCompletedWithWarnings(1, 1);
+        $steps = [
+            'read' => $this->completedStepRun('run-1', 'read', 1),
+            'branch_a' => $warningStep,
+            'branch_b' => $this->completedStepRun('run-1', 'branch_b', 3),
+            'link' => $this->completedStepRun('run-1', 'link', 4),
+        ];
+
+        $decision = (new WorkflowRunCompletionDecider())->decide(
+            $definition,
+            $steps,
+            ['read', 'branch_a', 'branch_b', 'link'],
+        );
+
+        self::assertSame(WorkflowRunStatus::CompletedWithWarnings, $decision);
+    }
+
+    #[Test]
+    public function a_step_after_a_warning_step_is_runnable(): void
+    {
+        $definition = $this->branchingDefinition();
+        $warningStep = $this->completedStepRun('run-1', 'read', 1);
+        $warningStep->markCompletedWithWarnings(1, 1);
+        $steps = [
+            'read' => $warningStep,
+            'branch_a' => $this->pendingStepRun('run-1', 'branch_a', 2),
+            'branch_b' => $this->pendingStepRun('run-1', 'branch_b', 3),
+            'link' => $this->pendingStepRun('run-1', 'link', 4),
+        ];
+
+        $decision = (new WorkflowRunCompletionDecider())->decide(
+            $definition,
+            $steps,
+            ['read', 'branch_a', 'branch_b', 'link'],
+        );
+
+        self::assertNull($decision);
+    }
+
+    #[Test]
+    public function a_failure_next_to_a_warning_step_partially_fails_the_run(): void
+    {
+        $definition = $this->branchingDefinition();
+        $warningStep = $this->completedStepRun('run-1', 'branch_b', 3);
+        $warningStep->markCompletedWithWarnings(1, 1);
+        $steps = [
+            'read' => $this->completedStepRun('run-1', 'read', 1),
+            'branch_a' => $this->failedStepRun('run-1', 'branch_a', 2),
+            'branch_b' => $warningStep,
+            'link' => $this->pendingStepRun('run-1', 'link', 4),
+        ];
+
+        $decision = (new WorkflowRunCompletionDecider())->decide(
+            $definition,
+            $steps,
+            ['read', 'branch_a', 'branch_b', 'link'],
+        );
+
+        self::assertSame(WorkflowRunStatus::PartiallyFailed, $decision);
+    }
+
     private function branchingDefinition(): WorkflowDefinition
     {
         $handler = new class implements ExecutableWorkflowStepInterface {

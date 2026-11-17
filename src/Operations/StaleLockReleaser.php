@@ -92,6 +92,7 @@ final readonly class StaleLockReleaser
 
         if (in_array($ownerRun->status(), [
             WorkflowRunStatus::Completed,
+            WorkflowRunStatus::CompletedWithWarnings,
             WorkflowRunStatus::Cancelled,
             WorkflowRunStatus::Failed,
             WorkflowRunStatus::PartiallyFailed,

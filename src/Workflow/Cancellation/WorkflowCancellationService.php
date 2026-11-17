@@ -36,6 +36,7 @@ final readonly class WorkflowCancellationService
 
         if (in_array($workflowRun->status(), [
             WorkflowRunStatus::Completed,
+            WorkflowRunStatus::CompletedWithWarnings,
             WorkflowRunStatus::Failed,
             WorkflowRunStatus::PartiallyFailed,
             WorkflowRunStatus::Cancelled,

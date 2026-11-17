@@ -22,6 +22,7 @@ final class PrunePayloadsCommand extends Command
 
     private const TERMINAL_STATUSES = [
         WorkflowRunStatus::Completed,
+        WorkflowRunStatus::CompletedWithWarnings,
         WorkflowRunStatus::Failed,
         WorkflowRunStatus::PartiallyFailed,
         WorkflowRunStatus::Cancelled,
@@ -40,7 +41,7 @@ final class PrunePayloadsCommand extends Command
             ->addOption('older-than', null, InputOption::VALUE_REQUIRED, 'Delete payloads created before this many days ago.', self::DEFAULT_RETENTION_DAYS)
             ->addOption('before', null, InputOption::VALUE_REQUIRED, 'Delete payloads created before this date (Y-m-d). Overrides --older-than.')
             ->addOption('workflow', null, InputOption::VALUE_REQUIRED, 'Restrict pruning to the given workflow code.')
-            ->addOption('status', null, InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED, 'Restrict to these terminal statuses (defaults to completed, failed, partially_failed, cancelled).', [])
+            ->addOption('status', null, InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED, 'Restrict to these terminal statuses (defaults to completed, completed_with_warnings, failed, partially_failed, cancelled).', [])
             ->addOption('no-mark-runs', null, InputOption::VALUE_NONE, 'Skip marking runs as payloads_pruned. Payloads are deleted but runs keep their original status.')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Report the count that would be deleted without actually deleting.');
     }

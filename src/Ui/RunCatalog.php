@@ -86,6 +86,7 @@ final readonly class RunCatalog
             startedAt: $run->startedAt(),
             finishedAt: $run->finishedAt(),
             errorMessage: $run->errorMessage(),
+            warningCount: $run->warningCount(),
         );
     }
 }

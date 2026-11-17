@@ -348,6 +348,18 @@ class WorkflowStepRun
         $this->clearErrorPayload();
     }
 
+    public function markCompletedWithWarnings(
+        int $processedCount,
+        int $successCount,
+        int $errorCount = 0,
+        ?int $durationMs = null,
+        ?int $memoryPeakBytes = null,
+        ?DateTimeImmutable $finishedAt = null,
+    ): void {
+        $this->markCompleted($processedCount, $successCount, $errorCount, $durationMs, $memoryPeakBytes, $finishedAt);
+        $this->status = WorkflowStepRunStatus::CompletedWithWarnings;
+    }
+
     public function markCancelled(?DateTimeImmutable $finishedAt = null): void
     {
         $this->status = WorkflowStepRunStatus::Cancelled;

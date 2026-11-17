@@ -40,3 +40,13 @@
 {% else %}
 - {{ 'email_recap.no_failed_run'|trans }}
 {% endfor %}
+
+{{ 'email_recap.warning_section'|trans }}
+{% for run in recap.warningRuns %}
+- {{ run.createdAt|date('Y-m-d H:i') }} | {{ run.workflow }} | {{ ('workflow_status.' ~ run.status)|trans }} | {{ run.runId }} | {{ 'email_recap.warning_count_label'|trans }}={{ run.warningCount }}
+{% for step in run.steps %}
+  - {{ 'email_recap.step'|trans }} {{ step.code }} ({{ step.type }}) | {{ ('workflow_status.' ~ step.status)|trans }}
+{% endfor %}
+{% else %}
+- {{ 'email_recap.no_warning_run'|trans }}
+{% endfor %}

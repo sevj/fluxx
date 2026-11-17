@@ -78,6 +78,12 @@ class WorkflowRun
     private bool $synchronous = false;
 
     /**
+     * Kept apart from the status because pruning payloads replaces the status.
+     */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $warningCount = 0;
+
+    /**
      * @param array<string, mixed> $metadata
      */
     public function __construct(
@@ -323,6 +329,22 @@ class WorkflowRun
         $this->finishedAt = $finishedAt ?? new DateTimeImmutable();
         $this->errorMessage = null;
         $this->clearErrorPayload();
+    }
+
+    public function markCompletedWithWarnings(?DateTimeImmutable $finishedAt = null): void
+    {
+        $this->markCompleted($finishedAt);
+        $this->status = WorkflowRunStatus::CompletedWithWarnings;
+    }
+
+    public function warningCount(): int
+    {
+        return $this->warningCount;
+    }
+
+    public function incrementWarningCount(int $by = 1): void
+    {
+        $this->warningCount += $by;
     }
 
     public function markCancelled(?DateTimeImmutable $finishedAt = null): void

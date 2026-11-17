@@ -12,6 +12,7 @@ enum WorkflowRunStatus: string
     case Running = 'running';
     case Cancelled = 'cancelled';
     case Completed = 'completed';
+    case CompletedWithWarnings = 'completed_with_warnings';
     case Failed = 'failed';
     case PartiallyFailed = 'partially_failed';
     case PayloadsPruned = 'payloads_pruned';
@@ -30,6 +31,15 @@ enum WorkflowRunStatus: string
      */
     public function isRelaunchable(): bool
     {
-        return in_array($this, [self::Completed, self::Failed, self::PartiallyFailed, self::Cancelled], true);
+        return in_array($this, [self::Completed, self::CompletedWithWarnings, self::Failed, self::PartiallyFailed, self::Cancelled], true);
+    }
+
+    /**
+     * Whether every step of a run in this status has finished successfully,
+     * with or without warnings.
+     */
+    public function isCompleted(): bool
+    {
+        return $this === self::Completed || $this === self::CompletedWithWarnings;
     }
 }

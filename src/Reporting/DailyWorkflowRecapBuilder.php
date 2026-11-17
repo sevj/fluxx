@@ -35,6 +35,15 @@ final readonly class DailyWorkflowRecapBuilder
             ),
         ));
         $erroredStepsByRunId = $this->workflowStepRunStatistics->findErroredStepRowsByWorkflowRunsGrouped($erroredRunEntities);
+        $warningRunEntities = array_values(array_filter(
+            $runs,
+            static fn (WorkflowRun $run): bool => $run->status() === WorkflowRunStatus::CompletedWithWarnings || $run->warningCount() > 0,
+        ));
+        $warningStepsByRunId = $this->workflowStepRunStatistics->findWarningStepRowsByWorkflowRunsGrouped($warningRunEntities);
+        $warningRuns = array_map(
+            fn (WorkflowRun $run): array => $this->warningRun($run, $warningStepsByRunId[$run->runId()] ?? []),
+            $warningRunEntities,
+        );
 
         foreach ($runs as $run) {
             $status = $run->status()->value;
@@ -56,6 +65,7 @@ final readonly class DailyWorkflowRecapBuilder
             statusCounts: $statusCounts,
             workflowCounts: $workflowCounts,
             erroredRuns: $erroredRuns,
+            warningRuns: $warningRuns,
             processedCount: $stepSummary['processedTotal'],
             successCount: $stepSummary['successTotal'],
             errorCount: $stepSummary['errorTotal'],
@@ -76,6 +86,22 @@ final readonly class DailyWorkflowRecapBuilder
             'status' => $run->status()->value,
             'createdAt' => $run->createdAt(),
             'error' => $run->errorMessage(),
+            'steps' => array_values($stepRuns),
+        ];
+    }
+
+    /**
+     * @param list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}> $stepRuns
+     * @return array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, warningCount: int, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>}>}
+     */
+    private function warningRun(WorkflowRun $run, array $stepRuns): array
+    {
+        return [
+            'runId' => $run->runId(),
+            'workflow' => $run->workflowName(),
+            'status' => $run->status()->value,
+            'createdAt' => $run->createdAt(),
+            'warningCount' => $run->warningCount(),
             'steps' => array_values($stepRuns),
         ];
     }
