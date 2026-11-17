@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
-## [Unreleased]
+## [1.19.0] - 2026-11-17
 
 ### Upgrade notes
 - Stop the workers and apply `migrations/upgrade-1.19.0-postgresql.sql` before deploying: the new
