@@ -133,6 +133,7 @@ final class FluxxRuntime
             $this->lastResult = $result;
 
             $stepRun->replaceMetadata($result->metadata());
+            $stepRun->replaceReport($result->report()?->toArray());
             $this->idempotenceResolver->applyKey($stepDefinition, $stepRun, $context, $input);
 
             $chunkSize = $this->resolveChunkSize($stepDefinition);

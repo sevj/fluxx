@@ -123,6 +123,8 @@ final readonly class WorkflowIdempotenceResolver
             ],
         ));
 
+        $stepRun->replaceReport($deduplicatedFrom->report());
+
         $this->cloneDownstreamPayloads(
             workflowRun: $workflowRun,
             sourceStepRun: $deduplicatedFrom,

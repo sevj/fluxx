@@ -40,6 +40,7 @@ use Fluxx\Workflow\Runtime\WorkflowIdempotenceResolver;
 use Fluxx\Workflow\Runtime\WorkflowRetryScheduler;
 use Fluxx\Workflow\Runtime\WorkflowRunCompletionDecider;
 use Fluxx\Workflow\Runtime\WorkflowStepFailedException;
+use Fluxx\Workflow\Report\StepReport;
 use Fluxx\Workflow\Result\WorkflowStepResult;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
@@ -377,6 +378,49 @@ final class FluxxRuntimeTest extends TestCase
 
         self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
         self::assertSame([], $result);
+    }
+
+    #[Test]
+    public function report_is_stored_on_step_run(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = StepReport::objects('Contacts')->read(5)->created(2);
+        $this->registryWithHandler(new StubResultStep(new WorkflowStepResult(report: $report)));
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame($report->toArray(), $workflowRun->stepRuns()->first()->report());
+    }
+
+    #[Test]
+    public function a_step_without_report_stores_none(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertNull($workflowRun->stepRuns()->first()->report());
+    }
+
+    #[Test]
+    public function idempotence_hit_keeps_report(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->registryWithHandler(new StubIdempotentStep('contact-1'), withIdempotence: true);
+
+        $sourceRun = new WorkflowRun(runId: 'run-source', workflowName: 'fixture', sourceSystem: 'src', targetSystem: 'tgt', trigger: 'manual');
+        $sourceRun->markCompleted();
+        $sourceStepRun = $this->createCompletedStepRun($sourceRun);
+        $reportArray = StepReport::objects('Contacts')->read(7)->toArray();
+        $sourceStepRun->replaceReport($reportArray);
+        $this->stepRunLookup->addCompleted($sourceStepRun, 'fixture', 'fetch', 'contact-1');
+
+        $this->runtime->runStep('run-1', 'fetch');
+
+        self::assertSame($reportArray, $workflowRun->stepRuns()->first()->report());
     }
 
     #[Test]

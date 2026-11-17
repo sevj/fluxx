@@ -126,6 +126,7 @@ CREATE TABLE fluxx_workflow_step_run (
     last_retry_at               TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
     next_retry_at               TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
     metadata                    JSON NOT NULL,
+    report                      JSON DEFAULT NULL,
     created_at                  TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
     started_at                  TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
     finished_at                 TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,

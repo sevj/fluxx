@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow\Result;
 
+use Fluxx\Workflow\Report\StepReport;
+
 final readonly class WorkflowStepResult
 {
     /**
@@ -18,6 +20,7 @@ final readonly class WorkflowStepResult
         private ?int $successCount = null,
         private int $errorCount = 0,
         private array $branchOutputs = [],
+        private ?StepReport $report = null,
     ) {
     }
 
@@ -35,6 +38,11 @@ final readonly class WorkflowStepResult
     public function metadata(): array
     {
         return $this->metadata;
+    }
+
+    public function report(): ?StepReport
+    {
+        return $this->report;
     }
 
     public function processedCount(): int

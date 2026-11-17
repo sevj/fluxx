@@ -75,6 +75,10 @@ class WorkflowStepRun
     #[ORM\Column(type: 'json')]
     private array $metadata;
 
+    /** @var array<string, mixed>|null */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $report = null;
+
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $createdAt;
 
@@ -238,6 +242,22 @@ class WorkflowStepRun
     public function replaceMetadata(array $metadata): void
     {
         $this->metadata = $metadata;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function report(): ?array
+    {
+        return $this->report;
+    }
+
+    /**
+     * @param array<string, mixed>|null $report
+     */
+    public function replaceReport(?array $report): void
+    {
+        $this->report = $report;
     }
 
     public function attachToRun(WorkflowRun $workflowRun): void
