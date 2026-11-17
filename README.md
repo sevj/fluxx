@@ -26,8 +26,8 @@ The bundle extension already prepends Doctrine mapping, Twig paths, and translat
 
 ## Database schema
 
-Fluxx persists eight tables under the `fluxx_` prefix: `fluxx_user`, `fluxx_setting`,
-`fluxx_workflow_run`, `fluxx_workflow_step_run`, `fluxx_workflow_payload`,
+Fluxx persists nine tables under the `fluxx_` prefix: `fluxx_user`, `fluxx_setting`,
+`fluxx_workflow_run`, `fluxx_workflow_step_run`, `fluxx_workflow_run_report`, `fluxx_workflow_payload`,
 `fluxx_workflow_payload_content`, `fluxx_workflow_execution_lock`, and
 `fluxx_runtime_worker_state`.
 
@@ -52,6 +52,14 @@ Add the `active_lock_key` column before deploying, or every query on execution l
   `bin/console doctrine:schema:update --dump-sql`, release all but the most recent active lock of
   each `lock_key`, then run
   `UPDATE fluxx_workflow_execution_lock SET active_lock_key = lock_key WHERE released_at IS NULL`.
+
+### Upgrading to 1.19
+
+Add the run report table and two columns before deploying:
+
+- PostgreSQL: apply `migrations/upgrade-1.19.0-postgresql.sql` (safe to replay).
+- MySQL or SQLite: apply the `fluxx_workflow_run_report` table, `fluxx_workflow_run.warning_count` and
+  `fluxx_workflow_step_run.report` from `bin/console doctrine:schema:update --dump-sql`.
 
 ## Security
 
@@ -247,6 +255,44 @@ $contacts = $input->recordsFromAncestor('write_contacts');
 - Records read this way are not part of `WorkflowStepInput::payloads()`. An idempotence key computed from the direct input does not reflect them.
 - The workflow page lists a step's `reads` in the tooltip of its card.
 
+## Run reports
+
+A workflow that declares a report gets one for every run that ends `completed` or
+`completed_with_warnings`, shown in a *Report* tab of the run page: objects read, created, updated,
+excluded or rejected, step durations and throughput, the critical path, anomalies, checks and
+sections of your own. Runs that fail get no report.
+
+```php
+new WorkflowDefinition(
+    code: 'contacts',
+    // ...
+    report: new WorkflowReportConfiguration(sections: [ContactsReportSection::class]),
+);
+```
+
+- A step describes what it did through `WorkflowStepResult::$report`:
+  `StepReport::objects('Contacts')->created(20)->updated(29095)->excluded('Ended before 2018', 8)->rejected($rejected)->anomaly('Unresolved owners', ['K_USER 2' => 2781])`.
+  Steps without one are read from the metadata keys `created`, `updated`, `excluded`
+  (reason => count) and `rejected_records` (`{key|efficy_key, message}`).
+- A section is a service implementing `RunReportSectionInterface` (autoconfigured) that returns a
+  `ReportSection`. A section that throws is shown as unavailable; the report is still saved.
+- The report is built by a `BuildRunReportMessage` sent once the run is committed. Route it to the
+  same transport as `RunWorkflowStepMessage`; an unrouted message is built synchronously by the worker
+  that completed the run. A failure to send or build it never changes the run, and
+  `fluxx:run:report <run-id>` (or the *Rebuild the report* button) builds it again, also after
+  `fluxx:prune:payloads`.
+
+### Check steps
+
+A step of type `WorkflowStepType::Check` implements `CheckStepInterface` and returns a `CheckReport`
+of `CheckResult`s: a name, a `Severity` (`Blocking` or `Warning`), an outcome, the expected and actual
+values and up to 20 sample keys. Checks must only read.
+
+- A blocking deviation fails the step without retry; its checks are kept and shown on the step page.
+- Warning deviations complete the step and the run as `completed_with_warnings`; downstream steps
+  still run, the daily recap lists the deviations and the run keeps a `warning_count`.
+- A check step that returns no check fails. Check steps cannot be idempotent.
+
 ## Versioning
 
 Fluxx follows [Semantic Versioning 2.0.0](https://semver.org/). Given a version
@@ -271,6 +317,9 @@ The public API is the contract host applications integrate against. It consists 
   - `ReadStepInterface`, `WriteStepInterface`, `SplitterStepInterface`,
     `TransformStepInterface`, `LinkerStepInterface`, `IdempotentWorkflowStepInterface`
 - The enums `Fluxx\Entity\Enum\WorkflowRunStatus` and `Fluxx\Entity\Enum\WorkflowStepType`.
+- Run reports: `Fluxx\Workflow\Report\WorkflowReportConfiguration`, `StepReport`, `Severity`,
+  `RunReportSectionInterface` and `ReportSection`; checks: `Fluxx\Workflow\Check\CheckStepInterface`,
+  `CheckReport`, `CheckResult` and `CheckOutcome`.
 
 Anything not listed above — Doctrine repositories (for example
 `WorkflowStepRunRepository`), internal services (for example `FluxxRuntime`,
@@ -342,6 +391,8 @@ fluxx:workflow:relaunch
 fluxx:run:list
 fluxx:run:retry
 fluxx:run:resume
+fluxx:run:cancel
+fluxx:run:report
 fluxx:step:retry
 fluxx:runtime:inspect
 ```
@@ -356,6 +407,8 @@ php bin/console fluxx:run:retry 7af0d8c3 --reason="Retry after API incident"
 php bin/console fluxx:step:retry 7af0d8c3 write_contacts --reason="Replay write step only"
 php bin/console fluxx:run:resume 7af0d8c3 --reason="Replay the failed branches only"
 php bin/console fluxx:workflow:relaunch 7af0d8c3 --force --reason="Worker stuck, manual recovery"
+php bin/console fluxx:run:cancel 7af0d8c3 --reason="Stopped by the operator"
+php bin/console fluxx:run:report 7af0d8c3
 php bin/console fluxx:runtime:inspect
 ```
 

@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [Unreleased]
+
+### Added
+- Run reports: a workflow declaring `report: new WorkflowReportConfiguration(...)` gets, for every run
+  ending `completed` or `completed_with_warnings`, a stored report shown in a *Report* tab of the run
+  page (objects, step durations and throughput, critical path, anomalies, checks, application
+  sections). Steps describe what they did with `StepReport`; the metadata keys `created`, `updated`,
+  `excluded` and `rejected_records` are read for steps that don't. `fluxx:run:report` and a *Rebuild
+  the report* button build it again. Requires `migrations/upgrade-1.19.0-postgresql.sql`.
+- Check steps (`WorkflowStepType::Check`, `CheckStepInterface`, `CheckReport`): a blocking deviation
+  fails the step without retry, warning deviations complete it with warnings.
+- `completed_with_warnings` status for steps and runs, a `warning_count` kept after payload pruning,
+  and the runs with warnings in the daily recap.
+- `fluxx:run:cancel` cancels an active run from the command line.
+
+### Fixed
+- A run whose branch failed while another one was still running could stay `running` until
+  `fluxx:runtime:self-heal`: a worker finalizing the run read step runs it had loaded earlier, with
+  their old status, and two workers finalizing at once could miss each other's commit. The
+  finalization now locks the run row and reads the step runs again.
+- A run whose payloads were pruned could still be cancelled.
+
 ## [1.18.0] - 2026-11-17
 
 ### Added
