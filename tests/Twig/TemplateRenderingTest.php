@@ -243,6 +243,13 @@ final class TemplateRenderingTest extends TestCase
         self::assertStringContainsString('is-critical', $report);
         self::assertStringContainsString('2 other step(s) under one minute.', $report);
         self::assertStringNotContainsString('data-run-detail-content', $report);
+        self::assertStringContainsString('data-report-tabs', $report);
+        foreach (['overview', 'objects', 'links', 'checks', 'anomalies', 'performance', 'section-1', 'section-2'] as $panel) {
+            self::assertStringContainsString('id="report-' . $panel . '" data-report-panel', $report);
+        }
+        self::assertStringContainsString('href="#report-check-0"', $report);
+        self::assertStringContainsString('id="report-check-0"', $report);
+        self::assertStringContainsString('Fewer companies than in Efficy.', $report);
 
         self::assertStringContainsString('section-tabs', $execution);
         self::assertStringContainsString('data-run-detail-content', $execution);

@@ -21,6 +21,7 @@ final class ScriptAssetController extends AbstractController
         'run-catalog' => 'run-catalog.js',
         'run-active' => 'run-active.js',
         'run-detail' => 'run-detail.js',
+        'run-report' => 'run-report.js',
     ];
 
     public function __invoke(string $script): BinaryFileResponse

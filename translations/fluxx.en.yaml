@@ -376,6 +376,18 @@ run_show:
     memory: Memory
 
 run_report:
+    tabs:
+        label: Report sections
+        overview: Overview
+        objects: Objects
+        links: Links
+        checks: Checks
+        anomalies: Anomalies
+        performance: Performance
+    overview:
+        title: To look at
+        checks: '%ok% OK, %deviations% in deviation'
+        anomalies: '%count% anomaly group(s)'
     tabs_label: Run views
     tab_execution: Execution
     tab_report: Report
@@ -455,6 +467,13 @@ run_report:
         rejected_title: 'Rejected records: %object%'
         rejected_kind: Rejected
     checks:
+        summary: '%ok% without deviation, %deviations% in deviation. A check never fails the run.'
+        subject: Subject
+        cell_title: 'Expected %expected%, found %actual%'
+        grid_note: '✓ no deviation · a number is the value found, click it for the detail · — not checked for this subject'
+        deviations: Deviations
+        expected_found: 'expected %expected% · found %actual%'
+        without_deviation: '%count% check(s) without deviation'
         title: Checks
         subtitle: Controls run by the check steps.
         empty: No check step ran.

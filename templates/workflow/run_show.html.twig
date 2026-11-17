@@ -9,6 +9,7 @@
     {% if run.isActive %}
         <script defer src="{{ path('fluxx_script_asset', {'script': 'run-detail', v: fluxx_asset_version()}) }}"></script>
     {% endif %}
+    <script defer src="{{ path('fluxx_script_asset', {'script': 'run-report', v: fluxx_asset_version()}) }}"></script>
 {% endblock %}
 
 {% block body %}

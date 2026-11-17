@@ -3491,3 +3491,142 @@ td .run-flow .system-chip {
 .run-report-unavailable-action {
     margin-top: 10px;
 }
+
+/* Run report sub-tabs: every panel is rendered, run-report.js shows the one in the address hash. */
+.run-report-tabs {
+    gap: 20px;
+}
+
+.run-report-tab-count {
+    padding: 0 6px;
+    border: 1px solid var(--border-strong);
+    color: var(--text-dim);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+.run-report-tab-count-completed-with-warnings {
+    border-color: var(--orange);
+    color: var(--orange);
+}
+
+.run-report-tab-count-failed {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.run-report-panel {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+
+.run-report-panel[hidden] {
+    display: none;
+}
+
+.run-report-overview a.metric-value {
+    color: var(--text);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--border-strong);
+}
+
+.run-report-overview a.metric-value:hover {
+    color: var(--accent);
+}
+
+.run-report-check-grid td,
+.run-report-check-grid th {
+    text-align: center;
+}
+
+.run-report-check-grid td:first-child,
+.run-report-check-grid th:first-child {
+    text-align: left;
+}
+
+.run-report-check-cell {
+    display: inline-flex;
+    justify-content: center;
+    min-width: 40px;
+    padding: 2px 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.run-report-check-cell.is-ok {
+    color: var(--green);
+}
+
+.run-report-check-cell.is-absent {
+    color: var(--text-faint);
+}
+
+a.run-report-check-cell.is-deviation {
+    border: 1px solid var(--orange);
+    color: var(--orange);
+    text-decoration: none;
+}
+
+a.run-report-check-cell.is-deviation:hover,
+a.run-report-check-cell.is-deviation:focus-visible {
+    background: var(--orange);
+    color: var(--bg);
+}
+
+.run-report-check-cards {
+    display: grid;
+    gap: 10px;
+}
+
+.run-report-check-card {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--orange);
+    background: var(--surface-raised);
+}
+
+.run-report-check-card.is-highlighted {
+    animation: run-report-highlight 1.4s ease-out;
+}
+
+@keyframes run-report-highlight {
+    from { box-shadow: 0 0 0 2px var(--accent); }
+    to { box-shadow: 0 0 0 0 transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .run-report-check-card.is-highlighted {
+        animation: none;
+    }
+}
+
+.run-report-check-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 16px;
+}
+
+.run-report-check-card .run-report-hint {
+    margin: 0;
+}
+
+.run-report-check-samples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.run-report-check-step {
+    justify-self: start;
+    color: var(--text-faint);
+}
+
+.run-report-check-ok summary {
+    cursor: pointer;
+}

@@ -376,6 +376,18 @@ run_show:
     memory: Mémoire
 
 run_report:
+    tabs:
+        label: Sections du rapport
+        overview: Synthèse
+        objects: Objets
+        links: Liens
+        checks: Contrôles
+        anomalies: Anomalies
+        performance: Performances
+    overview:
+        title: À regarder
+        checks: '%ok% OK, %deviations% en écart'
+        anomalies: '%count% groupe(s) d''anomalies'
     tabs_label: Vues de l'exécution
     tab_execution: Exécution
     tab_report: Rapport
@@ -455,6 +467,13 @@ run_report:
         rejected_title: 'Fiches refusées : %object%'
         rejected_kind: Refusés
     checks:
+        summary: '%ok% sans écart, %deviations% en écart. Un contrôle ne fait jamais échouer l''exécution.'
+        subject: Sujet
+        cell_title: 'Attendu %expected%, trouvé %actual%'
+        grid_note: '✓ sans écart · un nombre est la valeur trouvée, cliquer pour le détail · — non contrôlé pour ce sujet'
+        deviations: Écarts
+        expected_found: 'attendu %expected% · trouvé %actual%'
+        without_deviation: '%count% contrôle(s) sans écart'
         title: Contrôles
         subtitle: Contrôles exécutés par les étapes de contrôle.
         empty: Aucune étape de contrôle n'a été exécutée.

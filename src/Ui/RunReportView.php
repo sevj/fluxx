@@ -58,6 +58,100 @@ final readonly class RunReportView
     }
 
     /**
+     * The report sub-tabs, in display order: the empty ones are left out, and the counters say where to look.
+     *
+     * @return list<array{id: string, label: ?string, labelKey: ?string, count: ?string, tone: ?string}>
+     */
+    public function tabs(): array
+    {
+        $deviations = count($this->checkDeviations());
+        $anomalies = count($this->anomalies) + count($this->unreadableStepReports);
+        $tabs = [
+            ['id' => 'overview', 'label' => null, 'labelKey' => 'run_report.tabs.overview', 'count' => null, 'tone' => null],
+            ['id' => 'objects', 'label' => null, 'labelKey' => 'run_report.tabs.objects', 'count' => self::number(count($this->objects)), 'tone' => null],
+        ];
+
+        if ($this->links !== []) {
+            $tabs[] = ['id' => 'links', 'label' => null, 'labelKey' => 'run_report.tabs.links', 'count' => self::number(count($this->links)), 'tone' => null];
+        }
+
+        if ($this->checks !== []) {
+            $tabs[] = ['id' => 'checks', 'label' => null, 'labelKey' => 'run_report.tabs.checks', 'count' => $deviations > 0 ? self::number($deviations) : null, 'tone' => $deviations > 0 ? 'completed-with-warnings' : 'completed'];
+        }
+
+        if ($anomalies > 0) {
+            $tabs[] = ['id' => 'anomalies', 'label' => null, 'labelKey' => 'run_report.tabs.anomalies', 'count' => self::number($anomalies), 'tone' => null];
+        }
+
+        $tabs[] = ['id' => 'performance', 'label' => null, 'labelKey' => 'run_report.tabs.performance', 'count' => null, 'tone' => null];
+
+        foreach ($this->sections as $index => $section) {
+            $tabs[] = ['id' => 'section-' . ($index + 1), 'label' => $section['title'], 'labelKey' => null, 'count' => null, 'tone' => $section['available'] ? null : 'failed'];
+        }
+
+        return $tabs;
+    }
+
+    /**
+     * @return list<array{step: string, subject: ?string, name: string, hint: ?string, outcomeKey: string, tone: string, expected: string, actual: string, samples: list<string>}>
+     */
+    public function checkDeviations(): array
+    {
+        return array_values(array_filter($this->checks, static fn (array $check): bool => $check['tone'] !== 'completed'));
+    }
+
+    /**
+     * @return list<array{step: string, subject: ?string, name: string, hint: ?string, outcomeKey: string, tone: string, expected: string, actual: string, samples: list<string>}>
+     */
+    public function checksWithoutDeviation(): array
+    {
+        return array_values(array_filter($this->checks, static fn (array $check): bool => $check['tone'] === 'completed'));
+    }
+
+    /**
+     * Checks with a subject laid out as one row per subject and one column per check name, in the order
+     * the checks were declared; a cell is null where the check does not apply to the subject.
+     *
+     * @return array{columns: list<string>, rows: list<array{subject: string, cells: list<array{index: int, check: array<string, mixed>}|null>}>}
+     */
+    public function checkGrid(): array
+    {
+        $columns = [];
+        $bySubject = [];
+
+        foreach ($this->checks as $index => $check) {
+            if ($check['subject'] === null) {
+                continue;
+            }
+
+            $columns[$check['name']] = true;
+            $bySubject[$check['subject']][$check['name']] = ['index' => $index, 'check' => $check];
+        }
+
+        $names = array_keys($columns);
+
+        return [
+            'columns' => $names,
+            'rows' => array_map(
+                static fn (string $subject, array $cells): array => [
+                    'subject' => $subject,
+                    'cells' => array_map(static fn (string $name): ?array => $cells[$name] ?? null, $names),
+                ],
+                array_keys($bySubject),
+                array_values($bySubject),
+            ),
+        ];
+    }
+
+    /**
+     * @return list<array{step: string, subject: ?string, name: string, hint: ?string, outcomeKey: string, tone: string, expected: string, actual: string, samples: list<string>}>
+     */
+    public function checksWithoutSubject(): array
+    {
+        return array_values(array_filter($this->checks, static fn (array $check): bool => $check['subject'] === null));
+    }
+
+    /**
      * @throws UnreadableRunReportException when the report has another format version or no readable summary
      */
     public static function fromStored(WorkflowRunReport $report, RunTimelineView $timeline): self

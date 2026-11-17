@@ -34,7 +34,17 @@
             <span class="system-chip">{{ report.trigger }}</span>
         </div>
     </section>
+    <nav class="section-tabs run-report-tabs" aria-label="{{ 'run_report.tabs.label'|trans }}" data-report-tabs>
+        {% for tab in report.tabs %}
+            <a href="#report-{{ tab.id }}" class="section-tab" data-report-tab="report-{{ tab.id }}">
+                <span class="button-label">{% if tab.labelKey %}{{ tab.labelKey|trans }}{% else %}{{ tab.label }}{% endif %}</span>
+                {% if tab.count is not null %}<span class="run-report-tab-count{% if tab.tone %} run-report-tab-count-{{ tab.tone }}{% endif %}">{{ tab.count }}</span>{% endif %}
+            </a>
+        {% endfor %}
+    </nav>
 
+
+    <div class="run-report-panel" id="report-overview" data-report-panel>
     <section class="statistics-summary run-report-kpis" aria-label="{{ 'run_report.kpi.label'|trans }}">
         {% for kpi in report.kpis %}
             <div class="statistics-summary-item{% if kpi.tone %} statistics-summary-item-{{ kpi.tone }}{% endif %}">
@@ -47,6 +57,33 @@
         {% endfor %}
     </section>
 
+    <section class="section-card">
+        <div class="section-heading section-heading-compact">
+            <div><h2 class="section-title">{{ 'run_report.overview.title'|trans }}</h2></div>
+        </div>
+        <ul class="run-report-lines run-report-overview">
+            {% set deviations = report.checkDeviations|length %}
+            {% if report.checks is not empty %}
+                <li>
+                    <span class="run-report-section-label"><span class="status-badge status-badge-{{ deviations > 0 ? 'completed-with-warnings' : 'completed' }}">{{ 'run_report.tabs.checks'|trans }}</span></span>
+                    <a href="#report-checks" data-report-tab="report-checks" class="metric-value">{{ 'run_report.overview.checks'|trans({'%ok%': report.checksWithoutDeviation|length, '%deviations%': deviations}) }}</a>
+                </li>
+            {% endif %}
+            {% if report.anomalies is not empty or report.unreadableStepReports is not empty %}
+                <li>
+                    <span class="run-report-section-label"><span class="status-badge status-badge-completed-with-warnings">{{ 'run_report.tabs.anomalies'|trans }}</span></span>
+                    <a href="#report-anomalies" data-report-tab="report-anomalies" class="metric-value">{{ 'run_report.overview.anomalies'|trans({'%count%': report.anomalies|length + report.unreadableStepReports|length}) }}</a>
+                </li>
+            {% endif %}
+            <li>
+                <span class="run-report-section-label"><span class="status-badge">{{ 'run_report.performance.critical_path'|trans }}</span></span>
+                <a href="#report-performance" data-report-tab="report-performance" class="metric-value">{% if report.criticalPath is empty %}{{ constant('Fluxx\\Ui\\RunReportView::ABSENT') }}{% else %}{{ report.criticalPathDuration }}{% if report.criticalPathShare is not null %} · {{ 'run_report.performance.critical_path_share'|trans({'%share%': report.criticalPathShare}) }}{% endif %}{% endif %}</a>
+            </li>
+        </ul>
+    </section>
+    </div>
+
+    <div class="run-report-panel" id="report-objects" data-report-panel>
     <section class="section-card">
         <div class="section-heading">
             <div>
@@ -90,8 +127,10 @@
         {% endif %}
         <p class="table-note">{{ 'run_report.objects.note'|trans }}</p>
     </section>
+    </div>
 
     {% if report.links is not empty %}
+    <div class="run-report-panel" id="report-links" data-report-panel>
         <section class="section-card">
             <div class="section-heading">
                 <div>
@@ -131,8 +170,142 @@
             </section>
             <p class="table-note">{{ 'run_report.links.note'|trans }}</p>
         </section>
+    </div>
     {% endif %}
 
+    {% if report.checks is not empty %}
+    <div class="run-report-panel" id="report-checks" data-report-panel>
+    <section class="section-card">
+        <div class="section-heading">
+            <div>
+                <h2 class="section-title">{{ 'run_report.checks.title'|trans }}</h2>
+                <p class="subtitle section-subtitle">{{ 'run_report.checks.summary'|trans({'%ok%': report.checksWithoutDeviation|length, '%deviations%': report.checkDeviations|length}) }}</p>
+            </div>
+        </div>
+        {% set grid = report.checkGrid %}
+        {% if grid.rows is not empty %}
+            <section class="workflow-list">
+                <table class="workflow-table-compact run-report-table run-report-check-grid">
+                    <thead>
+                        <tr>
+                            <th>{{ 'run_report.checks.subject'|trans }}</th>
+                            {% for column in grid.columns %}<th>{{ column }}</th>{% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in grid.rows %}
+                            <tr>
+                                <td data-label="{{ 'run_report.checks.subject'|trans }}"><div class="workflow-name">{{ row.subject }}</div></td>
+                                {% for cell in row.cells %}
+                                    <td data-label="{{ grid.columns[loop.index0] }}">
+                                        {% if cell is null %}
+                                            <span class="run-report-check-cell is-absent">{{ constant('Fluxx\\Ui\\RunReportView::ABSENT') }}</span>
+                                        {% elseif cell.check.tone == 'completed' %}
+                                            <span class="run-report-check-cell is-ok" title="{{ 'run_report.checks.cell_title'|trans({'%expected%': cell.check.expected, '%actual%': cell.check.actual}) }}">✓</span>
+                                        {% else %}
+                                            <a href="#report-check-{{ cell.index }}" class="run-report-check-cell is-deviation" title="{{ 'run_report.checks.cell_title'|trans({'%expected%': cell.check.expected, '%actual%': cell.check.actual}) }}">{{ cell.check.actual }}</a>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+            <p class="table-note">{{ 'run_report.checks.grid_note'|trans }}</p>
+        {% endif %}
+    </section>
+
+    {% if report.checkDeviations is not empty %}
+        <section class="section-card">
+            <div class="section-heading section-heading-compact">
+                <div><h2 class="section-title">{{ 'run_report.checks.deviations'|trans }}</h2></div>
+            </div>
+            <div class="run-report-check-cards">
+                {% for check in report.checks %}
+                    {% if check.tone != 'completed' %}
+                        <article class="run-report-check-card" id="report-check-{{ loop.index0 }}">
+                            <div class="run-report-check-card-head">
+                                <span class="workflow-name">{% if check.subject %}{{ check.subject }} · {% endif %}{{ check.name }}</span>
+                                <span class="metric-value">{{ 'run_report.checks.expected_found'|trans({'%expected%': check.expected, '%actual%': check.actual}) }}</span>
+                            </div>
+                            {% if check.hint %}<p class="run-report-hint">{{ check.hint }}</p>{% endif %}
+                            {% if check.samples is not empty %}
+                                <div class="run-report-check-samples">{% for sample in check.samples %}<span class="item-code">{{ sample }}</span>{% endfor %}</div>
+                            {% endif %}
+                            <span class="item-code run-report-check-step">{{ check.step }}</span>
+                        </article>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if report.checksWithoutDeviation is not empty %}
+        <section class="section-card">
+            <details class="run-report-check-ok">
+                <summary class="section-title">{{ 'run_report.checks.without_deviation'|trans({'%count%': report.checksWithoutDeviation|length}) }}</summary>
+                <ul class="run-report-lines">
+                    {% for check in report.checksWithoutDeviation %}
+                        <li><span class="workflow-name">{% if check.subject %}{{ check.subject }} · {% endif %}{{ check.name }}</span><span class="metric-value">{{ check.actual }}</span></li>
+                    {% endfor %}
+                </ul>
+            </details>
+        </section>
+    {% endif %}
+    </div>
+    {% endif %}
+
+    {% if report.anomalies is not empty or report.unreadableStepReports is not empty %}
+    <div class="run-report-panel" id="report-anomalies" data-report-panel>
+    <section class="section-card">
+        <div class="section-heading">
+            <div>
+                <h2 class="section-title">{{ 'run_report.anomalies.title'|trans }}</h2>
+                <p class="subtitle section-subtitle">{{ 'run_report.anomalies.subtitle'|trans }}</p>
+            </div>
+        </div>
+        {% if report.unreadableStepReports is not empty %}
+            <div class="detail-message detail-message-warning run-report-unreadable">
+                <div class="detail-message-body">{{ 'run_report.anomalies.unreadable'|trans }}</div>
+                <ul class="run-report-lines">
+                    {% for unreadable in report.unreadableStepReports %}
+                        <li><span class="item-code">{{ unreadable.step }}</span><span>{{ unreadable.message }}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if report.anomalies is empty %}
+            <section class="empty">{{ 'run_report.anomalies.empty'|trans }}</section>
+        {% else %}
+            <div class="run-report-anomalies">
+                {% for anomaly in report.anomalies %}
+                    <details class="run-report-anomaly">
+                        <summary class="run-report-anomaly-summary">
+                            <span class="status-badge status-badge-{{ anomaly.tone }}">{{ anomaly.kindKey|trans }}</span>
+                            <span class="run-report-anomaly-title">
+                                <span class="workflow-name">{% if anomaly.titleKey %}{{ anomaly.titleKey|trans({'%object%': anomaly.title}) }}{% else %}{{ anomaly.title }}{% endif %}</span>
+                                {% if anomaly.source %}<span class="item-code">{{ anomaly.source }}</span>{% endif %}
+                            </span>
+                            <span class="metric-value">{{ anomaly.countKey|trans({'%count%': anomaly.count}) }}</span>
+                        </summary>
+                        <ul class="run-report-lines">
+                            {% for line in anomaly.lines %}
+                                <li><span class="item-code">{{ line.key }}</span><span class="metric-value">{{ line.value }}</span></li>
+                            {% endfor %}
+                        </ul>
+                        {% if anomaly.hiddenLines > 0 %}
+                            <p class="table-note">{{ 'run_report.anomalies.hidden_lines'|trans({'%count%': anomaly.hiddenLines}) }}</p>
+                        {% endif %}
+                    </details>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+    </div>
+    {% endif %}
+
+    <div class="run-report-panel" id="report-performance" data-report-panel>
     <section class="section-card run-timeline-card">
         <div class="section-heading">
             <div>
@@ -204,94 +377,10 @@
             </div>
         </div>
     </section>
-
-    <section class="section-card">
-        <div class="section-heading">
-            <div>
-                <h2 class="section-title">{{ 'run_report.anomalies.title'|trans }}</h2>
-                <p class="subtitle section-subtitle">{{ 'run_report.anomalies.subtitle'|trans }}</p>
-            </div>
-        </div>
-        {% if report.unreadableStepReports is not empty %}
-            <div class="detail-message detail-message-warning run-report-unreadable">
-                <div class="detail-message-body">{{ 'run_report.anomalies.unreadable'|trans }}</div>
-                <ul class="run-report-lines">
-                    {% for unreadable in report.unreadableStepReports %}
-                        <li><span class="item-code">{{ unreadable.step }}</span><span>{{ unreadable.message }}</span></li>
-                    {% endfor %}
-                </ul>
-            </div>
-        {% endif %}
-        {% if report.anomalies is empty %}
-            <section class="empty">{{ 'run_report.anomalies.empty'|trans }}</section>
-        {% else %}
-            <div class="run-report-anomalies">
-                {% for anomaly in report.anomalies %}
-                    <details class="run-report-anomaly">
-                        <summary class="run-report-anomaly-summary">
-                            <span class="status-badge status-badge-{{ anomaly.tone }}">{{ anomaly.kindKey|trans }}</span>
-                            <span class="run-report-anomaly-title">
-                                <span class="workflow-name">{% if anomaly.titleKey %}{{ anomaly.titleKey|trans({'%object%': anomaly.title}) }}{% else %}{{ anomaly.title }}{% endif %}</span>
-                                {% if anomaly.source %}<span class="item-code">{{ anomaly.source }}</span>{% endif %}
-                            </span>
-                            <span class="metric-value">{{ anomaly.countKey|trans({'%count%': anomaly.count}) }}</span>
-                        </summary>
-                        <ul class="run-report-lines">
-                            {% for line in anomaly.lines %}
-                                <li><span class="item-code">{{ line.key }}</span><span class="metric-value">{{ line.value }}</span></li>
-                            {% endfor %}
-                        </ul>
-                        {% if anomaly.hiddenLines > 0 %}
-                            <p class="table-note">{{ 'run_report.anomalies.hidden_lines'|trans({'%count%': anomaly.hiddenLines}) }}</p>
-                        {% endif %}
-                    </details>
-                {% endfor %}
-            </div>
-        {% endif %}
-    </section>
-
-    <section class="section-card">
-        <div class="section-heading">
-            <div>
-                <h2 class="section-title">{{ 'run_report.checks.title'|trans }}</h2>
-                <p class="subtitle section-subtitle">{{ 'run_report.checks.subtitle'|trans }}</p>
-            </div>
-        </div>
-        {% if report.checks is empty %}
-            <section class="empty">{{ 'run_report.checks.empty'|trans }}</section>
-        {% else %}
-            <section class="workflow-list">
-                <table class="workflow-table-compact run-report-table">
-                    <thead>
-                        <tr>
-                            <th>{{ 'run_report.checks.step'|trans }}</th>
-                            <th>{{ 'run_report.checks.name'|trans }}</th>
-                            <th>{{ 'run_report.checks.outcome'|trans }}</th>
-                            <th>{{ 'run_report.checks.expected'|trans }}</th>
-                            <th>{{ 'run_report.checks.actual'|trans }}</th>
-                            <th>{{ 'run_report.checks.samples'|trans }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for check in report.checks %}
-                            <tr>
-                                <td data-label="{{ 'run_report.checks.step'|trans }}"><span class="item-code">{{ check.step }}</span></td>
-                                <td data-label="{{ 'run_report.checks.name'|trans }}"><div class="workflow-name">{% if check.subject %}{{ check.subject }} · {% endif %}{{ check.name }}</div>{% if check.hint %}<div class="run-report-hint">{{ check.hint }}</div>{% endif %}</td>
-                                <td data-label="{{ 'run_report.checks.outcome'|trans }}"><span class="status-badge status-badge-{{ check.tone }}">{{ check.outcomeKey|trans }}</span></td>
-                                <td data-label="{{ 'run_report.checks.expected'|trans }}">{{ check.expected }}</td>
-                                <td data-label="{{ 'run_report.checks.actual'|trans }}">{{ check.actual }}</td>
-                                <td data-label="{{ 'run_report.checks.samples'|trans }}">
-                                    {% for sample in check.samples %}<span class="item-code">{{ sample }}</span>{% if not loop.last %} {% endif %}{% else %}{{ constant('Fluxx\\Ui\\RunReportView::ABSENT') }}{% endfor %}
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </section>
-        {% endif %}
-    </section>
+    </div>
 
     {% for section in report.sections %}
+        <div class="run-report-panel" id="report-section-{{ loop.index }}" data-report-panel>
         <section class="section-card run-report-section">
             <div class="section-heading section-heading-compact">
                 <div>
@@ -319,6 +408,7 @@
                 </ul>
             {% endif %}
         </section>
+        </div>
     {% endfor %}
 {% endif %}
 </div>

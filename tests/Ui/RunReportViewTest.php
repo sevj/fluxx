@@ -80,6 +80,56 @@ final class RunReportViewTest extends TestCase
     }
 
     #[Test]
+    public function tabs_leave_out_empty_parts_and_count_what_needs_a_look(): void
+    {
+        $view = RunReportView::fromStored($this->report($this->content()), $this->timeline([]));
+
+        self::assertSame(
+            ['overview', 'objects', 'links', 'checks', 'anomalies', 'performance', 'section-1', 'section-2'],
+            array_column($view->tabs(), 'id'),
+        );
+        $tabs = array_column($view->tabs(), null, 'id');
+        self::assertSame('1', $tabs['checks']['count']);
+        self::assertSame('completed-with-warnings', $tabs['checks']['tone']);
+        self::assertSame('4', $tabs['anomalies']['count']);
+        self::assertSame('Mailing', $tabs['section-1']['label']);
+        self::assertSame('failed', $tabs['section-2']['tone']);
+
+        $content = $this->content();
+        $content['links'] = [];
+        $content['checks'] = [];
+        $content['anomalies'] = [];
+        $content['objects'] = [];
+        $content['unreadable_step_reports'] = [];
+        $content['sections'] = [];
+        self::assertSame(['overview', 'objects', 'performance'], array_column(RunReportView::fromStored($this->report($content), $this->timeline([]))->tabs(), 'id'));
+    }
+
+    #[Test]
+    public function checks_with_a_subject_form_a_grid_in_declaration_order(): void
+    {
+        $content = $this->content();
+        $content['checks'] = [
+            ['step' => 'verify', 'subject' => 'Companies', 'name' => 'Present', 'outcome' => 'ok', 'expected' => '3', 'actual' => '3', 'samples' => []],
+            ['step' => 'verify', 'subject' => 'Companies', 'name' => 'Unique', 'outcome' => 'deviation', 'expected' => '0', 'actual' => '1', 'samples' => ['k-1']],
+            ['step' => 'verify', 'subject' => 'Grants', 'name' => 'Pipeline', 'outcome' => 'deviation', 'expected' => '0', 'actual' => '22', 'samples' => []],
+            ['step' => 'verify', 'subject' => 'Grants', 'name' => 'Present', 'outcome' => 'ok', 'expected' => '8', 'actual' => '8', 'samples' => []],
+            ['step' => 'verify', 'name' => 'Mailing sent', 'outcome' => 'ok', 'expected' => '1', 'actual' => '1', 'samples' => []],
+        ];
+
+        $view = RunReportView::fromStored($this->report($content), $this->timeline([]));
+        $grid = $view->checkGrid();
+
+        self::assertSame(['Present', 'Unique', 'Pipeline'], $grid['columns']);
+        self::assertSame(['Companies', 'Grants'], array_column($grid['rows'], 'subject'));
+        self::assertSame([0, 1, null], array_map(static fn (?array $cell): ?int => $cell['index'] ?? null, $grid['rows'][0]['cells']));
+        self::assertSame([3, null, 2], array_map(static fn (?array $cell): ?int => $cell['index'] ?? null, $grid['rows'][1]['cells']));
+        self::assertSame(['Unique', 'Pipeline'], array_column($view->checkDeviations(), 'name'));
+        self::assertCount(3, $view->checksWithoutDeviation());
+        self::assertSame(['Mailing sent'], array_column($view->checksWithoutSubject(), 'name'));
+    }
+
+    #[Test]
     public function absent_data_is_shown_as_a_dash(): void
     {
         $content = $this->content();
