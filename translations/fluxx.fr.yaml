@@ -410,6 +410,7 @@ step_type:
     write: Écriture
     linker: Association
     join: Jonction
+    check: Contrôle
 
 step_run_show:
     title: Détail de l'étape
@@ -488,6 +489,18 @@ step_run_show:
     reason_label: Motif de l'opérateur
     reason_placeholder: Pourquoi relancez-vous cette étape ?
     confirm_relaunch: Je confirme que cette étape doit être relancée depuis ici.
+    checks_title: Contrôles
+    checks_subtitle: Contrôles exécutés par cette étape, avec la valeur attendue et la valeur constatée.
+    check_name: Contrôle
+    check_severity: Sévérité
+    check_outcome: Résultat
+    check_expected: Attendu
+    check_actual: Constaté
+    check_samples: Échantillons
+    check_severity_blocking: Bloquant
+    check_severity_warning: Avertissement
+    check_outcome_ok: OK
+    check_outcome_deviation: Écart
 
 user_index:
     title: Utilisateurs
@@ -705,6 +718,9 @@ email_recap:
     warning_section: Avertissements
     no_warning_run: Aucune exécution avec avertissements.
     warning_count_label: avertissements
+    check_deviation: Contrôle en écart
+    check_expected: attendu
+    check_actual: constaté
     summary: Résumé
     total_runs: Total des exécutions
     processed_records: Enregistrements traités

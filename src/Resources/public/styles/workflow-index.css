@@ -1767,6 +1767,11 @@ td .run-flow .system-chip {
     --step-tone-bg: transparent;
 }
 
+.step-tone-check {
+    --step-tone-text: var(--blue);
+    --step-tone-bg: color-mix(in srgb, var(--blue) 14%, transparent);
+}
+
 .step-tone-custom {
     --step-tone-text: var(--text-dim);
     --step-tone-bg: color-mix(in srgb, var(--text-dim) 14%, transparent);

@@ -12,4 +12,5 @@ enum WorkflowStepType: string
     case Write = 'write';
     case Linker = 'linker';
     case Join = 'join';
+    case Check = 'check';
 }

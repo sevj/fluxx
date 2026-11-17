@@ -410,6 +410,7 @@ step_type:
     write: Write
     linker: Linker
     join: Join
+    check: Check
 
 step_run_show:
     title: Step run details
@@ -488,6 +489,18 @@ step_run_show:
     reason_label: Operator reason
     reason_placeholder: Why are you relaunching this step?
     confirm_relaunch: I confirm that this step should be relaunched from here.
+    checks_title: Checks
+    checks_subtitle: Controls run by this check step, with what was expected and what was found.
+    check_name: Control
+    check_severity: Severity
+    check_outcome: Outcome
+    check_expected: Expected
+    check_actual: Actual
+    check_samples: Samples
+    check_severity_blocking: Blocking
+    check_severity_warning: Warning
+    check_outcome_ok: OK
+    check_outcome_deviation: Deviation
 
 user_index:
     title: Users
@@ -705,6 +718,9 @@ email_recap:
     warning_section: Warnings
     no_warning_run: No run with warnings.
     warning_count_label: warnings
+    check_deviation: Check in deviation
+    check_expected: expected
+    check_actual: actual
     summary: Summary
     total_runs: Total runs
     processed_records: Processed records

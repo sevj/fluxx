@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Fluxx\Tests\Integration;
 
+use Fluxx\Workflow\Check\CheckOutcome;
+use Fluxx\Workflow\Check\CheckReport;
+use Fluxx\Workflow\Check\CheckResult;
+use Fluxx\Workflow\Report\Severity;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
@@ -105,6 +109,10 @@ final class RunWarningsDatabaseTest extends TestCase
         self::assertSame('warned', $recap->warningRuns()[0]['runId']);
         self::assertSame(2, $recap->warningRuns()[0]['warningCount']);
         self::assertSame(['check'], array_column($recap->warningRuns()[0]['steps'], 'code'));
+        self::assertSame(
+            [['name' => 'Main role set', 'severity' => 'warning', 'expected' => '4', 'actual' => '3']],
+            $recap->warningRuns()[0]['steps'][0]['checkDeviations'],
+        );
     }
 
     #[Test]
@@ -168,6 +176,10 @@ final class RunWarningsDatabaseTest extends TestCase
 
         $check = new WorkflowStepRun($run, 'check', 'check', 2);
         $check->markRunning();
+        $check->replaceReport((new CheckReport())
+            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3', ['c-9']))
+            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
+            ->toArray());
         $check->markCompletedWithWarnings(processedCount: 3, successCount: 3);
 
         $run->incrementWarningCount(2);

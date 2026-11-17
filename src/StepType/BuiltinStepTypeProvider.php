@@ -17,6 +17,7 @@ final class BuiltinStepTypeProvider implements StepTypeProviderInterface
             new StepTypeDefinition(WorkflowStepType::Write, 'step_type.write', 'write'),
             new StepTypeDefinition(WorkflowStepType::Linker, 'step_type.linker', 'linker'),
             new StepTypeDefinition(WorkflowStepType::Join, 'step_type.join', 'join'),
+            new StepTypeDefinition(WorkflowStepType::Check, 'step_type.check', 'check'),
         ];
     }
 }

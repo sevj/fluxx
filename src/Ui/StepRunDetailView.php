@@ -6,6 +6,7 @@ namespace Fluxx\Ui;
 
 use DateTimeImmutable;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
+use Fluxx\Workflow\Check\CheckResult;
 
 final readonly class StepRunDetailView
 {
@@ -13,6 +14,7 @@ final readonly class StepRunDetailView
      * @param array<string, mixed> $metadata
      * @param list<WorkflowPayloadView> $inputPayloads
      * @param list<WorkflowPayloadView> $outputPayloads
+     * @param list<CheckResult> $checks
      */
     public function __construct(
         private string $workflowCode,
@@ -59,6 +61,7 @@ final readonly class StepRunDetailView
         private array $metadata,
         private array $inputPayloads,
         private array $outputPayloads,
+        private array $checks = [],
     ) {
     }
 
@@ -130,5 +133,13 @@ final readonly class StepRunDetailView
     public function outputPayloads(): array
     {
         return $this->outputPayloads;
+    }
+
+    /**
+     * @return list<CheckResult>
+     */
+    public function checks(): array
+    {
+        return $this->checks;
     }
 }

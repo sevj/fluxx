@@ -6,10 +6,12 @@ namespace Fluxx\Workflow\Report;
 
 /**
  * What a step declares about the objects it handled and the anomalies it found.
- * One report describes one object label; the stored format is versioned by the "v" key.
+ * One report describes one object label; the stored format is versioned by the "v" key and tagged by "kind"
+ * (a report stored before the kind existed is a step report).
  */
 final readonly class StepReport
 {
+    public const KIND = 'step';
     private const FORMAT_VERSION = 1;
 
     /**
@@ -68,12 +70,13 @@ final readonly class StepReport
     }
 
     /**
-     * @return array{v: int, objects: array<string, mixed>, anomalies: list<array<string, mixed>>}
+     * @return array{v: int, kind: string, objects: array<string, mixed>, anomalies: list<array<string, mixed>>}
      */
     public function toArray(): array
     {
         return [
             'v' => self::FORMAT_VERSION,
+            'kind' => self::KIND,
             'objects' => $this->objects->toArray(),
             'anomalies' => array_map(static fn (Anomaly $anomaly): array => $anomaly->toArray(), $this->anomalies),
         ];
@@ -86,6 +89,10 @@ final readonly class StepReport
     {
         if (($data['v'] ?? null) !== self::FORMAT_VERSION) {
             throw new \InvalidArgumentException('Unsupported step report version.');
+        }
+
+        if (($data['kind'] ?? self::KIND) !== self::KIND) {
+            throw new \InvalidArgumentException('Not a step report.');
         }
 
         if (!is_array($data['objects'] ?? null)) {

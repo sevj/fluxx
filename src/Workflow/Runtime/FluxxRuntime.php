@@ -15,6 +15,7 @@ use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Repository\WorkflowStepRunLookupInterface;
+use Fluxx\Workflow\Check\CheckFailedException;
 use Fluxx\Workflow\Context\WorkflowContext;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\WorkflowDeferralInterface;
@@ -132,9 +133,14 @@ final class FluxxRuntime
             }
 
             $this->lastResult = $result;
+            $checkReport = $result->checkReport();
+
+            if ($checkReport !== null && $checkReport->blockingDeviations() !== []) {
+                throw new CheckFailedException($checkReport);
+            }
 
             $stepRun->replaceMetadata($result->metadata());
-            $stepRun->replaceReport($result->report()?->toArray());
+            $stepRun->replaceReport($checkReport?->toArray() ?? $result->report()?->toArray());
             $this->idempotenceResolver->applyKey($stepDefinition, $stepRun, $context, $input);
 
             $chunkSize = $this->resolveChunkSize($stepDefinition);
@@ -185,13 +191,19 @@ final class FluxxRuntime
                 }
             }
 
-            $stepRun->markCompleted(
+            $warningCount = count($checkReport?->warningDeviations() ?? []);
+            $markOutcome = $warningCount > 0 ? $stepRun->markCompletedWithWarnings(...) : $stepRun->markCompleted(...);
+            $markOutcome(
                 processedCount: $result->processedCount(),
                 successCount: $result->successCount(),
                 errorCount: $result->errorCount(),
                 durationMs: $this->computeDurationMs($stepStartedAt),
                 memoryPeakBytes: $this->measurePeakMemoryBytes(),
             );
+
+            if ($warningCount > 0) {
+                $workflowRun->incrementWarningCount($warningCount);
+            }
 
             if ($this->cancellationSynchronizer->synchronizeIfNeeded($workflowRun)) {
                 $this->entityManager->flush();

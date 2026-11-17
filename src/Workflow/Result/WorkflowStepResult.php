@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Workflow\Result;
 
+use Fluxx\Workflow\Check\CheckReport;
 use Fluxx\Workflow\Report\StepReport;
 
 final readonly class WorkflowStepResult
@@ -21,7 +22,12 @@ final readonly class WorkflowStepResult
         private int $errorCount = 0,
         private array $branchOutputs = [],
         private ?StepReport $report = null,
+        private ?CheckReport $checkReport = null,
     ) {
+        // Both are stored in the same column of the step run.
+        if ($report !== null && $checkReport !== null) {
+            throw new \InvalidArgumentException('A step result carries either a step report or a check report, not both.');
+        }
     }
 
     /**
@@ -43,6 +49,11 @@ final readonly class WorkflowStepResult
     public function report(): ?StepReport
     {
         return $this->report;
+    }
+
+    public function checkReport(): ?CheckReport
+    {
+        return $this->checkReport;
     }
 
     public function processedCount(): int

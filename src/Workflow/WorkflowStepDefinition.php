@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Workflow;
 
 use Fluxx\Entity\Enum\WorkflowStepType;
+use Fluxx\Workflow\Check\CheckStepInterface;
 use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
 use Fluxx\Workflow\Step\JoinStep;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
@@ -27,6 +28,9 @@ final readonly class WorkflowStepDefinition
         private array $reads = [],
         private bool $transactional = true,
     ) {
+        if ($this->typeEnum() === WorkflowStepType::Check && !$handler instanceof CheckStepInterface) {
+            throw new \InvalidArgumentException(sprintf('Check step "%s" needs a handler implementing %s.', $code, CheckStepInterface::class));
+        }
     }
 
     /**

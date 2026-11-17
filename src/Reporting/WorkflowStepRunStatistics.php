@@ -14,6 +14,8 @@ use Fluxx\Entity\Enum\WorkflowStepDeduplicationStatus;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Workflow\Check\CheckReport;
+use Fluxx\Workflow\Check\CheckResult;
 
 /**
  * Provides step-run statistics and reporting read models outside of the
@@ -203,7 +205,8 @@ final readonly class WorkflowStepRunStatistics
      *     startedAt: ?DateTimeImmutable,
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
-     *     errorDetails: list<string>
+     *     errorDetails: list<string>,
+     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>
      * }>>
      */
     public function findErroredStepRowsByWorkflowRunsGrouped(array $workflowRuns): array
@@ -230,7 +233,8 @@ final readonly class WorkflowStepRunStatistics
      *     startedAt: ?DateTimeImmutable,
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
-     *     errorDetails: list<string>
+     *     errorDetails: list<string>,
+     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>
      * }>>
      */
     public function findWarningStepRowsByWorkflowRunsGrouped(array $workflowRuns): array
@@ -254,7 +258,8 @@ final readonly class WorkflowStepRunStatistics
      *     startedAt: ?DateTimeImmutable,
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
-     *     errorDetails: list<string>
+     *     errorDetails: list<string>,
+     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>
      * }>>
      */
     private function findStepRowsByWorkflowRunsAndStatusesGrouped(array $workflowRuns, array $statuses): array
@@ -280,7 +285,8 @@ final readonly class WorkflowStepRunStatistics
                 workflow_step_run.started_at,
                 workflow_step_run.finished_at,
                 workflow_step_run.error_message,
-                workflow_step_run.metadata
+                workflow_step_run.metadata,
+                workflow_step_run.report
              FROM fluxx_workflow_step_run workflow_step_run
              WHERE workflow_step_run.workflow_run_id IN (:workflowRunIds)
                AND workflow_step_run.status IN (:statuses)
@@ -334,10 +340,35 @@ final readonly class WorkflowStepRunStatistics
                 'finishedAt' => $this->toDateTimeImmutable($row['finished_at'] ?? null),
                 'error' => isset($row['error_message']) ? (string) $row['error_message'] : null,
                 'errorDetails' => $errorDetails,
+                'checkDeviations' => $this->checkDeviations($row['report'] ?? null),
             ];
         }
 
         return $grouped;
+    }
+
+    /**
+     * @return list<array{name: string, severity: string, expected: ?string, actual: ?string}>
+     */
+    private function checkDeviations(mixed $storedReport): array
+    {
+        $report = is_string($storedReport) ? json_decode($storedReport, true) : null;
+
+        try {
+            $checkReport = CheckReport::fromStored(is_array($report) ? $report : null);
+        } catch (\InvalidArgumentException) {
+            return [];
+        }
+
+        return array_values(array_map(
+            static fn (CheckResult $result): array => [
+                'name' => $result->name,
+                'severity' => $result->severity->value,
+                'expected' => $result->expected,
+                'actual' => $result->actual,
+            ],
+            array_filter($checkReport?->results() ?? [], static fn (CheckResult $result): bool => $result->isDeviation()),
+        ));
     }
 
     /**

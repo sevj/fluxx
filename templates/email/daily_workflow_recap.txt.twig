@@ -46,6 +46,9 @@
 - {{ run.createdAt|date('Y-m-d H:i') }} | {{ run.workflow }} | {{ ('workflow_status.' ~ run.status)|trans }} | {{ run.runId }} | {{ 'email_recap.warning_count_label'|trans }}={{ run.warningCount }}
 {% for step in run.steps %}
   - {{ 'email_recap.step'|trans }} {{ step.code }} ({{ step.type }}) | {{ ('workflow_status.' ~ step.status)|trans }}
+{% for deviation in step.checkDeviations|default([]) %}
+    * {{ 'email_recap.check_deviation'|trans }}: {{ deviation.name }} | {{ 'email_recap.check_expected'|trans }}={{ deviation.expected ?? '-' }} | {{ 'email_recap.check_actual'|trans }}={{ deviation.actual ?? '-' }}
+{% endfor %}
 {% endfor %}
 {% else %}
 - {{ 'email_recap.no_warning_run'|trans }}

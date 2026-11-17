@@ -250,6 +250,51 @@
             {% endif %}
         </section>
 
+        {% if stepRun.checks|default([]) is not empty %}
+            <section class="section-card" id="checks">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'step_run_show.checks_title'|trans }}</h2>
+                        <p class="subtitle section-subtitle">{{ 'step_run_show.checks_subtitle'|trans }}</p>
+                    </div>
+                </div>
+
+                <section class="workflow-list">
+                    <table class="workflow-table-compact">
+                        <thead>
+                            <tr>
+                                <th>{{ 'step_run_show.check_name'|trans }}</th>
+                                <th>{{ 'step_run_show.check_severity'|trans }}</th>
+                                <th>{{ 'step_run_show.check_outcome'|trans }}</th>
+                                <th>{{ 'step_run_show.check_expected'|trans }}</th>
+                                <th>{{ 'step_run_show.check_actual'|trans }}</th>
+                                <th>{{ 'step_run_show.check_samples'|trans }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for check in stepRun.checks %}
+                                {% set outcome_badge = check.outcome.value == 'ok' ? 'completed' : (check.severity.value == 'blocking' ? 'failed' : 'completed-with-warnings') %}
+                                <tr>
+                                    <td data-label="{{ 'step_run_show.check_name'|trans }}"><div class="workflow-name">{{ check.name }}</div></td>
+                                    <td data-label="{{ 'step_run_show.check_severity'|trans }}">{{ ('step_run_show.check_severity_' ~ check.severity.value)|trans }}</td>
+                                    <td data-label="{{ 'step_run_show.check_outcome'|trans }}"><span class="status-badge status-badge-{{ outcome_badge }}">{{ ('step_run_show.check_outcome_' ~ check.outcome.value)|trans }}</span></td>
+                                    <td data-label="{{ 'step_run_show.check_expected'|trans }}">{{ check.expected ?? '—' }}</td>
+                                    <td data-label="{{ 'step_run_show.check_actual'|trans }}">{{ check.actual ?? '—' }}</td>
+                                    <td data-label="{{ 'step_run_show.check_samples'|trans }}">
+                                        {% for sample in check.samples %}
+                                            <code class="item-code">{{ sample }}</code>
+                                        {% else %}
+                                            —
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            </section>
+        {% endif %}
+
         {% if can_operate and stepRun.canRelaunch %}
             <section class="section-card" id="manual-operations">
                 <div class="section-heading">

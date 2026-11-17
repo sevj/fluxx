@@ -22,6 +22,11 @@ use Fluxx\Tests\Fixture\RunInterruptingStep;
 use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Tests\Fixture\InMemoryStepRunLookup;
 use Fluxx\Tests\Fixture\StubIdempotentStep;
+use Fluxx\Workflow\Check\CheckFailedException;
+use Fluxx\Workflow\Check\CheckOutcome;
+use Fluxx\Workflow\Check\CheckReport;
+use Fluxx\Workflow\Check\CheckResult;
+use Fluxx\Workflow\Check\CheckStepInterface;
 use Fluxx\Workflow\Context\WorkflowContext;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\WorkflowErrorCategory;
@@ -33,6 +38,7 @@ use Fluxx\Workflow\Progress\StepProgress;
 use Fluxx\Workflow\Progress\StepProgressReporter;
 use Fluxx\Workflow\Progress\StepProgressStoreInterface;
 use Fluxx\Workflow\Report\ReportCarryingExceptionInterface;
+use Fluxx\Workflow\Report\Severity;
 use Fluxx\Workflow\Report\StepReport;
 use Fluxx\Workflow\Retry\WorkflowRetryBackoffStrategy;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
@@ -422,6 +428,91 @@ final class FluxxRuntimeTest extends TestCase
         $this->runtime->runStep('run-1', 'fetch');
 
         self::assertSame($reportArray, $workflowRun->stepRuns()->first()->report());
+    }
+
+    #[Test]
+    public function blocking_deviation_fails_step_without_retry(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = (new CheckReport())
+            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10', ['k-1', 'k-2']))
+            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'));
+        $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)), new WorkflowRetryPolicy(maxRetries: 3, delaySeconds: 60));
+
+        $this->messageBus->expects(self::never())->method('dispatch');
+        $this->workflowPayloadStore->expects(self::never())->method('storeStepInput');
+
+        try {
+            $this->runtime->runStep('run-1', 'verify');
+            self::fail('Expected the blocking deviation to fail the step.');
+        } catch (WorkflowStepFailedException $exception) {
+            self::assertInstanceOf(CheckFailedException::class, $exception->failure());
+        }
+
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame(WorkflowStepRunStatus::Failed, $stepRun->status());
+        self::assertSame(0, $stepRun->retryCount());
+        self::assertSame('Blocking checks in deviation: Companies present (expected: 12, actual: 10)', $stepRun->errorMessage());
+        self::assertSame($report->toArray(), $stepRun->report());
+        self::assertSame(WorkflowRunStatus::Failed, $workflowRun->status());
+        self::assertSame(0, $workflowRun->warningCount());
+    }
+
+    #[Test]
+    public function warning_deviation_completes_with_warnings(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = (new CheckReport())
+            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3', ['c-9']))
+            ->add(new CheckResult('Properties copied', Severity::Warning, CheckOutcome::Deviation, '50', '48'));
+        $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)));
+
+        $this->runtime->runStep('run-1', 'verify');
+
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame(WorkflowStepRunStatus::CompletedWithWarnings, $stepRun->status());
+        self::assertSame($report->toArray(), $stepRun->report());
+        self::assertSame(WorkflowRunStatus::CompletedWithWarnings, $workflowRun->status());
+        self::assertSame(2, $workflowRun->warningCount());
+    }
+
+    #[Test]
+    public function all_ok_completes(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = (new CheckReport())
+            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
+            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Ok, '4', '4'));
+        $this->registryWithCheck(new StubCheckStep(new WorkflowStepResult(checkReport: $report)));
+
+        $this->runtime->runStep('run-1', 'verify');
+
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame(WorkflowStepRunStatus::Completed, $stepRun->status());
+        self::assertSame($report->toArray(), $stepRun->report());
+        self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
+        self::assertSame(0, $workflowRun->warningCount());
+    }
+
+    #[Test]
+    public function handler_exception_is_technical_and_retried(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->registryWithCheck(new StubCheckStep(new RuntimeException('HubSpot unreachable')), new WorkflowRetryPolicy(maxRetries: 3, delaySeconds: 60));
+
+        $this->messageBus->expects(self::once())->method('dispatch')->willReturnCallback(static fn (object $message): Envelope => new Envelope($message));
+
+        $this->runtime->runStep('run-1', 'verify');
+
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame(WorkflowStepRunStatus::Retrying, $stepRun->status());
+        self::assertSame(WorkflowRunStatus::Retrying, $workflowRun->status());
+        self::assertNull($stepRun->report());
     }
 
     #[Test]
@@ -990,6 +1081,20 @@ final class FluxxRuntimeTest extends TestCase
         $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
     }
 
+    private function registryWithCheck(CheckStepInterface $handler, ?WorkflowRetryPolicy $retryPolicy = null): void
+    {
+        $workflow = $this->createMock(WorkflowInterface::class);
+        $workflow->method('definition')->willReturn(new WorkflowDefinition(
+            code: 'fixture',
+            name: 'Fixture',
+            sourceSystem: 'src',
+            targetSystem: 'tgt',
+            steps: [new WorkflowStepDefinition('verify', 'Verify', WorkflowStepType::Check, $handler, retryPolicy: $retryPolicy)],
+        ));
+
+        $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
+    }
+
     private function registryWithParallelBranches(ExecutableWorkflowStepInterface $handler): void
     {
         $workflow = $this->createMock(WorkflowInterface::class);
@@ -1290,5 +1395,37 @@ final class BusinessStepFailure extends RuntimeException implements WorkflowErro
     public function workflowErrorContext(): array
     {
         return [];
+    }
+}
+
+final class StubCheckStep implements CheckStepInterface
+{
+    public function __construct(
+        private readonly WorkflowStepResult|\Throwable $outcome,
+    ) {
+    }
+
+    public function code(): string
+    {
+        return 'verify';
+    }
+
+    public function name(): string
+    {
+        return 'Verify';
+    }
+
+    public static function staticCode(): string
+    {
+        return 'verify';
+    }
+
+    public function execute(WorkflowContext $context, WorkflowStepInput $input): WorkflowStepResult
+    {
+        if ($this->outcome instanceof \Throwable) {
+            throw $this->outcome;
+        }
+
+        return $this->outcome;
     }
 }

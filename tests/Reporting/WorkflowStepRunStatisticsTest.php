@@ -226,6 +226,7 @@ final class WorkflowStepRunStatisticsTest extends TestCase
                     'finishedAt' => new DateTimeImmutable('2026-07-22 10:01:00'),
                     'error' => 'boom',
                     'errorDetails' => ['category: fatal', 'code: E42'],
+                    'checkDeviations' => [],
                 ]],
                 'run-2' => [[
                     'code' => 'write_company',
@@ -241,6 +242,7 @@ final class WorkflowStepRunStatisticsTest extends TestCase
                     'finishedAt' => null,
                     'error' => 'retry later',
                     'errorDetails' => ['category: transient'],
+                    'checkDeviations' => [],
                 ]],
             ],
             $statistics->findErroredStepRowsByWorkflowRunsGrouped([

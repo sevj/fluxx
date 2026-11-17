@@ -6,6 +6,9 @@ namespace Fluxx\Tests\Twig;
 
 use DateTimeImmutable;
 use Fluxx\Twig\AssetExtension;
+use Fluxx\Workflow\Check\CheckOutcome;
+use Fluxx\Workflow\Check\CheckResult;
+use Fluxx\Workflow\Report\Severity;
 use Fluxx\Twig\DurationExtension;
 use Fluxx\Ui\AssetVersion;
 use Fluxx\Ui\WorkflowChoiceView;
@@ -86,6 +89,24 @@ final class TemplateRenderingTest extends TestCase
         self::assertStringNotContainsString('manual-operations', $finished);
         self::assertStringNotContainsString('method="post"', $finished);
         self::assertStringNotContainsString('method="post"', $active);
+    }
+
+    #[Test]
+    public function a_check_step_shows_its_controls(): void
+    {
+        $stepRun = $this->stepRun('failed', true) + ['checks' => [
+            new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10', ['k-1', 'k-2']),
+            new CheckResult('Main role set', Severity::Warning, CheckOutcome::Ok, '4', '4'),
+        ]];
+
+        $html = $this->twig(admin: false)->render('@Fluxx/workflow/step_run_show.html.twig', ['stepRun' => $stepRun]);
+        $plain = $this->twig(admin: false)->render('@Fluxx/workflow/step_run_show.html.twig', ['stepRun' => $this->stepRun('completed', true)]);
+
+        self::assertStringContainsString('id="checks"', $html);
+        self::assertStringContainsString('Companies present', $html);
+        self::assertStringContainsString('status-badge-failed', $html);
+        self::assertStringContainsString('k-2', $html);
+        self::assertStringNotContainsString('id="checks"', $plain);
     }
 
     #[Test]

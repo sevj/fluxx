@@ -9,6 +9,8 @@ use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Repository\WorkflowPayloadRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\StepType\StepTypeRegistry;
+use Fluxx\Workflow\Check\CheckReport;
+use Fluxx\Workflow\Check\CheckResult;
 use Fluxx\Workflow\Payload\WorkflowPayloadStore;
 use Fluxx\Workflow\SynchronizationRegistry;
 use InvalidArgumentException;
@@ -95,6 +97,7 @@ final readonly class StepRunDetails
             metadata: $stepRun->metadata(),
             inputPayloads: $inputPayloads,
             outputPayloads: $outputPayloads,
+            checks: self::readChecks($stepRun->report()),
         );
     }
 
@@ -121,6 +124,19 @@ final readonly class StepRunDetails
         }
 
         throw new InvalidArgumentException(sprintf('Step "%s" is not registered for workflow "%s".', $stepCode, $workflowCode));
+    }
+
+    /**
+     * @param array<string, mixed>|null $report
+     * @return list<CheckResult>
+     */
+    private static function readChecks(?array $report): array
+    {
+        try {
+            return CheckReport::fromStored($report)?->results() ?? [];
+        } catch (InvalidArgumentException) {
+            return [];
+        }
     }
 
     /**
