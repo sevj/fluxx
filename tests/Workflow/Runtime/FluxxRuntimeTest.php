@@ -32,6 +32,8 @@ use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
 use Fluxx\Workflow\Progress\StepProgress;
 use Fluxx\Workflow\Progress\StepProgressReporter;
 use Fluxx\Workflow\Progress\StepProgressStoreInterface;
+use Fluxx\Workflow\Report\ReportCarryingExceptionInterface;
+use Fluxx\Workflow\Report\StepReport;
 use Fluxx\Workflow\Retry\WorkflowRetryBackoffStrategy;
 use Fluxx\Workflow\Retry\WorkflowRetryPolicy;
 use Fluxx\Workflow\Runtime\FluxxRuntime;
@@ -40,7 +42,6 @@ use Fluxx\Workflow\Runtime\WorkflowIdempotenceResolver;
 use Fluxx\Workflow\Runtime\WorkflowRetryScheduler;
 use Fluxx\Workflow\Runtime\WorkflowRunCompletionDecider;
 use Fluxx\Workflow\Runtime\WorkflowStepFailedException;
-use Fluxx\Workflow\Report\StepReport;
 use Fluxx\Workflow\Result\WorkflowStepResult;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
@@ -504,6 +505,25 @@ final class FluxxRuntimeTest extends TestCase
         }
 
         self::assertSame(WorkflowRunStatus::Failed, $workflowRun->status());
+    }
+
+    #[Test]
+    public function a_failed_step_keeps_the_report_carried_by_its_exception(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $report = StepReport::objects('Contacts')->read(3)->toArray();
+        $this->registryWithHandler(new FailingStepHandler(new ReportCarryingFailure($report)));
+
+        try {
+            $this->runtime->runStep('run-1', 'fetch');
+            self::fail('Expected the step to fail.');
+        } catch (WorkflowStepFailedException) {
+        }
+
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame(WorkflowStepRunStatus::Failed, $stepRun->status());
+        self::assertSame($report, $stepRun->report());
     }
 
     #[Test]
@@ -1141,6 +1161,37 @@ final class TechnicalStepFailure extends RuntimeException implements WorkflowErr
     public function workflowErrorCode(): ?string
     {
         return 'TECHNICAL';
+    }
+
+    public function workflowErrorContext(): array
+    {
+        return [];
+    }
+}
+
+final class ReportCarryingFailure extends RuntimeException implements ReportCarryingExceptionInterface, WorkflowErrorInterface
+{
+    /**
+     * @param array<string, mixed> $report
+     */
+    public function __construct(private readonly array $report)
+    {
+        parent::__construct('blocking deviations');
+    }
+
+    public function report(): array
+    {
+        return $this->report;
+    }
+
+    public function workflowErrorCategory(): WorkflowErrorCategory
+    {
+        return WorkflowErrorCategory::Business;
+    }
+
+    public function workflowErrorCode(): ?string
+    {
+        return 'CHECK';
     }
 
     public function workflowErrorContext(): array

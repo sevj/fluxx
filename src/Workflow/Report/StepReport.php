@@ -50,6 +50,8 @@ final readonly class StepReport
     }
 
     /**
+     * Replaces the whole list of rejected objects.
+     *
      * @param list<array{key: string, message: string}> $rejected
      */
     public function rejected(array $rejected): self
@@ -82,9 +84,23 @@ final readonly class StepReport
      */
     public static function fromArray(array $data): self
     {
+        if (($data['v'] ?? null) !== self::FORMAT_VERSION) {
+            throw new \InvalidArgumentException('Unsupported step report version.');
+        }
+
+        if (!is_array($data['objects'] ?? null)) {
+            throw new \InvalidArgumentException('Step report without objects.');
+        }
+
+        $anomalies = $data['anomalies'] ?? [];
+
+        if (!is_array($anomalies)) {
+            throw new \InvalidArgumentException('Step report anomalies must be a list.');
+        }
+
         return new self(
             ObjectStats::fromArray($data['objects']),
-            array_map(Anomaly::fromArray(...), $data['anomalies'] ?? []),
+            array_map(static fn (mixed $anomaly): Anomaly => Anomaly::fromArray(is_array($anomaly) ? $anomaly : throw new \InvalidArgumentException('Invalid anomaly.')), array_values($anomalies)),
         );
     }
 

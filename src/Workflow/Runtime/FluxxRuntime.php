@@ -21,6 +21,7 @@ use Fluxx\Workflow\Error\WorkflowDeferralInterface;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
+use Fluxx\Workflow\Report\ReportCarryingExceptionInterface;
 use Fluxx\Workflow\Result\WorkflowStepResult;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
@@ -238,6 +239,10 @@ final class FluxxRuntime
         try {
             $this->reconnectIfConnectionWasLost();
             $this->entityManager->beginTransaction();
+
+            if ($throwable instanceof ReportCarryingExceptionInterface) {
+                $stepRun->replaceReport($throwable->report());
+            }
 
             if ($throwable instanceof WorkflowDeferralInterface) {
                 $this->retryScheduler->scheduleDeferral($workflowRun, $stepRun, $throwable, $throwable->getMessage(), $errorPayload, $durationMs, $memoryPeakBytes);

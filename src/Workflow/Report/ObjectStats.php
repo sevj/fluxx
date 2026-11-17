@@ -40,8 +40,12 @@ final readonly class ObjectStats
      */
     public static function fromArray(array $data): self
     {
+        if (!is_string($data['label'] ?? null)) {
+            throw new \InvalidArgumentException('Step report objects without label.');
+        }
+
         return new self(
-            label: (string) $data['label'],
+            label: $data['label'],
             read: (int) ($data['read'] ?? 0),
             created: (int) ($data['created'] ?? 0),
             updated: (int) ($data['updated'] ?? 0),

@@ -29,10 +29,17 @@ final readonly class Anomaly
      */
     public static function fromArray(array $data): self
     {
+        if (!is_string($data['title'] ?? null)) {
+            throw new \InvalidArgumentException('Step report anomaly without title.');
+        }
+
+        $severity = Severity::tryFrom((string) ($data['severity'] ?? Severity::Warning->value))
+            ?? throw new \InvalidArgumentException('Unknown step report anomaly severity.');
+
         return new self(
-            title: (string) $data['title'],
+            title: $data['title'],
             lines: $data['lines'] ?? [],
-            severity: Severity::from((string) ($data['severity'] ?? Severity::Warning->value)),
+            severity: $severity,
         );
     }
 }

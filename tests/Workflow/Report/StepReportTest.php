@@ -47,6 +47,30 @@ final class StepReportTest extends TestCase
     }
 
     #[Test]
+    public function an_unknown_version_is_rejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        StepReport::fromArray(['v' => 2, 'objects' => ['label' => 'Contacts']]);
+    }
+
+    #[Test]
+    public function missing_objects_are_rejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        StepReport::fromArray(['v' => 1]);
+    }
+
+    #[Test]
+    public function an_unknown_severity_is_rejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        StepReport::fromArray(['v' => 1, 'objects' => ['label' => 'Contacts'], 'anomalies' => [['title' => 'X', 'severity' => 'fatal', 'lines' => []]]]);
+    }
+
+    #[Test]
     public function an_anomaly_is_a_warning_by_default(): void
     {
         $array = StepReport::objects('Contacts')->anomaly('Orphans', ['a' => 1])->toArray();
