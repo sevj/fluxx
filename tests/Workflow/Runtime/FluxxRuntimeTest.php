@@ -56,6 +56,7 @@ use Fluxx\Workflow\WorkflowDefinition;
 use Fluxx\Workflow\WorkflowInterface;
 use Fluxx\Workflow\WorkflowStepDefinition;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionProperty;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -496,6 +497,37 @@ final class FluxxRuntimeTest extends TestCase
         self::assertSame($report->toArray(), $stepRun->report());
         self::assertSame(WorkflowRunStatus::Completed, $workflowRun->status());
         self::assertSame(0, $workflowRun->warningCount());
+    }
+
+    #[Test]
+    #[DataProvider('resultsWithoutChecks')]
+    public function a_check_step_without_checks_fails_without_retry(WorkflowStepResult $result): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+        $this->registryWithCheck(new StubCheckStep($result), new WorkflowRetryPolicy(maxRetries: 3, delaySeconds: 60));
+
+        $this->messageBus->expects(self::never())->method('dispatch');
+
+        try {
+            $this->runtime->runStep('run-1', 'verify');
+            self::fail('Expected a check step without checks to fail.');
+        } catch (WorkflowStepFailedException) {
+        }
+
+        $stepRun = $workflowRun->stepRuns()->first();
+        self::assertSame(WorkflowStepRunStatus::Failed, $stepRun->status());
+        self::assertSame('Check step "verify" returned no checks.', $stepRun->errorMessage());
+        self::assertSame(WorkflowRunStatus::Failed, $workflowRun->status());
+    }
+
+    /**
+     * @return iterable<string, array{WorkflowStepResult}>
+     */
+    public static function resultsWithoutChecks(): iterable
+    {
+        yield 'no check report' => [new WorkflowStepResult()];
+        yield 'empty check report' => [new WorkflowStepResult(checkReport: new CheckReport())];
     }
 
     #[Test]

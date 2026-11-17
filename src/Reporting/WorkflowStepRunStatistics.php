@@ -206,7 +206,8 @@ final readonly class WorkflowStepRunStatistics
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
      *     errorDetails: list<string>,
-     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>
+     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>,
+     *     checkReportUnreadable: bool
      * }>>
      */
     public function findErroredStepRowsByWorkflowRunsGrouped(array $workflowRuns): array
@@ -234,7 +235,8 @@ final readonly class WorkflowStepRunStatistics
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
      *     errorDetails: list<string>,
-     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>
+     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>,
+     *     checkReportUnreadable: bool
      * }>>
      */
     public function findWarningStepRowsByWorkflowRunsGrouped(array $workflowRuns): array
@@ -259,7 +261,8 @@ final readonly class WorkflowStepRunStatistics
      *     finishedAt: ?DateTimeImmutable,
      *     error: ?string,
      *     errorDetails: list<string>,
-     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>
+     *     checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>,
+     *     checkReportUnreadable: bool
      * }>>
      */
     private function findStepRowsByWorkflowRunsAndStatusesGrouped(array $workflowRuns, array $statuses): array
@@ -326,6 +329,7 @@ final readonly class WorkflowStepRunStatistics
                 }
             }
 
+            $checkDeviations = $this->checkDeviations($row['report'] ?? null);
             $grouped[$runId][] = [
                 'code' => $stepCode,
                 'type' => (string) ($row['step_type'] ?? 'custom'),
@@ -340,7 +344,8 @@ final readonly class WorkflowStepRunStatistics
                 'finishedAt' => $this->toDateTimeImmutable($row['finished_at'] ?? null),
                 'error' => isset($row['error_message']) ? (string) $row['error_message'] : null,
                 'errorDetails' => $errorDetails,
-                'checkDeviations' => $this->checkDeviations($row['report'] ?? null),
+                'checkDeviations' => $checkDeviations ?? [],
+                'checkReportUnreadable' => $checkDeviations === null,
             ];
         }
 
@@ -348,16 +353,16 @@ final readonly class WorkflowStepRunStatistics
     }
 
     /**
-     * @return list<array{name: string, severity: string, expected: ?string, actual: ?string}>
+     * @return list<array{name: string, severity: string, expected: ?string, actual: ?string}>|null null when a check report is stored but cannot be read
      */
-    private function checkDeviations(mixed $storedReport): array
+    private function checkDeviations(mixed $storedReport): ?array
     {
         $report = is_string($storedReport) ? json_decode($storedReport, true) : null;
 
         try {
             $checkReport = CheckReport::fromStored(is_array($report) ? $report : null);
         } catch (\InvalidArgumentException) {
-            return [];
+            return null;
         }
 
         return array_values(array_map(

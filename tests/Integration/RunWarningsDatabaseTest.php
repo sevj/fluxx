@@ -165,6 +165,46 @@ final class RunWarningsDatabaseTest extends TestCase
         self::assertSame(1, $runs[0]->warningCount());
     }
 
+    #[Test]
+    public function recap_lists_the_deviations_of_a_failed_check_and_flags_an_unreadable_report(): void
+    {
+        $run = new WorkflowRun(runId: 'failed', workflowName: 'contacts', sourceSystem: 'CSV', targetSystem: 'Hubspot', trigger: 'manual');
+        $run->markRunning();
+
+        $check = new WorkflowStepRun($run, 'check', 'verify', 1);
+        $check->markRunning();
+        $check->replaceReport((new CheckReport())
+            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Deviation, '12', '10'))
+            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'))
+            ->add(new CheckResult('Pipelines set', Severity::Blocking, CheckOutcome::Ok, '5', '5'))
+            ->toArray());
+        $check->markFailed('Blocking checks in deviation: Companies present (expected: 12, actual: 10)');
+
+        $corrupted = new WorkflowStepRun($run, 'check', 'verify_links', 2);
+        $corrupted->markRunning();
+        $corrupted->replaceReport(['v' => 1, 'kind' => 'check', 'checks' => 'broken']);
+        $corrupted->markFailed('boom');
+
+        $run->markFailed('Blocking checks in deviation');
+        $this->entityManager->persist($run);
+        $this->entityManager->persist($check);
+        $this->entityManager->persist($corrupted);
+        $this->entityManager->flush();
+
+        $steps = $this->recapBuilder()->build(new DateTimeImmutable('-1 hour'), new DateTimeImmutable('+1 hour'))->erroredRuns()[0]['steps'];
+
+        self::assertSame(
+            [
+                ['name' => 'Companies present', 'severity' => 'blocking', 'expected' => '12', 'actual' => '10'],
+                ['name' => 'Main role set', 'severity' => 'warning', 'expected' => '4', 'actual' => '3'],
+            ],
+            $steps[0]['checkDeviations'],
+        );
+        self::assertFalse($steps[0]['checkReportUnreadable']);
+        self::assertSame([], $steps[1]['checkDeviations']);
+        self::assertTrue($steps[1]['checkReportUnreadable']);
+    }
+
     private function storeWarningRun(string $runId): void
     {
         $run = new WorkflowRun(runId: $runId, workflowName: 'contacts', sourceSystem: 'CSV', targetSystem: 'Hubspot', trigger: 'manual');

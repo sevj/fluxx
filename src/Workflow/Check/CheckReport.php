@@ -21,6 +21,11 @@ final readonly class CheckReport
     public function __construct(
         private array $results = [],
     ) {
+        foreach ($results as $result) {
+            if (!$result instanceof CheckResult) {
+                throw new \InvalidArgumentException(sprintf('A check report only holds %s instances.', CheckResult::class));
+            }
+        }
     }
 
     public function add(CheckResult $result): self

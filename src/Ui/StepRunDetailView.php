@@ -62,6 +62,7 @@ final readonly class StepRunDetailView
         private array $inputPayloads,
         private array $outputPayloads,
         private array $checks = [],
+        private bool $checkReportUnreadable = false,
     ) {
     }
 
@@ -141,5 +142,10 @@ final readonly class StepRunDetailView
     public function checks(): array
     {
         return $this->checks;
+    }
+
+    public function checkReportUnreadable(): bool
+    {
+        return $this->checkReportUnreadable;
     }
 }

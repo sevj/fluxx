@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Tests\Twig;
 
 use DateTimeImmutable;
+use Fluxx\Reporting\DailyWorkflowRecap;
 use Fluxx\Twig\AssetExtension;
 use Fluxx\Workflow\Check\CheckOutcome;
 use Fluxx\Workflow\Check\CheckResult;
@@ -107,6 +108,52 @@ final class TemplateRenderingTest extends TestCase
         self::assertStringContainsString('status-badge-failed', $html);
         self::assertStringContainsString('k-2', $html);
         self::assertStringNotContainsString('id="checks"', $plain);
+    }
+
+    #[Test]
+    public function an_unreadable_check_report_is_reported_on_the_step(): void
+    {
+        $html = $this->twig(admin: false)->render('@Fluxx/workflow/step_run_show.html.twig', [
+            'stepRun' => $this->stepRun('failed', true) + ['checkReportUnreadable' => true],
+        ]);
+
+        self::assertStringContainsString('The stored check report could not be read.', $html);
+    }
+
+    #[Test]
+    public function the_daily_recap_lists_check_deviations_of_failed_and_warning_runs(): void
+    {
+        $step = static fn (string $status, array $deviations, bool $unreadable = false): array => [
+            'code' => 'verify', 'type' => 'check', 'status' => $status, 'processed' => 1, 'success' => 1, 'errors' => 0,
+            'durationMs' => 10, 'memoryPeakBytes' => null, 'retries' => 0, 'startedAt' => null, 'finishedAt' => null,
+            'error' => null, 'errorDetails' => [], 'checkDeviations' => $deviations, 'checkReportUnreadable' => $unreadable,
+        ];
+        $recap = new DailyWorkflowRecap(
+            from: new DateTimeImmutable('-1 day'),
+            to: new DateTimeImmutable(),
+            statusCounts: ['failed' => 1, 'completed_with_warnings' => 1],
+            workflowCounts: [],
+            erroredRuns: [['runId' => 'run-f', 'workflow' => 'contacts', 'status' => 'failed', 'createdAt' => new DateTimeImmutable(), 'error' => 'x', 'steps' => [
+                $step('failed', [['name' => 'Companies present', 'severity' => 'blocking', 'expected' => '12', 'actual' => '10']]),
+                $step('failed', [], true),
+            ]]],
+            warningRuns: [['runId' => 'run-w', 'workflow' => 'contacts', 'status' => 'completed_with_warnings', 'createdAt' => new DateTimeImmutable(), 'warningCount' => 1, 'steps' => [
+                $step('completed_with_warnings', [['name' => 'Main role set', 'severity' => 'warning', 'expected' => '4', 'actual' => '3']]),
+            ]]],
+            processedCount: 2,
+            successCount: 2,
+            errorCount: 0,
+            averageDurationMs: 10,
+            maxDurationMs: 10,
+        );
+
+        foreach (['html', 'txt'] as $format) {
+            $output = $this->twig(admin: false)->render('@Fluxx/email/daily_workflow_recap.' . $format . '.twig', ['recap' => $recap]);
+
+            self::assertStringContainsString('Companies present', $output, $format);
+            self::assertStringContainsString('Main role set', $output, $format);
+            self::assertStringContainsString('The check report stored on this step could not be read.', $output, $format);
+        }
     }
 
     #[Test]

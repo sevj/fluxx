@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Fluxx\Tests\Workflow\Relaunch;
 
+use Fluxx\Workflow\Check\CheckOutcome;
+use Fluxx\Workflow\Check\CheckReport;
+use Fluxx\Workflow\Check\CheckResult;
+use Fluxx\Workflow\Report\Severity;
+use Fluxx\Workflow\Report\StepReport;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\Enum\WorkflowStepType;
@@ -249,6 +254,15 @@ final class WorkflowRelaunchServiceTest extends TestCase
             $stepRuns[$code] = $stepRun;
         }
 
+        $readReport = StepReport::objects('Contacts')->read(1)->toArray();
+        $stepRuns['read']->replaceReport($readReport);
+        $checkReport = (new CheckReport())
+            ->add(new CheckResult('Main role set', Severity::Warning, CheckOutcome::Deviation, '4', '3'))
+            ->add(new CheckResult('Properties copied', Severity::Warning, CheckOutcome::Deviation, '50', '48'))
+            ->add(new CheckResult('Companies present', Severity::Blocking, CheckOutcome::Ok, '12', '12'))
+            ->toArray();
+        $stepRuns['write_a']->replaceReport($checkReport);
+
         $stepRunRepository = $this->createStub(WorkflowStepRunLookupInterface::class);
         $stepRunRepository->method('findByWorkflowRunOrdered')->willReturn(array_values($stepRuns));
         $payloadRepository = $this->createStub(WorkflowPayloadLookupInterface::class);
@@ -269,15 +283,17 @@ final class WorkflowRelaunchServiceTest extends TestCase
         });
 
         $persisted = [];
+        $persistedReports = [];
         $relaunchedRun = null;
         $entityManager = $this->createStub(EntityManagerInterface::class);
-        $entityManager->method('persist')->willReturnCallback(function (object $entity) use (&$persisted, &$relaunchedRun): void {
+        $entityManager->method('persist')->willReturnCallback(function (object $entity) use (&$persisted, &$persistedReports, &$relaunchedRun): void {
             if ($entity instanceof WorkflowRun) {
                 $relaunchedRun = $entity;
             }
 
             if ($entity instanceof WorkflowStepRun) {
                 $persisted[] = $entity->stepName() . ':' . $entity->status()->value;
+                $persistedReports[$entity->stepName()] = $entity->report();
             }
         });
 
@@ -313,7 +329,9 @@ final class WorkflowRelaunchServiceTest extends TestCase
         );
         self::assertCount(2, $dispatched);
         self::assertInstanceOf(WorkflowRun::class, $relaunchedRun);
-        self::assertSame(1, $relaunchedRun->warningCount());
+        self::assertSame(2, $relaunchedRun->warningCount());
+        self::assertSame($readReport, $persistedReports['read']);
+        self::assertSame($checkReport, $persistedReports['write_a']);
     }
 
     private function payload(WorkflowStepRun $source, string $target): WorkflowPayload

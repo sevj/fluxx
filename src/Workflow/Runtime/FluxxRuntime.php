@@ -18,6 +18,7 @@ use Fluxx\Repository\WorkflowStepRunLookupInterface;
 use Fluxx\Workflow\Check\CheckFailedException;
 use Fluxx\Workflow\Context\WorkflowContext;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
+use Fluxx\Workflow\Error\BusinessWorkflowException;
 use Fluxx\Workflow\Error\WorkflowDeferralInterface;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
@@ -134,6 +135,10 @@ final class FluxxRuntime
 
             $this->lastResult = $result;
             $checkReport = $result->checkReport();
+
+            if ($stepDefinition->typeEnum() === WorkflowStepType::Check && ($checkReport?->results() ?? []) === []) {
+                throw new BusinessWorkflowException(sprintf('Check step "%s" returned no checks.', $stepCode), 'check_without_checks');
+            }
 
             if ($checkReport !== null && $checkReport->blockingDeviations() !== []) {
                 throw new CheckFailedException($checkReport);

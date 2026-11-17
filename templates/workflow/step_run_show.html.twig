@@ -250,7 +250,18 @@
             {% endif %}
         </section>
 
-        {% if stepRun.checks|default([]) is not empty %}
+        {% if stepRun.checkReportUnreadable|default(false) %}
+            <section class="section-card" id="checks">
+                <div class="section-heading">
+                    <div>
+                        <h2 class="section-title">{{ 'step_run_show.checks_title'|trans }}</h2>
+                    </div>
+                </div>
+                <div class="detail-message detail-message-error">
+                    <div class="detail-message-body">{{ 'step_run_show.check_report_unreadable'|trans }}</div>
+                </div>
+            </section>
+        {% elseif stepRun.checks|default([]) is not empty %}
             <section class="section-card" id="checks">
                 <div class="section-heading">
                     <div>

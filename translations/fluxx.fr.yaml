@@ -501,6 +501,7 @@ step_run_show:
     check_severity_warning: Avertissement
     check_outcome_ok: OK
     check_outcome_deviation: Écart
+    check_report_unreadable: Le rapport de contrôle enregistré n'a pas pu être lu.
 
 user_index:
     title: Utilisateurs
@@ -721,6 +722,9 @@ email_recap:
     check_deviation: Contrôle en écart
     check_expected: attendu
     check_actual: constaté
+    check_report_unreadable: Le rapport de contrôle enregistré sur cette étape n'a pas pu être lu.
+    check_severity_blocking: bloquant
+    check_severity_warning: avertissement
     summary: Résumé
     total_runs: Total des exécutions
     processed_records: Enregistrements traités

@@ -13,6 +13,8 @@ use Fluxx\Workflow\Error\WorkflowErrorCategory;
 use Fluxx\Workflow\Report\Severity;
 use Fluxx\Workflow\Report\StepReport;
 use Fluxx\Workflow\Result\WorkflowStepResult;
+use Fluxx\Workflow\Check\CheckStepInterface;
+use Fluxx\Workflow\Step\WorkflowStepIdempotence;
 use Fluxx\Workflow\Step\ExecutableWorkflowStepInterface;
 use Fluxx\Workflow\WorkflowStepDefinition;
 use PHPUnit\Framework\Attributes\Test;
@@ -107,7 +109,8 @@ final class CheckReportTest extends TestCase
             ['v' => 1, 'kind' => 'check'],
             ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'fatal', 'outcome' => 'ok']]],
             ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'maybe']]],
-            ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'ok', 'samples' => [1]]]],
+            ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'ok', 'samples' => [['nested']]]]],
+            ['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'ok', 'samples' => 'k-1']]],
         ] as $data) {
             try {
                 CheckReport::fromArray($data);
@@ -147,5 +150,32 @@ final class CheckReportTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         new WorkflowStepDefinition('verify', 'Verify', WorkflowStepType::Check, $this->createStub(ExecutableWorkflowStepInterface::class));
+    }
+
+    #[Test]
+    public function integer_samples_are_kept_as_strings(): void
+    {
+        $result = new CheckResult('No duplicate', Severity::Blocking, CheckOutcome::Deviation, '0', '2', [1042, 1043.5, 'k-3']);
+        $report = (new CheckReport())->add($result);
+
+        self::assertSame(['1042', '1043.5', 'k-3'], $result->samples);
+        self::assertSame(['1042', '1043.5', 'k-3'], CheckReport::fromArray(json_decode(json_encode($report->toArray(), JSON_THROW_ON_ERROR), true))->results()[0]->samples);
+        self::assertSame(['7'], CheckReport::fromArray(['v' => 1, 'kind' => 'check', 'checks' => [['name' => 'a', 'severity' => 'warning', 'outcome' => 'deviation', 'samples' => [7]]]])->results()[0]->samples);
+    }
+
+    #[Test]
+    public function a_report_only_holds_check_results(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new CheckReport([['name' => 'a']]);
+    }
+
+    #[Test]
+    public function a_check_step_cannot_be_idempotent(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new WorkflowStepDefinition('verify', 'Verify', WorkflowStepType::Check, $this->createStub(CheckStepInterface::class), idempotence: new WorkflowStepIdempotence());
     }
 }

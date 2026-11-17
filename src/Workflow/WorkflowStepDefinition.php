@@ -31,6 +31,11 @@ final readonly class WorkflowStepDefinition
         if ($this->typeEnum() === WorkflowStepType::Check && !$handler instanceof CheckStepInterface) {
             throw new \InvalidArgumentException(sprintf('Check step "%s" needs a handler implementing %s.', $code, CheckStepInterface::class));
         }
+
+        // A cache hit would reuse an old outcome instead of checking the target system again.
+        if ($this->typeEnum() === WorkflowStepType::Check && $idempotence !== null) {
+            throw new \InvalidArgumentException(sprintf('Check step "%s" cannot be idempotent.', $code));
+        }
     }
 
     /**

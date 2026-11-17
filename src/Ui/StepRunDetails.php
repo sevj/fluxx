@@ -53,6 +53,8 @@ final readonly class StepRunDetails
             $this->workflowPayloadRepository->findBySourceStepRunOrdered($stepRun),
         );
 
+        $checks = self::readChecks($stepRun->report());
+
         return new StepRunDetailView(
             workflowCode: $definition->code(),
             workflowName: $definition->name(),
@@ -97,7 +99,8 @@ final readonly class StepRunDetails
             metadata: $stepRun->metadata(),
             inputPayloads: $inputPayloads,
             outputPayloads: $outputPayloads,
-            checks: self::readChecks($stepRun->report()),
+            checks: $checks ?? [],
+            checkReportUnreadable: $checks === null,
         );
     }
 
@@ -128,14 +131,14 @@ final readonly class StepRunDetails
 
     /**
      * @param array<string, mixed>|null $report
-     * @return list<CheckResult>
+     * @return list<CheckResult>|null null when a check report is stored but cannot be read
      */
-    private static function readChecks(?array $report): array
+    private static function readChecks(?array $report): ?array
     {
         try {
             return CheckReport::fromStored($report)?->results() ?? [];
         } catch (InvalidArgumentException) {
-            return [];
+            return null;
         }
     }
 

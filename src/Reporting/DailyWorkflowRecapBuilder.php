@@ -75,8 +75,8 @@ final readonly class DailyWorkflowRecapBuilder
     }
 
     /**
-     * @param list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>}> $stepRuns
-     * @return array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, error: ?string, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>}>}
+     * @param list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>, checkReportUnreadable: bool}> $stepRuns
+     * @return array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, error: ?string, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>, checkReportUnreadable: bool}>}
      */
     private function erroredRun(WorkflowRun $run, array $stepRuns): array
     {
@@ -91,8 +91,8 @@ final readonly class DailyWorkflowRecapBuilder
     }
 
     /**
-     * @param list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>}> $stepRuns
-     * @return array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, warningCount: int, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>}>}
+     * @param list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>, checkReportUnreadable: bool}> $stepRuns
+     * @return array{runId: string, workflow: string, status: string, createdAt: DateTimeImmutable, warningCount: int, steps: list<array{code: string, type: string, status: string, processed: int, success: int, errors: int, durationMs: ?int, memoryPeakBytes: ?int, retries: int, startedAt: ?DateTimeImmutable, finishedAt: ?DateTimeImmutable, error: ?string, errorDetails: list<string>, checkDeviations: list<array{name: string, severity: string, expected: ?string, actual: ?string}>, checkReportUnreadable: bool}>}
      */
     private function warningRun(WorkflowRun $run, array $stepRuns): array
     {

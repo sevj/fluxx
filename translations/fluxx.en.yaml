@@ -501,6 +501,7 @@ step_run_show:
     check_severity_warning: Warning
     check_outcome_ok: OK
     check_outcome_deviation: Deviation
+    check_report_unreadable: The stored check report could not be read.
 
 user_index:
     title: Users
@@ -721,6 +722,9 @@ email_recap:
     check_deviation: Check in deviation
     check_expected: expected
     check_actual: actual
+    check_report_unreadable: The check report stored on this step could not be read.
+    check_severity_blocking: blocking
+    check_severity_warning: warning
     summary: Summary
     total_runs: Total runs
     processed_records: Processed records

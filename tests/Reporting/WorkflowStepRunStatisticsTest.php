@@ -227,6 +227,7 @@ final class WorkflowStepRunStatisticsTest extends TestCase
                     'error' => 'boom',
                     'errorDetails' => ['category: fatal', 'code: E42'],
                     'checkDeviations' => [],
+                    'checkReportUnreadable' => false,
                 ]],
                 'run-2' => [[
                     'code' => 'write_company',
@@ -243,6 +244,7 @@ final class WorkflowStepRunStatisticsTest extends TestCase
                     'error' => 'retry later',
                     'errorDetails' => ['category: transient'],
                     'checkDeviations' => [],
+                    'checkReportUnreadable' => false,
                 ]],
             ],
             $statistics->findErroredStepRowsByWorkflowRunsGrouped([

@@ -17,7 +17,7 @@ final readonly class CheckResult
     public array $samples;
 
     /**
-     * @param list<string> $samples only the first {@see self::MAX_SAMPLES} are kept
+     * @param list<string|int|float> $samples only the first {@see self::MAX_SAMPLES} are kept, as strings
      */
     public function __construct(
         public string $name,
@@ -27,7 +27,12 @@ final readonly class CheckResult
         public ?string $actual = null,
         array $samples = [],
     ) {
-        $this->samples = array_slice(array_values($samples), 0, self::MAX_SAMPLES);
+        $this->samples = array_map(
+            static fn (mixed $sample): string => is_scalar($sample) && !is_bool($sample)
+                ? (string) $sample
+                : throw new \InvalidArgumentException(sprintf('Sample of check "%s" must be a string or a number.', $name)),
+            array_slice(array_values($samples), 0, self::MAX_SAMPLES),
+        );
     }
 
     public function isDeviation(): bool
@@ -72,8 +77,8 @@ final readonly class CheckResult
 
         $samples = $data['samples'] ?? [];
 
-        if (!is_array($samples) || array_filter($samples, static fn (mixed $sample): bool => !is_string($sample)) !== []) {
-            throw new \InvalidArgumentException('Check samples must be a list of strings.');
+        if (!is_array($samples)) {
+            throw new \InvalidArgumentException('Check samples must be a list.');
         }
 
         return new self($data['name'], $severity, $outcome, $data['expected'] ?? null, $data['actual'] ?? null, array_values($samples));

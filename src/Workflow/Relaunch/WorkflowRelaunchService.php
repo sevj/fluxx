@@ -14,6 +14,7 @@ use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Repository\WorkflowStepRunLookupInterface;
+use Fluxx\Workflow\Check\CheckReport;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\MessageHandler\StepMessageDispatcher;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
@@ -186,8 +187,10 @@ final readonly class WorkflowRelaunchService
                 ? $clonedStepRun->markCompletedWithWarnings(...)
                 : $clonedStepRun->markCompleted(...);
 
+            $clonedStepRun->replaceReport($originalStepRun->report());
+
             if ($hasWarnings) {
-                $workflowRun->incrementWarningCount();
+                $workflowRun->incrementWarningCount($this->warningCountOf($originalStepRun));
             }
 
             $markCompleted(
@@ -203,6 +206,20 @@ final readonly class WorkflowRelaunchService
         }
 
         return $cloned;
+    }
+
+    /**
+     * A step completed with warnings counts its warning deviations, or one warning when it has no readable check report.
+     */
+    private function warningCountOf(WorkflowStepRun $stepRun): int
+    {
+        try {
+            $deviations = count(CheckReport::fromStored($stepRun->report())?->warningDeviations() ?? []);
+        } catch (\InvalidArgumentException) {
+            $deviations = 0;
+        }
+
+        return max($deviations, 1);
     }
 
     /**

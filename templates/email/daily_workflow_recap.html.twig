@@ -111,6 +111,12 @@
                                                     {% endfor %}
                                                 </ul>
                                             {% endif %}
+                                            {% for deviation in step.checkDeviations|default([]) %}
+                                                <div style="margin-top:6px; font-size:13px; color:{{ deviation.severity == 'blocking' ? '#fca5a5' : '#fdba74' }};">{{ 'email_recap.check_deviation'|trans }} : <strong>{{ deviation.name }}</strong> ({{ ('email_recap.check_severity_' ~ deviation.severity)|trans }}) · {{ 'email_recap.check_expected'|trans }} {{ deviation.expected ?? '—' }} · {{ 'email_recap.check_actual'|trans }} {{ deviation.actual ?? '—' }}</div>
+                                            {% endfor %}
+                                            {% if step.checkReportUnreadable|default(false) %}
+                                                <div style="margin-top:6px; font-size:13px; color:#fca5a5;">{{ 'email_recap.check_report_unreadable'|trans }}</div>
+                                            {% endif %}
                                         </div>
                                     {% else %}
                                         <div style="margin-top:10px; color:#9bacc2; font-size:12px;">{{ 'email_recap.no_failed_step'|trans }}</div>
@@ -129,8 +135,11 @@
                                         <div style="margin-top:10px; padding:10px; border:1px solid rgba(239,138,60,0.24); border-radius:8px; background:rgba(11,17,24,0.32); color:#edf3fb;">
                                             <strong>{{ step.code }}</strong> · {{ step.type }} · {{ ('workflow_status.' ~ step.status)|trans }}
                                             {% for deviation in step.checkDeviations|default([]) %}
-                                                <div style="margin-top:6px; font-size:13px; color:#fdba74;">{{ 'email_recap.check_deviation'|trans }} : <strong>{{ deviation.name }}</strong> · {{ 'email_recap.check_expected'|trans }} {{ deviation.expected ?? '—' }} · {{ 'email_recap.check_actual'|trans }} {{ deviation.actual ?? '—' }}</div>
+                                                <div style="margin-top:6px; font-size:13px; color:{{ deviation.severity == 'blocking' ? '#fca5a5' : '#fdba74' }};">{{ 'email_recap.check_deviation'|trans }} : <strong>{{ deviation.name }}</strong> ({{ ('email_recap.check_severity_' ~ deviation.severity)|trans }}) · {{ 'email_recap.check_expected'|trans }} {{ deviation.expected ?? '—' }} · {{ 'email_recap.check_actual'|trans }} {{ deviation.actual ?? '—' }}</div>
                                             {% endfor %}
+                                            {% if step.checkReportUnreadable|default(false) %}
+                                                <div style="margin-top:6px; font-size:13px; color:#fca5a5;">{{ 'email_recap.check_report_unreadable'|trans }}</div>
+                                            {% endif %}
                                         </div>
                                     {% endfor %}
                                 </div>
