@@ -15,8 +15,8 @@ interface WorkflowStepRunLookupInterface
     public function findByWorkflowRunOrdered(WorkflowRun $workflowRun): array;
 
     /**
-     * Locks the run row until the current transaction ends, then returns the step runs as
-     * stored, refreshing the ones already loaded: workers finalizing the same run take turns
+     * Locks the run row until the current transaction ends (PostgreSQL only), then returns the step
+     * runs as stored, refreshing the ones already loaded: workers finalizing the same run take turns
      * and each one decides from what the others committed.
      *
      * @return list<WorkflowStepRun>

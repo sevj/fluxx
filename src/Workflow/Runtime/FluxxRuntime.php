@@ -25,6 +25,7 @@ use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
 use Fluxx\Workflow\Message\BuildRunReportMessage;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
 use Fluxx\Workflow\Report\ReportCarryingExceptionInterface;
+use Fluxx\Workflow\Report\Utf8;
 use Fluxx\Workflow\Result\WorkflowStepResult;
 use Fluxx\Workflow\SynchronizationRegistry;
 use Fluxx\Workflow\WorkflowDefinition;
@@ -213,7 +214,7 @@ final class FluxxRuntime
             );
 
             if ($warningCount > 0) {
-                $workflowRun->incrementWarningCount($warningCount);
+                $this->addWarnings($workflowRun, $warningCount);
             }
 
             if ($this->cancellationSynchronizer->synchronizeIfNeeded($workflowRun)) {
@@ -420,6 +421,8 @@ final class FluxxRuntime
             return;
         }
 
+        $encodedReport = $report === null ? null : (json_encode(Utf8::scrub($report), JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR) ?: null);
+
         try {
             $connection = $this->entityManager->getConnection();
 
@@ -433,7 +436,7 @@ final class FluxxRuntime
                         'error_message' => $message,
                         'duration_ms' => $durationMs,
                         'memory_peak_bytes' => $memoryPeakBytes,
-                        'report' => $report === null ? null : json_encode($report, JSON_THROW_ON_ERROR),
+                        'report' => $encodedReport,
                         'step_run_id' => $stepRunId,
                     ],
                 );
@@ -727,6 +730,20 @@ final class FluxxRuntime
             $latestStepRunsByCode[$stepRun->stepName()] = $stepRun;
         }
 
+        if ($workflowRun->id() !== null) {
+            $this->entityManager->refresh($workflowRun);
+        }
+
+        if (in_array($workflowRun->status(), [
+            WorkflowRunStatus::Completed,
+            WorkflowRunStatus::CompletedWithWarnings,
+            WorkflowRunStatus::Failed,
+            WorkflowRunStatus::PartiallyFailed,
+            WorkflowRunStatus::Cancelled,
+        ], true)) {
+            return false;
+        }
+
         $decision = $this->workflowRunCompletionDecider->decide(
             $definition,
             $latestStepRunsByCode,
@@ -779,17 +796,20 @@ final class FluxxRuntime
     }
 
     /**
-     * @return array<string, WorkflowStepRun>
+     * Incremented in SQL: parallel check steps each hold a stale copy of the run.
      */
-    private function latestStepRunsByCode(WorkflowRun $workflowRun): array
+    private function addWarnings(WorkflowRun $workflowRun, int $count): void
     {
-        $latest = [];
+        if ($workflowRun->id() === null) {
+            $workflowRun->incrementWarningCount($count);
 
-        foreach ($this->workflowStepRunRepository->findByWorkflowRunOrdered($workflowRun) as $stepRun) {
-            $latest[$stepRun->stepName()] = $stepRun;
+            return;
         }
 
-        return $latest;
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE fluxx_workflow_run SET warning_count = warning_count + :count WHERE id = :id',
+            ['count' => $count, 'id' => $workflowRun->id()],
+        );
     }
 
     /**

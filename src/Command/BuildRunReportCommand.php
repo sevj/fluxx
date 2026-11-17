@@ -43,7 +43,7 @@ final class BuildRunReportCommand extends Command
             return Command::FAILURE;
         }
 
-                try {
+        try {
             $content = $this->builder->build($run);
         } catch (RunNotReportableException $exception) {
             $io->error($exception->getMessage());

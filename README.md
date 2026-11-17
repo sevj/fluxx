@@ -55,7 +55,8 @@ Add the `active_lock_key` column before deploying, or every query on execution l
 
 ### Upgrading to 1.19
 
-Add the run report table and two columns before deploying:
+Stop the workers, then add the run report table and two columns before deploying the code (the
+`ALTER TABLE` briefly locks the run tables, and 1.19 maps the new columns):
 
 - PostgreSQL: apply `migrations/upgrade-1.19.0-postgresql.sql` (safe to replay).
 - MySQL or SQLite: apply the `fluxx_workflow_run_report` table, `fluxx_workflow_run.warning_count` and
@@ -292,6 +293,7 @@ values and up to 20 sample keys. Checks must only read.
 - Warning deviations complete the step and the run as `completed_with_warnings`; downstream steps
   still run, the daily recap lists the deviations and the run keeps a `warning_count`.
 - A check step that returns no check fails. Check steps cannot be idempotent.
+- Report strings are cleaned of invalid UTF-8 before they are stored.
 
 ## Versioning
 

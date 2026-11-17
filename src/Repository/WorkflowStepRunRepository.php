@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\Repository;
 
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\DBAL\Platforms\SQLitePlatform;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
@@ -42,9 +42,12 @@ final class WorkflowStepRunRepository extends ServiceEntityRepository implements
     {
         $connection = $this->getEntityManager()->getConnection();
 
-        if ($workflowRun->id() !== null && !$connection->getDatabasePlatform() instanceof SQLitePlatform) {
+        // FOR NO KEY UPDATE: the payloads stored in the same transaction hold a key share lock on the
+        // run through their foreign key, which FOR UPDATE would wait for and deadlock between workers.
+        // MySQL and SQLite have no such mode and only get the fresh read.
+        if ($workflowRun->id() !== null && $connection->getDatabasePlatform() instanceof PostgreSQLPlatform) {
             $connection->executeQuery(
-                'SELECT id FROM fluxx_workflow_run WHERE id = :id FOR UPDATE',
+                'SELECT id FROM fluxx_workflow_run WHERE id = :id FOR NO KEY UPDATE',
                 ['id' => $workflowRun->id()],
             )->fetchOne();
         }

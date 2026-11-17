@@ -7,6 +7,7 @@ namespace Fluxx\Tests\Integration;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Tools\DsnParser;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\UnderscoreNamingStrategy;
@@ -194,6 +195,10 @@ final class RunReportDatabaseTest extends TestCase
     {
         $this->storeCompletedRun('run-1');
         $this->handler(new WorkflowReportConfiguration())(new BuildRunReportMessage('run-1'));
+
+        if ($this->connection->getDatabasePlatform() instanceof SQLitePlatform) {
+            $this->connection->executeStatement('PRAGMA foreign_keys = ON');
+        }
 
         $this->connection->executeStatement("DELETE FROM fluxx_workflow_run WHERE run_id = 'run-1'");
 

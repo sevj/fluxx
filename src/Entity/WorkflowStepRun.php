@@ -9,6 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Fluxx\Entity\Enum\WorkflowStepDeduplicationStatus;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Repository\WorkflowStepRunRepository;
+use Fluxx\Workflow\Report\Utf8;
 
 #[ORM\Entity(repositoryClass: WorkflowStepRunRepository::class)]
 #[ORM\Table(name: 'fluxx_workflow_step_run')]
@@ -257,7 +258,7 @@ class WorkflowStepRun
      */
     public function replaceReport(?array $report): void
     {
-        $this->report = $report;
+        $this->report = $report === null ? null : Utf8::scrub($report);
     }
 
     public function attachToRun(WorkflowRun $workflowRun): void

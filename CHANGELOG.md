@@ -8,6 +8,13 @@ of `README.md` for the definition of the public API.
 
 ## [Unreleased]
 
+### Upgrade notes
+- Stop the workers and apply `migrations/upgrade-1.19.0-postgresql.sql` before deploying: the new
+  columns are mapped.
+- `WorkflowRunStatus::CompletedWithWarnings`, `WorkflowStepRunStatus::CompletedWithWarnings` and
+  `WorkflowStepType::Check` are new enum cases: a host matching exhaustively on these enums must
+  handle them.
+
 ### Added
 - Run reports: a workflow declaring `report: new WorkflowReportConfiguration(...)` gets, for every run
   ending `completed` or `completed_with_warnings`, a stored report shown in a *Report* tab of the run
@@ -25,7 +32,7 @@ of `README.md` for the definition of the public API.
 - A run whose branch failed while another one was still running could stay `running` until
   `fluxx:runtime:self-heal`: a worker finalizing the run read step runs it had loaded earlier, with
   their old status, and two workers finalizing at once could miss each other's commit. The
-  finalization now locks the run row and reads the step runs again.
+  finalization now locks the run row (PostgreSQL) and reads the run and its step runs again.
 - A run whose payloads were pruned could still be cancelled.
 
 ## [1.18.0] - 2026-11-17

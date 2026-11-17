@@ -7,6 +7,7 @@ namespace Fluxx\Entity;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Fluxx\Repository\WorkflowRunReportRepository;
+use Fluxx\Workflow\Report\Utf8;
 
 /**
  * The report of a completed run. It outlives the pruning of payloads and is deleted with its run.
@@ -42,7 +43,7 @@ class WorkflowRunReport
     {
         $this->workflowRun = $workflowRun;
         $this->formatVersion = $formatVersion;
-        $this->content = $content;
+        $this->content = Utf8::scrub($content);
         $this->builtAt = $builtAt ?? new DateTimeImmutable();
     }
 
@@ -80,7 +81,7 @@ class WorkflowRunReport
     public function replace(int $formatVersion, array $content, ?DateTimeImmutable $builtAt = null): void
     {
         $this->formatVersion = $formatVersion;
-        $this->content = $content;
+        $this->content = Utf8::scrub($content);
         $this->builtAt = $builtAt ?? new DateTimeImmutable();
     }
 }
