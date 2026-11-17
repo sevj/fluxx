@@ -209,7 +209,8 @@ Whatever happens in between, a workflow graph should have one way in and one way
 Each step can run more than once, and it is not atomic:
 
 - **Make it safe to replay.** A retry or a relaunch executes the whole handler again, including the calls that succeeded before the failure.
-- **Do not count on a rollback.** The handler runs outside any Fluxx transaction: what it writes to the database stays when it fails afterwards. Open your own transaction if several writes must succeed together.
+- **Its database writes are atomic by default.** The handler runs in the transaction that saves the outcome of the step, so what it wrote is rolled back when it fails. External calls are not undone.
+- **Opt out for long steps.** A transaction stays open as long as the handler runs. Pass `transactional: false` to `WorkflowStepDefinition` when a handler spends minutes on external APIs: what it writes then stays when it fails, so open your own transaction where several writes must succeed together.
 
 ```php
 steps: [

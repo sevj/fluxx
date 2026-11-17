@@ -672,7 +672,7 @@ final class FluxxRuntimeTest extends TestCase
     }
 
     #[Test]
-    public function it_opens_a_single_transaction_to_record_a_technical_error(): void
+    public function it_rolls_back_the_handler_before_recording_a_technical_error(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
@@ -690,12 +690,12 @@ final class FluxxRuntimeTest extends TestCase
 
         $this->runtime->runStep('run-1', 'fetch');
 
-        self::assertSame(['begin', 'commit'], $this->transactionSequence);
+        self::assertSame(['begin', 'rollback', 'begin', 'commit'], $this->transactionSequence);
         self::assertSame(WorkflowRunStatus::Retrying, $workflowRun->status());
     }
 
     #[Test]
-    public function it_runs_the_handler_outside_any_transaction(): void
+    public function it_runs_the_handler_in_the_transaction_of_the_step_outcome(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
@@ -711,12 +711,33 @@ final class FluxxRuntimeTest extends TestCase
 
         $this->runtime->runStep('run-1', 'fetch');
 
+        self::assertTrue($transactionActive);
+        self::assertSame(['begin', 'commit'], $this->transactionSequence);
+    }
+
+    #[Test]
+    public function it_runs_a_non_transactional_handler_outside_any_transaction(): void
+    {
+        $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
+
+        $transactionActive = null;
+        $handler = $this->createStub(ExecutableWorkflowStepInterface::class);
+        $handler->method('execute')->willReturnCallback(function () use (&$transactionActive): WorkflowStepResult {
+            $transactionActive = $this->entityManager->getConnection()->isTransactionActive();
+
+            return new WorkflowStepResult(records: []);
+        });
+        $this->registryWithHandler($handler, transactional: false);
+
+        $this->runtime->runStep('run-1', 'fetch');
+
         self::assertFalse($transactionActive);
         self::assertSame(['begin', 'commit'], $this->transactionSequence);
     }
 
     #[Test]
-    public function it_closes_a_lost_connection_before_saving_the_outcome_of_the_step(): void
+    public function it_closes_a_lost_connection_before_saving_the_outcome_of_a_non_transactional_step(): void
     {
         $workflowRun = $this->createWorkflowRun(WorkflowRunStatus::Pending);
         $this->workflowRunRepository->method('findOneByRunId')->willReturn($workflowRun);
@@ -726,6 +747,7 @@ final class FluxxRuntimeTest extends TestCase
             new class('server closed the connection') extends RuntimeException implements DbalException {},
         );
         $connection->expects(self::once())->method('close');
+        $this->registryWithHandler(new StubResultStep(new WorkflowStepResult()), transactional: false);
 
         $this->runtime->runStep('run-1', 'fetch');
 
@@ -796,10 +818,10 @@ final class FluxxRuntimeTest extends TestCase
         return new SynchronizationRegistry([$workflow]);
     }
 
-    private function registryWithHandler(ExecutableWorkflowStepInterface $handler, ?WorkflowRetryPolicy $retryPolicy = null, bool $withIdempotence = false): void
+    private function registryWithHandler(ExecutableWorkflowStepInterface $handler, ?WorkflowRetryPolicy $retryPolicy = null, bool $withIdempotence = false, bool $transactional = true): void
     {
         $workflow = $this->createMock(WorkflowInterface::class);
-        $workflow->method('definition')->willReturn($this->fixtureDefinition($handler, withIdempotence: $withIdempotence, retryPolicy: $retryPolicy));
+        $workflow->method('definition')->willReturn($this->fixtureDefinition($handler, withIdempotence: $withIdempotence, retryPolicy: $retryPolicy, transactional: $transactional));
 
         $this->runtime = $this->buildRuntime(new SynchronizationRegistry([$workflow]));
     }
@@ -825,6 +847,7 @@ final class FluxxRuntimeTest extends TestCase
         ExecutableWorkflowStepInterface $handler,
         bool $withIdempotence = false,
         ?WorkflowRetryPolicy $retryPolicy = null,
+        bool $transactional = true,
     ): WorkflowDefinition {
         $step = new WorkflowStepDefinition(
             code: 'fetch',
@@ -834,6 +857,7 @@ final class FluxxRuntimeTest extends TestCase
             dependsOn: [],
             idempotence: $withIdempotence ? new \Fluxx\Workflow\Step\WorkflowStepIdempotence() : null,
             retryPolicy: $retryPolicy,
+            transactional: $transactional,
         );
 
         return new WorkflowDefinition(

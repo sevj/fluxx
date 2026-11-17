@@ -25,6 +25,7 @@ final readonly class WorkflowStepDefinition
         private ?WorkflowRetryPolicy $retryPolicy = null,
         private ?int $chunkSize = null,
         private array $reads = [],
+        private bool $transactional = true,
     ) {
     }
 
@@ -90,6 +91,15 @@ final readonly class WorkflowStepDefinition
     public function chunkSize(): ?int
     {
         return $this->chunkSize;
+    }
+
+    /**
+     * Whether the handler runs in the transaction that saves the outcome of the step,
+     * so that its writes are rolled back when it fails.
+     */
+    public function transactional(): bool
+    {
+        return $this->transactional;
     }
 
     /**

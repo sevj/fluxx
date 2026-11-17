@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [Unreleased]
+
+### Added
+- `transactional` option on `WorkflowStepDefinition`. `false` runs the handler outside any
+  transaction, as 1.16.0 to 1.17.1 did for every step.
+
+### Fixed
+- **Restores a behaviour broken in 1.16.0:** a step handler runs in a transaction again by default,
+  so what it wrote is rolled back when it fails. Hosts relying on this rollback lost data on failure
+  since 1.16.0, and a step that needs no such transaction now has to opt out.
+- What a failed handler persisted without flushing is no longer written with the failure of its step.
+
 ## [1.17.1] - 2026-11-04
 
 ### Changed

@@ -89,27 +89,75 @@ final class StepTransactionDatabaseTest extends TestCase
     }
 
     #[Test]
-    public function what_a_handler_wrote_stays_when_it_fails_afterwards(): void
+    public function what_a_handler_wrote_is_rolled_back_when_it_fails_afterwards(): void
+    {
+        $this->storeRun();
+
+        $this->runFailingStep(function (): void {
+            $this->entityManager->persist(new RuntimeWorkerState('written-by-the-step', 'fluxx', 'host', 1));
+            $this->entityManager->flush();
+
+            throw new RuntimeException('boom');
+        });
+
+        self::assertSame(0, $this->writtenByTheStep());
+        self::assertSame('failed', $this->stepStatus());
+    }
+
+    #[Test]
+    public function what_a_handler_persisted_without_flushing_is_not_written_with_its_failure(): void
+    {
+        $this->storeRun();
+
+        $this->runFailingStep(function (): void {
+            $this->entityManager->persist(new RuntimeWorkerState('written-by-the-step', 'fluxx', 'host', 1));
+
+            throw new RuntimeException('boom');
+        });
+
+        self::assertSame(0, $this->writtenByTheStep());
+        self::assertSame('failed', $this->stepStatus());
+    }
+
+    #[Test]
+    public function a_non_transactional_handler_keeps_what_it_flushed_but_not_what_it_left_pending(): void
+    {
+        $this->storeRun();
+
+        $this->runFailingStep(function (): void {
+            $this->entityManager->persist(new RuntimeWorkerState('written-by-the-step', 'fluxx', 'host', 1));
+            $this->entityManager->flush();
+            $this->entityManager->persist(new RuntimeWorkerState('left-pending', 'fluxx', 'host', 2));
+
+            throw new RuntimeException('boom');
+        }, transactional: false);
+
+        self::assertSame(1, $this->writtenByTheStep());
+        self::assertSame(0, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM fluxx_runtime_worker_state WHERE worker_name = 'left-pending'"));
+        self::assertSame('failed', $this->stepStatus());
+    }
+
+    #[Test]
+    public function a_failure_closing_the_entity_manager_is_still_recorded(): void
     {
         $this->storeRun();
 
         try {
             $this->runStep(function (): void {
-                $this->entityManager->persist(new RuntimeWorkerState('written-by-the-step', 'fluxx', 'host', 1));
+                $this->entityManager->persist(new RuntimeWorkerState('duplicate', 'fluxx', 'host', 1));
+                $this->entityManager->persist(new RuntimeWorkerState('duplicate', 'fluxx', 'host', 2));
                 $this->entityManager->flush();
-
-                throw new RuntimeException('boom');
             });
             self::fail('Expected the step to fail.');
-        } catch (WorkflowStepFailedException) {
+        } catch (\Throwable) {
         }
 
-        self::assertSame(1, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM fluxx_runtime_worker_state WHERE worker_name = 'written-by-the-step'"));
+        self::assertSame(0, (int) $this->connection->fetchOne("SELECT COUNT(*) FROM fluxx_runtime_worker_state WHERE worker_name = 'duplicate'"));
         self::assertSame('failed', $this->stepStatus());
     }
 
     #[Test]
-    public function other_connections_see_what_the_handler_wrote_while_the_step_runs(): void
+    public function other_connections_only_see_what_a_handler_wrote_once_its_step_is_done(): void
     {
         $this->requirePostgreSql();
         $this->storeRun();
@@ -122,20 +170,54 @@ final class StepTransactionDatabaseTest extends TestCase
             $seenFromOutside = (int) $this->otherConnection()->fetchOne("SELECT COUNT(*) FROM fluxx_runtime_worker_state WHERE worker_name = 'written-by-the-step'");
         });
 
+        self::assertSame(0, $seenFromOutside);
+        self::assertSame(1, $this->writtenByTheStep());
+        self::assertSame('completed', $this->stepStatus());
+    }
+
+    #[Test]
+    public function other_connections_see_what_a_non_transactional_handler_wrote_while_the_step_runs(): void
+    {
+        $this->requirePostgreSql();
+        $this->storeRun();
+
+        $seenFromOutside = null;
+        $this->runStep(function () use (&$seenFromOutside): void {
+            $this->entityManager->persist(new RuntimeWorkerState('written-by-the-step', 'fluxx', 'host', 1));
+            $this->entityManager->flush();
+
+            $seenFromOutside = (int) $this->otherConnection()->fetchOne("SELECT COUNT(*) FROM fluxx_runtime_worker_state WHERE worker_name = 'written-by-the-step'");
+        }, transactional: false);
+
         self::assertSame(1, $seenFromOutside);
         self::assertSame('completed', $this->stepStatus());
     }
 
     #[Test]
-    public function a_step_completes_when_the_connection_is_lost_during_its_handler(): void
+    public function a_non_transactional_step_completes_when_the_connection_is_lost_during_its_handler(): void
     {
         $this->requirePostgreSql();
         $this->storeRun();
 
-        $this->runStep(fn () => $this->killConnection());
+        $this->runStep(fn () => $this->killConnection(), transactional: false);
 
         self::assertSame('completed', $this->stepStatus());
         self::assertSame('completed', $this->connection->fetchOne("SELECT status FROM fluxx_workflow_run WHERE run_id = 'run-1'"));
+    }
+
+    #[Test]
+    public function a_transactional_step_fails_when_the_connection_is_lost_during_its_handler(): void
+    {
+        $this->requirePostgreSql();
+        $this->storeRun();
+
+        try {
+            $this->runStep(fn () => $this->killConnection());
+            self::fail('Expected the step to fail.');
+        } catch (\Throwable) {
+        }
+
+        self::assertSame('failed', $this->stepStatus());
     }
 
     #[Test]
@@ -144,17 +226,27 @@ final class StepTransactionDatabaseTest extends TestCase
         $this->requirePostgreSql();
         $this->storeRun();
 
-        try {
-            $this->runStep(function (): void {
-                $this->killConnection();
+        $this->runFailingStep(function (): void {
+            $this->killConnection();
 
-                throw new RuntimeException('boom');
-            });
+            throw new RuntimeException('boom');
+        });
+
+        self::assertSame('failed', $this->stepStatus());
+    }
+
+    private function runFailingStep(\Closure $work, bool $transactional = true): void
+    {
+        try {
+            $this->runStep($work, $transactional);
             self::fail('Expected the step to fail.');
         } catch (WorkflowStepFailedException) {
         }
+    }
 
-        self::assertSame('failed', $this->stepStatus());
+    private function writtenByTheStep(): int
+    {
+        return (int) $this->connection->fetchOne("SELECT COUNT(*) FROM fluxx_runtime_worker_state WHERE worker_name = 'written-by-the-step'");
     }
 
     private function requirePostgreSql(): void
@@ -187,7 +279,7 @@ final class StepTransactionDatabaseTest extends TestCase
         return (string) $this->connection->fetchOne("SELECT status FROM fluxx_workflow_step_run WHERE step_name = 'fetch'");
     }
 
-    private function runStep(\Closure $work): void
+    private function runStep(\Closure $work, bool $transactional = true): void
     {
         $handler = $this->createStub(ExecutableWorkflowStepInterface::class);
         $handler->method('execute')->willReturnCallback(static function () use ($work): WorkflowStepResult {
@@ -202,7 +294,7 @@ final class StepTransactionDatabaseTest extends TestCase
             name: 'Contacts',
             sourceSystem: 'CSV',
             targetSystem: 'Hubspot',
-            steps: [new WorkflowStepDefinition('fetch', 'Fetch', WorkflowStepType::Read, $handler)],
+            steps: [new WorkflowStepDefinition('fetch', 'Fetch', WorkflowStepType::Read, $handler, transactional: $transactional)],
         ));
 
         $registry = $this->createStub(ManagerRegistry::class);

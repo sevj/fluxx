@@ -114,8 +114,10 @@ final class FluxxRuntime
                 return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
             }
 
-            // The handler runs outside any transaction: it can call external APIs for minutes,
-            // and a rollback could not undo those calls anyway.
+            if ($stepDefinition->transactional()) {
+                $this->entityManager->beginTransaction();
+            }
+
             $this->stepProgressReporter?->start($workflowRun->runId(), $stepCode);
 
             try {
@@ -134,8 +136,10 @@ final class FluxxRuntime
 
             $chunkSize = $this->resolveChunkSize($stepDefinition);
 
-            $this->reconnectIfConnectionWasLost();
-            $this->entityManager->beginTransaction();
+            if (!$stepDefinition->transactional()) {
+                $this->reconnectIfConnectionWasLost();
+                $this->entityManager->beginTransaction();
+            }
 
             foreach ($definition->downstreamSteps($stepCode) as $downstreamStep) {
                 $output = $result->outputFor($downstreamStep->code());
@@ -200,6 +204,7 @@ final class FluxxRuntime
             return $this->collectRunnableDownstreamSteps($workflowRun, $definition, $stepCode);
         } catch (Throwable $throwable) {
             $this->rollbackIfActive();
+            [$workflowRun, $stepRun] = $this->discardPendingChanges($workflowRun, $stepRun);
 
             return $this->handleStepError(
                 workflowRun: $workflowRun,
@@ -298,6 +303,31 @@ final class FluxxRuntime
         $this->entityManager->commit();
 
         return $completed;
+    }
+
+    /**
+     * What the failed handler left in the unit of work must not be written with the failure.
+     *
+     * @return array{WorkflowRun, WorkflowStepRun}
+     */
+    private function discardPendingChanges(WorkflowRun $workflowRun, WorkflowStepRun $stepRun): array
+    {
+        try {
+            $this->reconnectIfConnectionWasLost();
+            $this->entityManager->clear();
+
+            $reloadedRun = $this->workflowRunRepository->findOneByRunId($workflowRun->runId());
+            $reloadedStepRun = $reloadedRun === null
+                ? null
+                : $this->workflowStepRunRepository->findLatestByWorkflowRunAndStepName($reloadedRun, $stepRun->stepName());
+
+            if ($reloadedRun !== null && $reloadedStepRun !== null) {
+                return [$reloadedRun, $reloadedStepRun];
+            }
+        } catch (Throwable) {
+        }
+
+        return [$workflowRun, $stepRun];
     }
 
     /**
