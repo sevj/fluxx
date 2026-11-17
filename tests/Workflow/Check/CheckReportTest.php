@@ -98,7 +98,7 @@ final class CheckReportTest extends TestCase
         $legacy = StepReport::objects('Contacts')->read(2)->toArray();
         unset($legacy['kind']);
 
-        self::assertSame(2, StepReport::fromArray($legacy)->toArray()['objects']['read']);
+        self::assertSame(2, StepReport::fromArray($legacy)->toArray()['objects'][0]['read']);
     }
 
     #[Test]

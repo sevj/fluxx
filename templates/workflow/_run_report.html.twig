@@ -116,7 +116,7 @@
                     <tbody>
                         {% for link in report.links %}
                             <tr>
-                                <td data-label="{{ 'run_report.links.link'|trans }}"><div class="workflow-name">{{ link.label }}</div></td>
+                                <td data-label="{{ 'run_report.links.link'|trans }}"><div class="workflow-name">{{ link.label }}</div>{% if link.source %}<div class="item-code">{{ link.source }}</div>{% endif %}</td>
                                 <td data-label="{{ 'run_report.links.read'|trans }}"><span class="metric-value">{{ link.read }}</span></td>
                                 <td data-label="{{ 'run_report.links.excluded'|trans }}"><span class="metric-value">{{ link.excluded }}</span></td>
                                 <td data-label="{{ 'run_report.links.written'|trans }}"><span class="metric-value">{{ link.written }}</span></td>

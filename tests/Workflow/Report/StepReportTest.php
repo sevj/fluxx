@@ -18,8 +18,8 @@ final class StepReportTest extends TestCase
 
         $array = $report->toArray();
 
-        self::assertTrue($array['objects']['link']);
-        self::assertSame(2, $array['objects']['removed']);
+        self::assertTrue($array['objects'][0]['link']);
+        self::assertSame(2, $array['objects'][0]['removed']);
         self::assertEquals($report, StepReport::fromArray($array));
     }
 
@@ -27,12 +27,30 @@ final class StepReportTest extends TestCase
     public function a_step_report_stored_before_links_reads_as_objects(): void
     {
         $array = StepReport::objects('Contacts')->created(1)->toArray();
+        $array['objects'] = $array['objects'][0];
         unset($array['objects']['link'], $array['objects']['removed']);
 
-        $stats = StepReport::fromArray($array)->objectStats();
+        $stats = StepReport::fromArray($array)->entries()[0];
 
         self::assertFalse($stats->link);
         self::assertSame(0, $stats->removed);
+    }
+
+    #[Test]
+    public function counters_apply_to_the_entry_declared_last(): void
+    {
+        $report = StepReport::links('Contacts → Companies')->created(10)
+            ->link('Functions → Contacts')->created(5)->removed(1)
+            ->object('Contacts')->updated(3);
+
+        $entries = $report->entries();
+
+        self::assertSame(['Contacts → Companies', 'Functions → Contacts', 'Contacts'], array_map(static fn ($entry): string => $entry->label, $entries));
+        self::assertSame([10, 5, 0], array_map(static fn ($entry): int => $entry->created, $entries));
+        self::assertSame([0, 1, 0], array_map(static fn ($entry): int => $entry->removed, $entries));
+        self::assertSame([true, true, false], array_map(static fn ($entry): bool => $entry->link, $entries));
+        self::assertSame(3, $entries[2]->updated);
+        self::assertEquals($report, StepReport::fromArray($report->toArray()));
     }
 
     #[Test]
@@ -74,7 +92,7 @@ final class StepReportTest extends TestCase
     {
         $report = StepReport::objects('Contacts')->excluded('SIFUREP', 3)->excluded('SIFUREP', 3);
 
-        self::assertSame(['SIFUREP' => 6], $report->toArray()['objects']['excluded']);
+        self::assertSame(['SIFUREP' => 6], $report->toArray()['objects'][0]['excluded']);
     }
 
     #[Test]
@@ -83,7 +101,7 @@ final class StepReportTest extends TestCase
         $base = StepReport::objects('Contacts');
         $base->read(5);
 
-        self::assertSame(0, $base->toArray()['objects']['read']);
+        self::assertSame(0, $base->toArray()['objects'][0]['read']);
     }
 
     #[Test]

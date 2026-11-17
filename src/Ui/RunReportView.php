@@ -20,7 +20,7 @@ final readonly class RunReportView
     /**
      * @param list<array{label: string, value: string, hint: ?string, hintParameters: array<string, string>, tone: ?string}> $kpis
      * @param list<array{label: string, read: string, excluded: string, written: string, created: string, rejected: string, duration: string, rate: ?string}> $objects
-     * @param list<array{label: string, read: string, excluded: string, written: string, removed: string, rejected: string, duration: string, rate: ?string}> $links
+     * @param list<array{label: string, source: string, read: string, excluded: string, written: string, removed: string, rejected: string, duration: string, rate: ?string}> $links
      * @param list<array{step: RunTimelineStepView, critical: bool, preserved: bool, duration: string, rate: ?string}> $timelineRows
      * @param list<array{name: string, duration: string}> $criticalPath
      * @param array{code: string, name: string, duration: string, processed: string, rate: ?string}|null $longestStep
@@ -222,7 +222,7 @@ final readonly class RunReportView
     /**
      * @param array<string, mixed> $link
      * @param array<string, array<string, mixed>> $steps
-     * @return array{label: string, read: string, excluded: string, written: string, removed: string, rejected: string, duration: string, rate: ?string}
+     * @return array{label: string, source: string, read: string, excluded: string, written: string, removed: string, rejected: string, duration: string, rate: ?string}
      */
     private static function linkRow(array $link, array $steps): array
     {
@@ -230,6 +230,10 @@ final readonly class RunReportView
 
         return [
             'label' => $row['label'],
+            'source' => implode(', ', array_map(
+                static fn (string $code): string => self::string($steps[$code] ?? [], 'name') ?? $code,
+                self::stringList($link['steps'] ?? null),
+            )),
             'read' => $row['read'],
             'excluded' => $row['excluded'],
             'written' => $row['written'],

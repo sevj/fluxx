@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Fluxx\Workflow\Report;
 
 /**
- * What a step declares about the objects it handled and the anomalies it found.
- * One report describes one object label; the stored format is versioned by the "v" key and tagged by "kind"
- * (a report stored before the kind existed is a step report).
+ * What a step declares about the objects and links it handled and the anomalies it found.
+ * A report holds one or more entries, objects or links, each under its own label: counters apply to the
+ * entry declared last. The stored format is versioned by the "v" key and tagged by "kind" (a report stored
+ * before the kind existed is a step report).
  */
 final readonly class StepReport
 {
@@ -15,17 +16,18 @@ final readonly class StepReport
     private const FORMAT_VERSION = 1;
 
     /**
+     * @param non-empty-list<ObjectStats> $entries
      * @param list<Anomaly> $anomalies
      */
     private function __construct(
-        private ObjectStats $objects,
+        private array $entries,
         private array $anomalies = [],
     ) {
     }
 
     public static function objects(string $label): self
     {
-        return new self(new ObjectStats($label));
+        return new self([new ObjectStats($label)]);
     }
 
     /**
@@ -34,53 +36,69 @@ final readonly class StepReport
      */
     public static function links(string $label): self
     {
-        return new self(new ObjectStats($label, link: true));
+        return new self([new ObjectStats($label, link: true)]);
+    }
+
+    /**
+     * Starts another object entry in the same report; the counters that follow apply to it.
+     */
+    public function object(string $label): self
+    {
+        return new self([...$this->entries, new ObjectStats($label)], $this->anomalies);
+    }
+
+    /**
+     * Starts another link entry in the same report; the counters that follow apply to it.
+     */
+    public function link(string $label): self
+    {
+        return new self([...$this->entries, new ObjectStats($label, link: true)], $this->anomalies);
     }
 
     public function read(int $count): self
     {
-        return $this->withObjects(read: $count);
+        return $this->withCurrent(read: $count);
     }
 
     public function created(int $count): self
     {
-        return $this->withObjects(created: $count);
+        return $this->withCurrent(created: $count);
     }
 
     public function updated(int $count): self
     {
-        if ($this->objects->link) {
+        if ($this->current()->link) {
             throw new \LogicException('Links are created or removed, not updated.');
         }
 
-        return $this->withObjects(updated: $count);
+        return $this->withCurrent(updated: $count);
     }
 
     public function removed(int $count): self
     {
-        if (!$this->objects->link) {
-            throw new \LogicException('Only links can be removed: declare them with StepReport::links().');
+        if (!$this->current()->link) {
+            throw new \LogicException('Only links can be removed: declare them with StepReport::links() or link().');
         }
 
-        return $this->withObjects(removed: $count);
+        return $this->withCurrent(removed: $count);
     }
 
     public function excluded(string $reason, int $count): self
     {
-        $excluded = $this->objects->excluded;
+        $excluded = $this->current()->excluded;
         $excluded[$reason] = ($excluded[$reason] ?? 0) + $count;
 
-        return $this->withObjects(excluded: $excluded);
+        return $this->withCurrent(excluded: $excluded);
     }
 
     /**
-     * Replaces the whole list of rejected objects.
+     * Replaces the whole list of rejected records of the current entry.
      *
      * @param list<array{key: string, message: string}> $rejected
      */
     public function rejected(array $rejected): self
     {
-        return $this->withObjects(rejected: $rejected);
+        return $this->withCurrent(rejected: $rejected);
     }
 
     /**
@@ -88,12 +106,15 @@ final readonly class StepReport
      */
     public function anomaly(string $title, array $lines, Severity $severity = Severity::Warning): self
     {
-        return new self($this->objects, [...$this->anomalies, new Anomaly($title, $lines, $severity)]);
+        return new self($this->entries, [...$this->anomalies, new Anomaly($title, $lines, $severity)]);
     }
 
-    public function objectStats(): ObjectStats
+    /**
+     * @return non-empty-list<ObjectStats>
+     */
+    public function entries(): array
     {
-        return $this->objects;
+        return $this->entries;
     }
 
     /**
@@ -105,14 +126,14 @@ final readonly class StepReport
     }
 
     /**
-     * @return array{v: int, kind: string, objects: array<string, mixed>, anomalies: list<array<string, mixed>>}
+     * @return array{v: int, kind: string, objects: list<array<string, mixed>>, anomalies: list<array<string, mixed>>}
      */
     public function toArray(): array
     {
         return [
             'v' => self::FORMAT_VERSION,
             'kind' => self::KIND,
-            'objects' => $this->objects->toArray(),
+            'objects' => array_map(static fn (ObjectStats $entry): array => $entry->toArray(), $this->entries),
             'anomalies' => array_map(static fn (Anomaly $anomaly): array => $anomaly->toArray(), $this->anomalies),
         ];
     }
@@ -130,8 +151,14 @@ final readonly class StepReport
             throw new \InvalidArgumentException('Not a step report.');
         }
 
-        if (!is_array($data['objects'] ?? null)) {
+        $objects = $data['objects'] ?? null;
+
+        if (!is_array($objects) || $objects === []) {
             throw new \InvalidArgumentException('Step report without objects.');
+        }
+
+        if (!array_is_list($objects)) {
+            $objects = [$objects];
         }
 
         $anomalies = $data['anomalies'] ?? [];
@@ -141,7 +168,7 @@ final readonly class StepReport
         }
 
         return new self(
-            ObjectStats::fromArray($data['objects']),
+            array_map(static fn (mixed $entry): ObjectStats => ObjectStats::fromArray(is_array($entry) ? $entry : throw new \InvalidArgumentException('Invalid step report entry.')), $objects),
             array_map(static fn (mixed $anomaly): Anomaly => Anomaly::fromArray(is_array($anomaly) ? $anomaly : throw new \InvalidArgumentException('Invalid anomaly.')), array_values($anomalies)),
         );
     }
@@ -160,24 +187,30 @@ final readonly class StepReport
         return self::fromArray($data);
     }
 
+    private function current(): ObjectStats
+    {
+        return $this->entries[array_key_last($this->entries)];
+    }
+
     /**
      * @param array<string, int>|null $excluded
      * @param list<array{key: string, message: string}>|null $rejected
      */
-    private function withObjects(?int $read = null, ?int $created = null, ?int $updated = null, ?array $excluded = null, ?array $rejected = null, ?int $removed = null): self
+    private function withCurrent(?int $read = null, ?int $created = null, ?int $updated = null, ?array $excluded = null, ?array $rejected = null, ?int $removed = null): self
     {
-        return new self(
-            new ObjectStats(
-                $this->objects->label,
-                $read ?? $this->objects->read,
-                $created ?? $this->objects->created,
-                $updated ?? $this->objects->updated,
-                $excluded ?? $this->objects->excluded,
-                $rejected ?? $this->objects->rejected,
-                $this->objects->link,
-                $removed ?? $this->objects->removed,
-            ),
-            $this->anomalies,
+        $current = $this->current();
+        $entries = $this->entries;
+        $entries[array_key_last($entries)] = new ObjectStats(
+            $current->label,
+            $read ?? $current->read,
+            $created ?? $current->created,
+            $updated ?? $current->updated,
+            $excluded ?? $current->excluded,
+            $rejected ?? $current->rejected,
+            $current->link,
+            $removed ?? $current->removed,
         );
+
+        return new self($entries, $this->anomalies);
     }
 }

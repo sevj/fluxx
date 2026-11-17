@@ -217,13 +217,15 @@ final readonly class RunReportBuilder
         }
 
         if ($stepReport !== null) {
-            $this->addObjects($objects, $code, $stepReport->objectStats());
+            foreach ($stepReport->entries() as $entry) {
+                $this->addObjects($objects, $code, $entry);
+            }
 
             foreach ($stepReport->anomalies() as $anomaly) {
                 $lines = array_filter($anomaly->lines, static fn (mixed $value): bool => is_int($value) || is_string($value));
                 $anomalies[] = [
                     'step' => $code,
-                    'object' => $stepReport->objectStats()->label,
+                    'object' => $stepReport->entries()[0]->label,
                     'title' => $anomaly->title,
                     'severity' => $anomaly->severity->value,
                     'lines' => array_slice($lines, 0, self::MAX_ANOMALY_LINES, true),

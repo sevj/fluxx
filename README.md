@@ -275,6 +275,8 @@ new WorkflowDefinition(
   `StepReport::objects('Contacts')->created(20)->updated(29095)->excluded('Ended before 2018', 8)->rejected($rejected)->anomaly('Unresolved owners', ['K_USER 2' => 2781])`.
   Associations are declared with `StepReport::links('Contacts ↔ Companies')->created(120)->removed(3)`:
   they get their own *Links* block and indicator, apart from the objects.
+  One report can describe several entries: `StepReport::links('Contacts → Companies')->created(120)->link('Functions → Contacts')->created(80)`;
+  counters apply to the entry declared last (`object()` starts another object entry).
   Steps without one are read from the metadata keys `created`, `updated`, `excluded`
   (reason => count) and `rejected_records` (`{key|efficy_key, message}`).
 - A section is a service implementing `RunReportSectionInterface` (autoconfigured) that returns a

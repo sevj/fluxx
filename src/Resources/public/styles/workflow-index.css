@@ -1468,8 +1468,19 @@ td .run-flow .system-chip {
 }
 
 .workflow-table-compact .execution-cell-trigger,
+/* Long statuses such as "completed with warnings" wrap inside their column instead of overflowing. */
 .workflow-table-compact .execution-cell-status {
-    white-space: nowrap;
+    white-space: normal;
+}
+
+.workflow-table-compact .execution-cell-status .status-badge {
+    align-items: flex-start;
+    white-space: normal;
+    line-height: 1.35;
+}
+
+.workflow-table-compact .execution-cell-status .status-badge::before {
+    margin-top: 0.3em;
 }
 
 .clickable-row {

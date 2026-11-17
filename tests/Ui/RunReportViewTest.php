@@ -32,6 +32,7 @@ final class RunReportViewTest extends TestCase
         self::assertSame(['%count%' => '1', '%removed%' => '12'], $view->kpis[2]['hintParameters']);
         self::assertSame([
             'label' => 'Contacts ↔ Companies',
+            'source' => 'Write',
             'read' => '6 912',
             'excluded' => '0',
             'written' => '6 900',
