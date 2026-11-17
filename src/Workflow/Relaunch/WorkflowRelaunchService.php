@@ -181,9 +181,15 @@ final readonly class WorkflowRelaunchService
                 metadata: $this->buildPreservedStepMetadata($originalStepRun, $originalRun),
             );
             $clonedStepRun->markRunning($originalStepRun->startedAt());
-            $markCompleted = $originalStepRun->status() === WorkflowStepRunStatus::CompletedWithWarnings
+            $hasWarnings = $originalStepRun->status() === WorkflowStepRunStatus::CompletedWithWarnings;
+            $markCompleted = $hasWarnings
                 ? $clonedStepRun->markCompletedWithWarnings(...)
                 : $clonedStepRun->markCompleted(...);
+
+            if ($hasWarnings) {
+                $workflowRun->incrementWarningCount();
+            }
+
             $markCompleted(
                 processedCount: $originalStepRun->processedCount(),
                 successCount: $originalStepRun->successCount(),

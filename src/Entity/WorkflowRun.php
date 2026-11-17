@@ -335,6 +335,8 @@ class WorkflowRun
     {
         $this->markCompleted($finishedAt);
         $this->status = WorkflowRunStatus::CompletedWithWarnings;
+        // The counter outlives the status once payloads are pruned, so it must never say "no warning".
+        $this->warningCount = max($this->warningCount, 1);
     }
 
     public function warningCount(): int

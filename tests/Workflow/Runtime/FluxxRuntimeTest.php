@@ -335,6 +335,7 @@ final class FluxxRuntimeTest extends TestCase
 
         self::assertSame(WorkflowStepRunStatus::Completed, $this->stepRunLookup->findLatestByWorkflowRunAndStepName($workflowRun, 'write')?->status());
         self::assertSame(WorkflowRunStatus::CompletedWithWarnings, $workflowRun->status());
+        self::assertGreaterThanOrEqual(1, $workflowRun->warningCount());
         self::assertTrue($workflowRun->status()->isRelaunchable());
         self::assertSame([], $this->runtime->runStep('run-1', 'write'));
     }

@@ -269,8 +269,13 @@ final class WorkflowRelaunchServiceTest extends TestCase
         });
 
         $persisted = [];
+        $relaunchedRun = null;
         $entityManager = $this->createStub(EntityManagerInterface::class);
-        $entityManager->method('persist')->willReturnCallback(function (object $entity) use (&$persisted): void {
+        $entityManager->method('persist')->willReturnCallback(function (object $entity) use (&$persisted, &$relaunchedRun): void {
+            if ($entity instanceof WorkflowRun) {
+                $relaunchedRun = $entity;
+            }
+
             if ($entity instanceof WorkflowStepRun) {
                 $persisted[] = $entity->stepName() . ':' . $entity->status()->value;
             }
@@ -307,6 +312,8 @@ final class WorkflowRelaunchServiceTest extends TestCase
             $stored,
         );
         self::assertCount(2, $dispatched);
+        self::assertInstanceOf(WorkflowRun::class, $relaunchedRun);
+        self::assertSame(1, $relaunchedRun->warningCount());
     }
 
     private function payload(WorkflowStepRun $source, string $target): WorkflowPayload

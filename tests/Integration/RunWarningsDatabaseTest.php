@@ -138,6 +138,25 @@ final class RunWarningsDatabaseTest extends TestCase
         self::assertEqualsCanonicalizing(['warned', 'pruned'], array_map(static fn (WorkflowRun $run): string => $run->runId(), $runs));
     }
 
+    #[Test]
+    public function a_run_completed_with_warnings_stays_listed_after_prune_without_explicit_count(): void
+    {
+        $run = new WorkflowRun(runId: 'resumed', workflowName: 'contacts', sourceSystem: 'CSV', targetSystem: 'Hubspot', trigger: 'relaunch');
+        $run->markRunning();
+        $run->markCompletedWithWarnings();
+        $this->entityManager->persist($run);
+        $this->entityManager->flush();
+
+        $this->runRepository()->markRunsAsPayloadsPruned(new DateTimeImmutable('+1 minute'), [WorkflowRunStatus::CompletedWithWarnings->value]);
+        $this->entityManager->clear();
+
+        $runs = $this->runRepository()->findPaginatedByFilters(new WorkflowRunFilters(status: WorkflowRunStatus::CompletedWithWarnings->value), 10, 0);
+
+        self::assertSame(['resumed'], array_map(static fn (WorkflowRun $run): string => $run->runId(), $runs));
+        self::assertSame(WorkflowRunStatus::PayloadsPruned, $runs[0]->status());
+        self::assertSame(1, $runs[0]->warningCount());
+    }
+
     private function storeWarningRun(string $runId): void
     {
         $run = new WorkflowRun(runId: $runId, workflowName: 'contacts', sourceSystem: 'CSV', targetSystem: 'Hubspot', trigger: 'manual');
