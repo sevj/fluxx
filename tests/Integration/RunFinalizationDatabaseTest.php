@@ -18,17 +18,22 @@ use Fluxx\Entity\Enum\WorkflowStepType;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\FluxxSettingLookupInterface;
+use Fluxx\Repository\RuntimeWorkerStateLookupInterface;
+use Fluxx\Repository\WorkflowExecutionLockRepository;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
 use Fluxx\Settings\RuntimeSettingsManager;
+use Fluxx\Workflow\Cancellation\WorkflowCancellationService;
 use Fluxx\Workflow\Check\CheckOutcome;
 use Fluxx\Workflow\Check\CheckReport;
 use Fluxx\Workflow\Check\CheckResult;
 use Fluxx\Workflow\Check\CheckStepInterface;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\WorkflowErrorPayloadFactory;
+use Fluxx\Workflow\Lock\WorkflowExecutionLockManager;
 use Fluxx\Workflow\Lock\WorkflowExecutionLockManagerInterface;
+use Fluxx\Workflow\Lock\WorkflowRunAbandonmentDetector;
 use Fluxx\Workflow\Payload\WorkflowPayloadStoreInterface;
 use Fluxx\Workflow\Report\Severity;
 use Fluxx\Workflow\Result\WorkflowStepResult;
@@ -191,6 +196,34 @@ final class RunFinalizationDatabaseTest extends TestCase
         self::assertStringContainsString('Mairie', (string) $this->connection->fetchOne("SELECT report FROM fluxx_workflow_step_run WHERE step_name = 'verify'"));
     }
 
+    #[Test]
+    public function a_cancel_marks_the_run_and_its_waiting_steps_cancelled(): void
+    {
+        $run = $this->storeRun();
+        $run->markRunning();
+        $waiting = new WorkflowStepRun($run, 'write', 'write_contacts', 1);
+        $this->entityManager->persist($waiting);
+        $this->entityManager->flush();
+
+        self::assertTrue($this->cancellationService()->cancel('run-1', 'cli', 'Stopped'));
+
+        self::assertSame('cancelled', $this->connection->fetchOne("SELECT status FROM fluxx_workflow_run WHERE run_id = 'run-1'"));
+        self::assertSame('cancelled', $this->connection->fetchOne("SELECT status FROM fluxx_workflow_step_run WHERE step_name = 'write_contacts'"));
+    }
+
+    #[Test]
+    public function a_cancel_leaves_alone_a_run_another_worker_completed_after_it_was_loaded(): void
+    {
+        $run = $this->storeRun();
+        $run->markRunning();
+        $this->entityManager->flush();
+
+        $this->connection->executeStatement("UPDATE fluxx_workflow_run SET status = 'completed' WHERE run_id = 'run-1'");
+
+        self::assertFalse($this->cancellationService()->cancel('run-1', 'cli', 'Stopped'));
+        self::assertSame('completed', $this->connection->fetchOne("SELECT status FROM fluxx_workflow_run WHERE run_id = 'run-1'"));
+    }
+
     /**
      * @return array{WorkflowRun, WorkflowStepRun}
      */
@@ -232,6 +265,28 @@ final class RunFinalizationDatabaseTest extends TestCase
         $this->entityManager->flush();
 
         return $run;
+    }
+
+    private function cancellationService(): WorkflowCancellationService
+    {
+        $registry = $this->registry();
+        $workflowRunRepository = new WorkflowRunRepository($registry);
+        $workflowStepRunRepository = new WorkflowStepRunRepository($registry);
+        $settings = $this->createStub(FluxxSettingLookupInterface::class);
+        $settings->method('findValue')->willReturn(null);
+
+        return new WorkflowCancellationService(
+            $this->entityManager,
+            $workflowRunRepository,
+            $workflowStepRunRepository,
+            new WorkflowExecutionLockManager(
+                $this->entityManager,
+                new WorkflowExecutionLockRepository($registry),
+                $workflowRunRepository,
+                new WorkflowRunAbandonmentDetector($workflowStepRunRepository, $this->createStub(RuntimeWorkerStateLookupInterface::class)),
+                new RuntimeSettingsManager($settings, 1800, 120, 60, 300, 10),
+            ),
+        );
     }
 
     private function runCheckStep(CheckResult $result): void
