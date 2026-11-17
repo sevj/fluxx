@@ -383,7 +383,8 @@ run_report:
     title: Run report
     built_at: 'Built on %date%'
     unavailable: 'The stored report cannot be read (it was built by another version of Fluxx or is damaged). Rebuild it to see it.'
-    unavailable_read_only: 'The stored report cannot be read (it was built by another version of Fluxx or is damaged). An administrator can rebuild it from this page or with "%command%".'
+    unavailable_read_only: 'The stored report cannot be read (it was built by another version of Fluxx or is damaged).'
+    unavailable_rebuild_hint: 'An administrator can rebuild it from this page or with "%command%".'
     rate: '%rate% / s'
     severity:
         blocking: Blocking

@@ -177,6 +177,18 @@ final class WorkflowRunReportRebuildControllerTest extends TestCase
     }
 
     #[Test]
+    public function a_pruned_run_with_a_failed_step_is_refused(): void
+    {
+        $this->storeRun('run-1', completed: false);
+        $this->connection->executeStatement("UPDATE fluxx_workflow_run SET status = 'payloads_pruned'");
+
+        $this->invoke($this->controller());
+
+        self::assertSame(0, $this->reportCount());
+        self::assertSame(['run_report.flash.not_reportable'], $this->flashKeys('error'));
+    }
+
+    #[Test]
     public function a_build_failure_is_flashed_and_logged_instead_of_failing_the_request(): void
     {
         $this->storeRun('run-1', completed: true);

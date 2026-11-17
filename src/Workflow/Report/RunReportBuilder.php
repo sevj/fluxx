@@ -36,12 +36,39 @@ final readonly class RunReportBuilder
     }
 
     /**
-     * Whether a report can be asked for the run: completed, or pruned after it ended. A pruned run
-     * whose steps were interrupted is still refused by build().
+     * Whether a report can be built for the run: completed, or pruned after all its steps ended
+     * without failure or cancellation.
      */
-    public static function isReportable(WorkflowRun $run): bool
+    public function isReportable(WorkflowRun $run): bool
     {
-        return $run->status()->isCompleted() || $run->status() === WorkflowRunStatus::PayloadsPruned;
+        return self::isReportableWith($run, $this->stepRunLookup->findByWorkflowRunOrdered($run));
+    }
+
+    /**
+     * Same rule as isReportable() for a caller that already loaded the step runs of the run, in
+     * execution order.
+     *
+     * @param iterable<WorkflowStepRun> $stepRuns
+     */
+    public static function isReportableWith(WorkflowRun $run, iterable $stepRuns): bool
+    {
+        if ($run->status()->isCompleted()) {
+            return true;
+        }
+
+        if ($run->status() !== WorkflowRunStatus::PayloadsPruned) {
+            return false;
+        }
+
+        $latest = self::latestByCode($stepRuns);
+
+        foreach ($latest as $stepRun) {
+            if (in_array($stepRun->status(), [WorkflowStepRunStatus::Failed, WorkflowStepRunStatus::Cancelled], true)) {
+                return false;
+            }
+        }
+
+        return $latest !== [];
     }
 
     /**
@@ -90,31 +117,17 @@ final readonly class RunReportBuilder
      */
     private function reportedStatus(WorkflowRun $run, array $stepRuns): WorkflowRunStatus
     {
-        if (!self::isReportable($run)) {
-            throw new RunNotReportableException(sprintf(
-                'Run "%s" has the status "%s": a report is only built for a completed run.',
-                $run->runId(),
-                $run->status()->value,
-            ));
+        if (!self::isReportableWith($run, $stepRuns)) {
+            throw new RunNotReportableException($run->status() === WorkflowRunStatus::PayloadsPruned
+                ? sprintf('Run "%s" did not complete (a step failed or was cancelled before its payloads were pruned): a report is only built for a completed run.', $run->runId())
+                : sprintf('Run "%s" has the status "%s": a report is only built for a completed run.', $run->runId(), $run->status()->value));
         }
 
         if ($run->status()->isCompleted()) {
             return $run->status();
         }
 
-        $interrupted = array_filter(
-            $stepRuns,
-            static fn (WorkflowStepRun $stepRun): bool => in_array($stepRun->status(), [WorkflowStepRunStatus::Failed, WorkflowStepRunStatus::Cancelled], true),
-        );
-
-        if ($stepRuns !== [] && $interrupted === []) {
-            return $run->warningCount() > 0 ? WorkflowRunStatus::CompletedWithWarnings : WorkflowRunStatus::Completed;
-        }
-
-        throw new RunNotReportableException(sprintf(
-            'Run "%s" did not complete (a step failed or was cancelled before its payloads were pruned): a report is only built for a completed run.',
-            $run->runId(),
-        ));
+        return $run->warningCount() > 0 ? WorkflowRunStatus::CompletedWithWarnings : WorkflowRunStatus::Completed;
     }
 
     /**
@@ -150,9 +163,18 @@ final readonly class RunReportBuilder
      */
     private function latestStepRunsByCode(WorkflowRun $run): array
     {
+        return self::latestByCode($this->stepRunLookup->findByWorkflowRunOrdered($run));
+    }
+
+    /**
+     * @param iterable<WorkflowStepRun> $stepRuns
+     * @return array<string, WorkflowStepRun>
+     */
+    private static function latestByCode(iterable $stepRuns): array
+    {
         $latest = [];
 
-        foreach ($this->stepRunLookup->findByWorkflowRunOrdered($run) as $stepRun) {
+        foreach ($stepRuns as $stepRun) {
             $latest[$stepRun->stepName()] = $stepRun;
         }
 

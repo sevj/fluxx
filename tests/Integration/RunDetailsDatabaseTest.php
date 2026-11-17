@@ -15,6 +15,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Fluxx\Entity\Enum\WorkflowStepType;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowRunReport;
+use Fluxx\Entity\WorkflowStepRun;
 use Fluxx\Repository\WorkflowRunReportRepository;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Tests\Fixture\RunReportContent;
@@ -187,17 +188,27 @@ final class RunDetailsDatabaseTest extends TestCase
         $failed->markFailed('boom');
         $pruned = $this->workflowRun('run-3');
         $pruned->markRunning();
+        $read = new WorkflowStepRun($pruned, 'read', 'read', 1);
+        $read->markRunning();
+        $read->markCompleted(1, 1);
         $pruned->markCompleted();
-        foreach ([$completed, $failed, $pruned] as $run) {
+        $prunedFailed = $this->workflowRun('run-4');
+        $prunedFailed->markRunning();
+        $broken = new WorkflowStepRun($prunedFailed, 'read', 'read', 1);
+        $broken->markRunning();
+        $broken->markFailed('boom');
+        $prunedFailed->markFailed('boom');
+        foreach ([$completed, $failed, $pruned, $prunedFailed] as $run) {
             $this->entityManager->persist($run);
         }
         $this->entityManager->flush();
-        $this->connection->executeStatement("UPDATE fluxx_workflow_run SET status = 'payloads_pruned' WHERE run_id = 'run-3'");
+        $this->connection->executeStatement("UPDATE fluxx_workflow_run SET status = 'payloads_pruned' WHERE run_id IN ('run-3', 'run-4')");
         $this->entityManager->clear();
 
         self::assertTrue($this->details('run-1')->isReportRebuildable());
         self::assertFalse($this->details('run-2')->isReportRebuildable());
         self::assertTrue($this->details('run-3')->isReportRebuildable());
+        self::assertFalse($this->details('run-4')->isReportRebuildable());
     }
 
     private function details(string $runId, ?string $tab = null): RunDetailView

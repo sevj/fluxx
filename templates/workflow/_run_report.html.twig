@@ -8,7 +8,10 @@
                 <div class="detail-message-body">{{ 'run_report.unavailable'|trans }}</div>
                 <div class="run-report-unavailable-action">{% include '@Fluxx/workflow/_run_report_rebuild_form.html.twig' %}</div>
             {% else %}
-                <div class="detail-message-body">{{ 'run_report.unavailable_read_only'|trans({'%command%': 'fluxx:run:report ' ~ run.runId}) }}</div>
+                <div class="detail-message-body">
+                    {{ 'run_report.unavailable_read_only'|trans }}
+                    {% if run.reportRebuildable %}{{ 'run_report.unavailable_rebuild_hint'|trans({'%command%': 'fluxx:run:report ' ~ run.runId}) }}{% endif %}
+                </div>
             {% endif %}
         </div>
     </section>

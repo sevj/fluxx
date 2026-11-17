@@ -71,21 +71,27 @@ final class RunReportBuilderTest extends TestCase
     }
 
     #[Test]
-    public function only_completed_and_pruned_runs_are_reportable(): void
+    public function only_completed_runs_and_pruned_runs_whose_steps_ended_are_reportable(): void
     {
         foreach (WorkflowRunStatus::cases() as $status) {
-            $run = $this->workflowRun($status);
-
-            if ($status === WorkflowRunStatus::PayloadsPruned) {
-                $this->prune($run);
+            if ($status !== WorkflowRunStatus::PayloadsPruned) {
+                self::assertSame($status->isCompleted(), $this->builder()->isReportable($this->workflowRun($status)), $status->value);
             }
-
-            self::assertSame(
-                $status->isCompleted() || $status === WorkflowRunStatus::PayloadsPruned,
-                RunReportBuilder::isReportable($run),
-                $status->value,
-            );
         }
+
+        $ended = $this->workflowRun(WorkflowRunStatus::Completed);
+        $this->stepRun($ended, 'read', 'read', 1, '00:00', '00:10');
+        $this->prune($ended);
+        $empty = $this->workflowRun(WorkflowRunStatus::Completed);
+        $this->prune($empty);
+        $interrupted = $this->workflowRun(WorkflowRunStatus::Failed);
+        $this->stepRun($interrupted, 'read', 'read', 1, '00:00', '00:10')->markFailed('boom');
+        $this->prune($interrupted);
+
+        self::assertTrue($this->builder()->isReportable($ended));
+        self::assertFalse($this->builder()->isReportable($empty));
+        self::assertFalse($this->builder()->isReportable($interrupted));
+        self::assertFalse(RunReportBuilder::isReportableWith($interrupted, $this->stepRunLookup->findByWorkflowRunOrdered($interrupted)));
     }
 
     #[Test]

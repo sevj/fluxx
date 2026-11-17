@@ -262,6 +262,13 @@ final class TemplateRenderingTest extends TestCase
         self::assertStringNotContainsString('Reconstruisez-le', $user);
         self::assertStringContainsString('fluxx:run:report run-1', $user);
         self::assertStringNotContainsString('fluxx_workflow_run_report_rebuild', $user);
+
+        $notRebuildable = $this->twig(admin: true, locale: 'fr')->render('@Fluxx/workflow/run_show.html.twig', [
+            'run' => ['reportRebuildable' => false] + $context['run'],
+        ]);
+        self::assertStringContainsString('Le rapport enregistré est illisible', $notRebuildable);
+        self::assertStringNotContainsString('Un administrateur peut', $notRebuildable);
+        self::assertStringNotContainsString('fluxx_workflow_run_report_rebuild', $notRebuildable);
     }
 
     #[Test]

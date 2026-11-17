@@ -39,10 +39,12 @@ final class WorkflowRunReportRebuildController extends AbstractController
 
         if ($run === null || $run->workflowName() !== $workflowCode) {
             $this->addFlash('error', new TranslatableMessage('run_report.flash.run_not_found', ['%runId%' => $runId], 'fluxx'));
-        } elseif (!RunReportBuilder::isReportable($run)) {
-            $this->addFlash('error', new TranslatableMessage('run_report.flash.not_reportable', ['%runId%' => $runId], 'fluxx'));
         } else {
             try {
+                if (!$this->builder->isReportable($run)) {
+                    throw new RunNotReportableException(sprintf('Run "%s" is not reportable.', $runId));
+                }
+
                 $this->reportRepository->save($run, RunReportBuilder::FORMAT_VERSION, $this->builder->build($run));
                 $this->addFlash('success', new TranslatableMessage('run_report.flash.rebuilt', ['%runId%' => $runId], 'fluxx'));
             } catch (RunNotReportableException) {

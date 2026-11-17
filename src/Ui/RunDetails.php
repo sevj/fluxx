@@ -103,7 +103,7 @@ final readonly class RunDetails
             ),
             hasReport: $storedReport !== null,
             report: $storedReport !== null && $activeTab === self::TAB_REPORT ? self::readReport($storedReport, $timeline) : null,
-            reportRebuildable: RunReportBuilder::isReportable($run),
+            reportRebuildable: RunReportBuilder::isReportableWith($run, $stepRuns),
             activeTab: $activeTab,
         );
     }
