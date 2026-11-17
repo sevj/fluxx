@@ -7,6 +7,7 @@ namespace Fluxx\Workflow\Relaunch;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\Enum\WorkflowRunStatus;
+use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Entity\WorkflowPayload;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
@@ -63,7 +64,10 @@ final readonly class WorkflowRelaunchService
 
         $workflow = $this->registry->get($originalRun->workflowName());
         $definition = $workflow->definition();
-        $plan = $this->workflowRelaunchPlanner->plan($definition, $mode, $restartStepCode);
+        $originalStepRuns = $this->indexLatestStepRuns($originalRun);
+        $plan = $mode === WorkflowRelaunchMode::Resume
+            ? $this->workflowRelaunchPlanner->planResume($definition, self::completedStepCodes($originalStepRuns))
+            : $this->workflowRelaunchPlanner->plan($definition, $mode, $restartStepCode);
         $runId = self::generateRunId();
         $workflowRun = new WorkflowRun(
             runId: $runId,
@@ -92,7 +96,6 @@ final readonly class WorkflowRelaunchService
 
         $this->entityManager->persist($workflowRun);
 
-        $originalStepRuns = $this->indexLatestStepRuns($originalRun);
         $clonedStepRuns = $this->clonePreservedStepRuns($workflowRun, $plan, $originalRun, $originalStepRuns);
         $this->createResetTargetStepRuns($workflowRun, $plan, $originalRun, $originalStepRuns, $clonedStepRuns);
         $this->cloneEntryPayloads($workflowRun, $plan, $originalRun, $clonedStepRuns);
@@ -131,6 +134,18 @@ final readonly class WorkflowRelaunchService
         }
 
         return $indexed;
+    }
+
+    /**
+     * @param array<string, WorkflowStepRun> $stepRuns
+     * @return list<string>
+     */
+    private static function completedStepCodes(array $stepRuns): array
+    {
+        return array_keys(array_filter(
+            $stepRuns,
+            static fn (WorkflowStepRun $stepRun): bool => $stepRun->status() === WorkflowStepRunStatus::Completed,
+        ));
     }
 
     /**
@@ -355,6 +370,7 @@ final readonly class WorkflowRelaunchService
             'trigger' => $trigger,
             'reason' => $reason,
             'restart_step_code' => $plan->entryStepCodes()[0] ?? null,
+            'entry_step_codes' => $plan->entryStepCodes(),
             'operator_user' => $operatorUser,
             'mode' => $plan->mode()->value,
             'target_step_codes' => $plan->targetStepCodes(),

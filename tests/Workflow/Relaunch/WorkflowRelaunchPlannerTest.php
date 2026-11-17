@@ -40,6 +40,50 @@ final class WorkflowRelaunchPlannerTest extends TestCase
         self::assertSame(['read_contacts', 'split_contacts'], $plan->preservedStepCodes());
     }
 
+    #[Test]
+    public function a_resume_keeps_a_completed_sibling_branch_that_a_step_relaunch_leaves_out(): void
+    {
+        $plan = (new WorkflowRelaunchPlanner())->planResume(
+            $this->definition(),
+            ['read_contacts', 'split_contacts', 'transform_company'],
+        );
+
+        self::assertSame(WorkflowRelaunchMode::Resume, $plan->mode());
+        self::assertSame(['transform_person'], $plan->entryStepCodes());
+        self::assertSame(['transform_person', 'link_contacts'], $plan->targetStepCodes());
+        self::assertSame(['read_contacts', 'split_contacts', 'transform_company'], $plan->preservedStepCodes());
+    }
+
+    #[Test]
+    public function a_resume_restarts_every_failed_branch_at_once(): void
+    {
+        $plan = (new WorkflowRelaunchPlanner())->planResume($this->definition(), ['read_contacts', 'split_contacts']);
+
+        self::assertSame(['transform_company', 'transform_person'], $plan->entryStepCodes());
+        self::assertSame(['transform_company', 'transform_person', 'link_contacts'], $plan->targetStepCodes());
+        self::assertSame(['read_contacts', 'split_contacts'], $plan->preservedStepCodes());
+    }
+
+    #[Test]
+    public function a_resume_restarts_from_the_roots_when_nothing_completed(): void
+    {
+        $plan = (new WorkflowRelaunchPlanner())->planResume($this->definition(), []);
+
+        self::assertSame(['read_contacts'], $plan->entryStepCodes());
+        self::assertSame([], $plan->preservedStepCodes());
+    }
+
+    #[Test]
+    public function a_resume_refuses_a_run_where_every_step_completed(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new WorkflowRelaunchPlanner())->planResume(
+            $this->definition(),
+            ['read_contacts', 'split_contacts', 'transform_company', 'transform_person', 'link_contacts'],
+        );
+    }
+
     private function definition(): WorkflowDefinition
     {
         $handler = new class implements ExecutableWorkflowStepInterface {

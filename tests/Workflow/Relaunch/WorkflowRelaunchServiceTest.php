@@ -221,6 +221,92 @@ final class WorkflowRelaunchServiceTest extends TestCase
         self::assertSame(['second>third:reused_input', 'first>second:reused_ancestor_output'], $stored);
     }
 
+    #[Test]
+    public function a_resume_keeps_the_completed_branch_and_restarts_every_failed_one(): void
+    {
+        $original = $this->createRun(WorkflowRunStatus::PartiallyFailed);
+        $this->workflowRunRepository->method('findOneByRunId')->willReturn($original);
+
+        $handler = new JoinStep('h', 'H');
+        $workflow = $this->createStub(WorkflowInterface::class);
+        $workflow->method('definition')->willReturn(new WorkflowDefinition('fixture', 'Fixture', 'a', 'b', [
+            new WorkflowStepDefinition('read', 'Read', WorkflowStepType::Read, $handler),
+            new WorkflowStepDefinition('write_a', 'Write A', WorkflowStepType::Read, $handler, ['read']),
+            new WorkflowStepDefinition('write_b', 'Write B', WorkflowStepType::Read, $handler, ['read']),
+            new WorkflowStepDefinition('write_c', 'Write C', WorkflowStepType::Read, $handler, ['read']),
+            new WorkflowStepDefinition('notes', 'Notes', WorkflowStepType::Read, $handler, ['write_a', 'write_b', 'write_c'], reads: ['read']),
+        ]));
+
+        $stepRuns = [];
+        foreach (['read' => true, 'write_a' => true, 'write_b' => false, 'write_c' => false] as $code => $completed) {
+            $stepRun = new WorkflowStepRun($original, 'read', $code, count($stepRuns) + 1);
+            $stepRun->markRunning();
+            $completed
+                ? $stepRun->markCompleted(processedCount: 1, successCount: 1, errorCount: 0)
+                : $stepRun->markFailed('boom');
+            $stepRuns[$code] = $stepRun;
+        }
+
+        $stepRunRepository = $this->createStub(WorkflowStepRunLookupInterface::class);
+        $stepRunRepository->method('findByWorkflowRunOrdered')->willReturn(array_values($stepRuns));
+        $payloadRepository = $this->createStub(WorkflowPayloadLookupInterface::class);
+        $payloadRepository->method('findByWorkflowRunAndTargetStepNameOrdered')->willReturnCallback(
+            fn (WorkflowRun $run, string $target): array => in_array($target, ['write_b', 'write_c'], true)
+                ? [$this->payload($stepRuns['read'], $target)]
+                : [],
+        );
+        $payloadRepository->method('findBySourceStepRunOrdered')->willReturn([$this->payload($stepRuns['read'], 'notes')]);
+        $payloadStore = $this->createMock(WorkflowPayloadStoreInterface::class);
+        $payloadStore->method('load')->willReturn(['records' => [['id' => 1]], 'metadata' => []]);
+
+        $stored = [];
+        $payloadStore->method('storeStepInput')->willReturnCallback(function (...$arguments) use (&$stored, $stepRuns): WorkflowPayload {
+            $stored[] = $arguments[1]->stepName() . '>' . $arguments[3] . ':' . $arguments[7]['relaunch']['status'];
+
+            return $this->payload($stepRuns['read'], $arguments[3]);
+        });
+
+        $persisted = [];
+        $entityManager = $this->createStub(EntityManagerInterface::class);
+        $entityManager->method('persist')->willReturnCallback(function (object $entity) use (&$persisted): void {
+            if ($entity instanceof WorkflowStepRun) {
+                $persisted[] = $entity->stepName() . ':' . $entity->status()->value;
+            }
+        });
+
+        $dispatched = [];
+        $messageBus = $this->createStub(MessageBusInterface::class);
+        $messageBus->method('dispatch')->willReturnCallback(function (object $message) use (&$dispatched): Envelope {
+            $dispatched[] = $message;
+
+            return new Envelope($message);
+        });
+
+        $service = new WorkflowRelaunchService(
+            registry: new SynchronizationRegistry([$workflow]),
+            entityManager: $entityManager,
+            messageBus: $messageBus,
+            workflowRunRepository: $this->workflowRunRepository,
+            workflowStepRunRepository: $stepRunRepository,
+            workflowPayloadRepository: $payloadRepository,
+            workflowPayloadStore: $payloadStore,
+            workflowExecutionLockManager: $this->createStub(WorkflowExecutionLockManagerInterface::class),
+            workflowRelaunchPlanner: new WorkflowRelaunchPlanner(),
+        );
+
+        $service->relaunch('run-1', WorkflowRelaunchMode::Resume);
+
+        self::assertSame(
+            ['read:completed', 'write_a:completed', 'write_b:relaunched', 'write_c:relaunched', 'notes:relaunched'],
+            $persisted,
+        );
+        self::assertSame(
+            ['read>write_b:reused_input', 'read>write_c:reused_input', 'read>notes:reused_ancestor_output'],
+            $stored,
+        );
+        self::assertCount(2, $dispatched);
+    }
+
     private function payload(WorkflowStepRun $source, string $target): WorkflowPayload
     {
         $payload = $this->createStub(WorkflowPayload::class);

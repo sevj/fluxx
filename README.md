@@ -341,6 +341,7 @@ fluxx:workflow:run
 fluxx:workflow:relaunch
 fluxx:run:list
 fluxx:run:retry
+fluxx:run:resume
 fluxx:step:retry
 fluxx:runtime:inspect
 ```
@@ -353,9 +354,15 @@ php bin/console fluxx:workflow:run contacts --parameter offset=100 --parameter l
 php bin/console fluxx:run:list --workflow=contacts --status=failed --errors=with --page=1 --limit=20
 php bin/console fluxx:run:retry 7af0d8c3 --reason="Retry after API incident"
 php bin/console fluxx:step:retry 7af0d8c3 write_contacts --reason="Replay write step only"
+php bin/console fluxx:run:resume 7af0d8c3 --reason="Replay the failed branches only"
 php bin/console fluxx:workflow:relaunch 7af0d8c3 --force --reason="Worker stuck, manual recovery"
 php bin/console fluxx:runtime:inspect
 ```
+
+`fluxx:step:retry` keeps the ancestors of the restart step and replays its descendants: a step that also
+waits for or reads another branch cannot run in that relaunch. `fluxx:run:resume` restarts every step
+that did not complete, from all the failed branches at once, and keeps every completed step whatever its
+branch, so joins and steps reading other branches find their inputs.
 
 Relaunch and retry commands refuse to operate on a run that is still in progress
 (`pending`, `running`, `retrying`, `relaunched`). Pass `--force` to override the

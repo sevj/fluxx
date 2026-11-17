@@ -29,7 +29,7 @@ final class RelaunchWorkflowCommand extends Command
     {
         $this
             ->addArgument('run-id', InputArgument::REQUIRED, 'Original workflow run id.')
-            ->addOption('mode', null, InputOption::VALUE_REQUIRED, 'Relaunch mode: full, step or branch.', WorkflowRelaunchMode::Full->value)
+            ->addOption('mode', null, InputOption::VALUE_REQUIRED, 'Relaunch mode: full, step, branch or resume.', WorkflowRelaunchMode::Full->value)
             ->addOption('step', null, InputOption::VALUE_REQUIRED, 'Restart step code for step or branch mode.')
             ->addOption('reason', null, InputOption::VALUE_REQUIRED, 'Optional relaunch reason.')
             ->addOption('operator', null, InputOption::VALUE_REQUIRED, 'Optional operator user identifier.')

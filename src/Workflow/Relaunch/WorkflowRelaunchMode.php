@@ -9,4 +9,5 @@ enum WorkflowRelaunchMode: string
     case Full = 'full';
     case Step = 'step';
     case Branch = 'branch';
+    case Resume = 'resume';
 }

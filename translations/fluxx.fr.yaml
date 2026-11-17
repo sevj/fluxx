@@ -389,6 +389,7 @@ workflow_relaunch_mode:
     full: Exécution complète
     step: Depuis une étape
     branch: Branche unique
+    resume: Reprise des étapes non terminées
 
 workflow_error_category:
     technical: Technique

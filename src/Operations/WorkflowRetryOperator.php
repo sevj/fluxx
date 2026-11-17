@@ -49,4 +49,21 @@ class WorkflowRetryOperator
             force: $force,
         );
     }
+
+    public function resumeRun(
+        string $runId,
+        string $trigger = 'cli',
+        ?string $reason = null,
+        ?string $operatorUser = null,
+        bool $force = false,
+    ): string {
+        return $this->workflowRelaunchService->relaunch(
+            originalRunId: $runId,
+            mode: WorkflowRelaunchMode::Resume,
+            trigger: $trigger,
+            reason: $reason,
+            operatorUser: $operatorUser,
+            force: $force,
+        );
+    }
 }

@@ -11,6 +11,10 @@ of `README.md` for the definition of the public API.
 ### Added
 - `transactional` option on `WorkflowStepDefinition`. `false` runs the handler outside any
   transaction, as 1.16.0 to 1.17.1 did for every step.
+- `fluxx:run:resume` and the `resume` relaunch mode (`WorkflowRetryOperator::resumeRun()`): restart
+  every step of a run that did not complete, from all its failed branches at once, and keep every
+  completed step whatever its branch. A step relaunch keeps only the ancestors of its restart step, so a
+  join or a step reading a sibling branch could not run in it.
 
 ### Fixed
 - **Restores a behaviour broken in 1.16.0:** a step handler runs in a transaction again by default,
