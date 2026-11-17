@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Fluxx\Workflow\Cancellation;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Fluxx\Entity\Enum\WorkflowRunStatus;
 use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Repository\WorkflowRunRepository;
 use Fluxx\Repository\WorkflowStepRunRepository;
@@ -34,13 +33,7 @@ final readonly class WorkflowCancellationService
             throw new RuntimeException(sprintf('Workflow run "%s" was not found.', $runId));
         }
 
-        if (in_array($workflowRun->status(), [
-            WorkflowRunStatus::Completed,
-            WorkflowRunStatus::CompletedWithWarnings,
-            WorkflowRunStatus::Failed,
-            WorkflowRunStatus::PartiallyFailed,
-            WorkflowRunStatus::Cancelled,
-        ], true)) {
+        if (!$workflowRun->status()->isActive()) {
             return false;
         }
 
