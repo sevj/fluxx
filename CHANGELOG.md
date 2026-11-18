@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.21.3] - 2026-11-18
+
+### Fixed
+- A run that has not started yet (`pending`, or `relaunched` and not picked up) is never considered
+  abandoned, however long it waits in the queue. Under a backlog longer than the staleness window,
+  `self-heal` and "release stale locks" released the locks of queued runs, a new run for the same key
+  could take over a queued run's lock, and the orphan run finisher (self-heal and the idle-worker
+  watchdog) failed queued runs.
+- The orphan run finisher only looks at started runs (`running`, `retrying`), so queued runs no longer
+  use up its limit of runs examined per pass.
+
+### Upgrade notes
+- A run whose first message was lost (Redis flushed without `fluxx:runtime:reset`) stays `pending`
+  with its lock: cancel it, or release its lock with `fluxx:runtime:release-lock <run-id>`.
+
 ## [1.21.2] - 2026-11-18
 
 ### Fixed
