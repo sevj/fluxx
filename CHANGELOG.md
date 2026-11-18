@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
-## [Unreleased]
+## [1.20.0] - 2026-11-18
 
 ### Added
 - Push to Fluxx Observer: `fluxx:observer:push` sends the system health and the reports of the runs
