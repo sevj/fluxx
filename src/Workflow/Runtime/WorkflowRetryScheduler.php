@@ -7,6 +7,7 @@ namespace Fluxx\Workflow\Runtime;
 use DateTimeImmutable;
 use Fluxx\Entity\WorkflowRun;
 use Fluxx\Entity\WorkflowStepRun;
+use Fluxx\Runtime\FluxxTransports;
 use Fluxx\Settings\RuntimeSettingsManager;
 use Fluxx\Workflow\Error\WorkflowDeferralInterface;
 use Fluxx\Workflow\Error\WorkflowErrorCategory;
@@ -21,6 +22,7 @@ final readonly class WorkflowRetryScheduler
     public function __construct(
         private MessageBusInterface $messageBus,
         private RuntimeSettingsManager $runtimeSettingsManager,
+        private FluxxTransports $transports = new FluxxTransports(),
     ) {
     }
 
@@ -71,6 +73,7 @@ final readonly class WorkflowRetryScheduler
             $workflowRun->runId(),
             $stepRun->stepName(),
             $delayMilliseconds,
+            $this->transports->continuationStamps(),
         );
     }
 
@@ -140,6 +143,7 @@ final readonly class WorkflowRetryScheduler
             $workflowRun->runId(),
             $stepRun->stepName(),
             $delayMilliseconds,
+            $this->transports->continuationStamps(),
         );
 
         return true;

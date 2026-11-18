@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Fluxx\Runtime\WorkerState;
 
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Fluxx\Runtime\FluxxTransports;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Messenger\Event\WorkerMessageHandledEvent;
@@ -17,8 +17,7 @@ final readonly class WorkerRuntimeSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private RuntimeWorkerStateRecorder $workerStateRecorder,
-        #[Autowire('%fluxx.runtime.transport_name%')]
-        private string $transportName,
+        private FluxxTransports $transports,
     ) {
     }
 
@@ -40,7 +39,7 @@ final readonly class WorkerRuntimeSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $this->workerStateRecorder->recordStarted($this->transportName);
+        $this->workerStateRecorder->recordStarted($this->transports->mainName());
     }
 
     public function onWorkerRunning(WorkerRunningEvent $event): void
@@ -49,12 +48,12 @@ final readonly class WorkerRuntimeSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $this->workerStateRecorder->recordHeartbeat($this->transportName, $event->isWorkerIdle());
+        $this->workerStateRecorder->recordHeartbeat($this->transports->mainName(), $event->isWorkerIdle());
     }
 
     public function onMessageReceived(WorkerMessageReceivedEvent $event): void
     {
-        if ($event->getReceiverName() !== $this->transportName) {
+        if (!$this->transports->isFluxxTransport($event->getReceiverName())) {
             return;
         }
 
@@ -63,7 +62,7 @@ final readonly class WorkerRuntimeSubscriber implements EventSubscriberInterface
 
     public function onMessageHandled(WorkerMessageHandledEvent $event): void
     {
-        if ($event->getReceiverName() !== $this->transportName) {
+        if (!$this->transports->isFluxxTransport($event->getReceiverName())) {
             return;
         }
 
@@ -72,7 +71,7 @@ final readonly class WorkerRuntimeSubscriber implements EventSubscriberInterface
 
     public function onMessageFailed(WorkerMessageFailedEvent $event): void
     {
-        if ($event->getReceiverName() !== $this->transportName) {
+        if (!$this->transports->isFluxxTransport($event->getReceiverName())) {
             return;
         }
 
@@ -85,7 +84,7 @@ final readonly class WorkerRuntimeSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $this->workerStateRecorder->recordStopped($this->transportName);
+        $this->workerStateRecorder->recordStopped($this->transports->mainName());
     }
 
     /**
@@ -93,6 +92,6 @@ final readonly class WorkerRuntimeSubscriber implements EventSubscriberInterface
      */
     private function handlesFluxxTransport(array $transportNames): bool
     {
-        return in_array($this->transportName, $transportNames, true);
+        return $this->transports->includesFluxxTransport($transportNames);
     }
 }

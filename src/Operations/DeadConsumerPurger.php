@@ -5,12 +5,11 @@ declare(strict_types=1);
 namespace Fluxx\Operations;
 
 use Doctrine\DBAL\Connection;
-use Fluxx\Runtime\FluxxRedisTransportConnectionFactory;
+use Fluxx\Runtime\FluxxTransports;
 use Redis;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Removes dead Redis consumer-group entries from the fluxx transport.
+ * Removes dead Redis consumer-group entries from the Fluxx transports.
  *
  * Redis keeps a consumer entry for every consumer that ever joined the group
  * and never removes it automatically. When workers restart (notably under
@@ -25,44 +24,48 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final readonly class DeadConsumerPurger
 {
     public function __construct(
-        private FluxxRedisTransportConnectionFactory $connectionFactory,
+        private FluxxTransports $transports,
         private Connection $connection,
-        #[Autowire('%fluxx.runtime.transport_name%')]
-        private string $defaultTransport,
     ) {
     }
 
     /**
-     * @return array{purged: list<array{name: string, pending: int}>, skipped: int}
+     * Every Fluxx transport by default. A worker reads all of them under one consumer name, and its
+     * state is recorded under the main transport, which tells whether it is alive.
+     *
+     * @return array{purged: list<array{name: string, pending: int, transport: string}>, skipped: int}
      */
     public function purge(int $minIdleSeconds = 60, ?string $transportName = null): array
     {
-        $transport = $transportName ?? $this->defaultTransport;
-        $config = $this->connectionFactory->config();
-        $redis = $this->connectionFactory->create();
-
-        $consumers = $this->listConsumers($redis, $config['stream'], $config['group']);
-        $liveWorkerNames = $this->liveWorkerNames($transport, $minIdleSeconds);
-
+        $liveWorkerNames = $this->liveWorkerNames($this->transports->mainName(), $minIdleSeconds);
         $purged = [];
         $skipped = 0;
         $minIdleMs = $minIdleSeconds * 1000;
 
-        foreach ($consumers as $consumer) {
-            $name = $consumer['name'];
-            $idle = $consumer['idle'];
-
-            if ($idle < $minIdleMs) {
+        foreach ($this->transports->connections() as $transport => $connectionFactory) {
+            if ($transportName !== null && $transport !== $transportName) {
                 continue;
             }
 
-            if (in_array($name, $liveWorkerNames, true)) {
-                ++$skipped;
-                continue;
-            }
+            $config = $connectionFactory->config();
+            $redis = $connectionFactory->create();
 
-            $redis->rawCommand('XGROUP', 'DELCONSUMER', $config['stream'], $config['group'], $name);
-            $purged[] = ['name' => $name, 'pending' => $consumer['pending']];
+            foreach ($this->listConsumers($redis, $config['stream'], $config['group']) as $consumer) {
+                $name = $consumer['name'];
+
+                if ($consumer['idle'] < $minIdleMs) {
+                    continue;
+                }
+
+                if (in_array($name, $liveWorkerNames, true)) {
+                    ++$skipped;
+
+                    continue;
+                }
+
+                $redis->rawCommand('XGROUP', 'DELCONSUMER', $config['stream'], $config['group'], $name);
+                $purged[] = ['name' => $name, 'pending' => $consumer['pending'], 'transport' => $transport];
+            }
         }
 
         return ['purged' => $purged, 'skipped' => $skipped];

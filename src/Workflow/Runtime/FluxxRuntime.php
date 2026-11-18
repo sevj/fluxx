@@ -15,6 +15,7 @@ use Fluxx\Entity\Enum\WorkflowStepRunStatus;
 use Fluxx\Repository\WorkflowPayloadLookupInterface;
 use Fluxx\Repository\WorkflowRunLookupInterface;
 use Fluxx\Repository\WorkflowStepRunLookupInterface;
+use Fluxx\Runtime\FluxxTransports;
 use Fluxx\Workflow\Context\WorkflowContext;
 use Fluxx\Workflow\Context\WorkflowContextFactory;
 use Fluxx\Workflow\Error\BusinessWorkflowException;
@@ -35,6 +36,7 @@ use Fluxx\Workflow\Step\WorkflowStepInputPayload;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Throwable;
 
@@ -60,6 +62,7 @@ final class FluxxRuntime
         private ?StepProgressReporter $stepProgressReporter = null,
         private ?MessageBusInterface $messageBus = null,
         private LoggerInterface $logger = new NullLogger(),
+        private FluxxTransports $transports = new FluxxTransports(),
     ) {
     }
 
@@ -684,7 +687,10 @@ final class FluxxRuntime
         }
 
         try {
-            $this->messageBus->dispatch(new BuildRunReportMessage($workflowRun->runId()));
+            // Part of finishing the run: it goes with the steps of started runs.
+            $message = new BuildRunReportMessage($workflowRun->runId());
+            $stamps = $this->transports->continuationStamps();
+            $this->messageBus->dispatch($stamps === [] ? $message : new Envelope($message, $stamps));
         } catch (Throwable $throwable) {
             $this->logger->error('The report of run "{run_id}" could not be requested: {message}. Build it with "fluxx:run:report {run_id}".', [
                 'run_id' => $workflowRun->runId(),

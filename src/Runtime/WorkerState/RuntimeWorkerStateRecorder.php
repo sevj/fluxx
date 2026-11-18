@@ -9,6 +9,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Fluxx\Entity\RuntimeWorkerState;
 use Fluxx\Repository\RuntimeWorkerStateRepository;
 use Fluxx\Repository\WorkflowRunRepository;
+use Fluxx\Runtime\FluxxTransports;
 use Fluxx\Workflow\Message\RunWorkflowStepMessage;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Envelope;
@@ -22,8 +23,7 @@ final readonly class RuntimeWorkerStateRecorder
         private EntityManagerInterface $entityManager,
         private RuntimeWorkerStateRepository $workerStateRepository,
         private WorkflowRunRepository $workflowRunRepository,
-        #[Autowire('%fluxx.runtime.transport_name%')]
-        private string $transportName,
+        private FluxxTransports $transports,
     ) {
     }
 
@@ -128,9 +128,15 @@ final readonly class RuntimeWorkerStateRecorder
         return $pathParts[2] ?? sprintf('%s-%s', $this->resolveHost(), $this->resolvePid());
     }
 
+    /**
+     * A worker is recorded under the main Fluxx transport whichever Fluxx queue its message came
+     * from, so every lookup by transport finds it; the receiver name tells the queue.
+     */
     private function resolveTransportName(string $receiverName): string
     {
-        return $receiverName !== '' ? $receiverName : $this->transportName;
+        return $receiverName === '' || $this->transports->isFluxxTransport($receiverName)
+            ? $this->transports->mainName()
+            : $receiverName;
     }
 
     private function resolveHost(): string

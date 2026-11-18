@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fluxx\DependencyInjection;
 
 use Fluxx\Workflow\Report\RunReportSectionInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
@@ -78,6 +79,12 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
 
         $container->setParameter('fluxx.security.enabled', $config['security']['enabled']);
         $container->setParameter('fluxx.runtime.transport_name', $config['runtime']['transport_name']);
+
+        if ($config['runtime']['continuation_transport_name'] === $config['runtime']['transport_name']) {
+            throw new InvalidConfigurationException('fluxx.runtime.continuation_transport_name must name another transport than fluxx.runtime.transport_name.');
+        }
+
+        $container->setParameter('fluxx.runtime.continuation_transport_name', $config['runtime']['continuation_transport_name']);
         $container->setParameter('fluxx.runtime.defaults.stale_lock_timeout_seconds', $config['runtime']['defaults']['stale_lock_timeout_seconds']);
         $container->setParameter('fluxx.runtime.defaults.worker_heartbeat_timeout_seconds', $config['runtime']['defaults']['worker_heartbeat_timeout_seconds']);
         $container->setParameter('fluxx.runtime.defaults.health_warning_threshold_seconds', $config['runtime']['defaults']['health_warning_threshold_seconds']);

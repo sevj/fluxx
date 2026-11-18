@@ -5,21 +5,20 @@ declare(strict_types=1);
 namespace Fluxx\Command;
 
 use Doctrine\DBAL\Connection;
+use Fluxx\Runtime\FluxxTransports;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
-#[AsCommand(name: 'fluxx:runtime:reset', description: 'Purge the Fluxx Redis transport and reset Fluxx runtime tables.')]
+#[AsCommand(name: 'fluxx:runtime:reset', description: 'Purge the Fluxx Redis transports and reset Fluxx runtime tables.')]
 final class ResetRuntimeCommand extends Command
 {
     public function __construct(
         private readonly Connection $connection,
-        #[Autowire(env: 'MESSENGER_TRANSPORT_FLUXX_DSN')]
-        private readonly string $fluxxTransportDsn,
+        private readonly FluxxTransports $transports,
     ) {
         parent::__construct();
     }
@@ -36,11 +35,25 @@ final class ResetRuntimeCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $keepWorkerState = (bool) $input->getOption('keep-worker-state');
 
-        $transport = $this->parseRedisTransportDsn($this->fluxxTransportDsn);
-        if ($transport === null) {
-            $io->error(sprintf('Unsupported Fluxx transport DSN "%s".', $this->fluxxTransportDsn));
+        $redisTransports = [];
+
+        try {
+            $dsns = $this->transports->dsns();
+        } catch (\Throwable $exception) {
+            $io->error($exception->getMessage());
 
             return Command::FAILURE;
+        }
+
+        foreach ($dsns as $name => $dsn) {
+            $transport = $this->parseRedisTransportDsn($dsn);
+            if ($transport === null) {
+                $io->error(sprintf('Unsupported DSN for the Fluxx transport "%s".', $name));
+
+                return Command::FAILURE;
+            }
+
+            $redisTransports[$name] = $transport;
         }
 
         if (!(bool) $input->getOption('force')) {
@@ -55,9 +68,14 @@ final class ResetRuntimeCommand extends Command
         }
 
         try {
-            $redis = $this->createRedisClient($transport);
-            $deletedKeys = $redis->del([$transport['stream'], $transport['stream'].'__queue']);
-            $groupDestroyed = $this->destroyGroup($redis, $transport['stream'], $transport['group']);
+            $deletedKeys = 0;
+            $destroyedGroups = 0;
+
+            foreach ($redisTransports as $transport) {
+                $redis = $this->createRedisClient($transport);
+                $deletedKeys += (int) $redis->del([$transport['stream'], $transport['stream'].'__queue']);
+                $destroyedGroups += $this->destroyGroup($redis, $transport['stream'], $transport['group']) ? 1 : 0;
+            }
 
             $tables = [
                 'fluxx_workflow_payload',
@@ -81,9 +99,10 @@ final class ResetRuntimeCommand extends Command
         }
 
         $io->success(sprintf(
-            'Fluxx runtime reset completed. Deleted Redis keys: %d. Group destroyed: %s.',
+            'Fluxx runtime reset completed (%s). Deleted Redis keys: %d. Groups destroyed: %d.',
+            implode(', ', array_keys($redisTransports)),
             $deletedKeys,
-            $groupDestroyed ? 'yes' : 'no',
+            $destroyedGroups,
         ));
 
         return Command::SUCCESS;

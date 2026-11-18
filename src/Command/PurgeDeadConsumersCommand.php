@@ -45,9 +45,9 @@ final class PurgeDeadConsumersCommand extends Command
         }
 
         $io->table(
-            ['Consumer', 'Released pending'],
+            ['Transport', 'Consumer', 'Released pending'],
             array_map(
-                static fn (array $consumer): array => [$consumer['name'], (string) $consumer['pending']],
+                static fn (array $consumer): array => [$consumer['transport'], $consumer['name'], (string) $consumer['pending']],
                 $result['purged'],
             ),
         );

@@ -67,6 +67,27 @@ final class InspectRuntimeCommand extends Command
             ['Group' => (string) ($queue['group'] ?? '-')],
         );
 
+        $queues = is_array($snapshot['queues'] ?? null) ? $snapshot['queues'] : [];
+
+        if (count($queues) > 1) {
+            $io->section('Queues');
+            $io->text('Read in this order: the steps of started runs come before new runs.');
+            $io->table(
+                ['Transport', 'Stream', 'Backlog', 'In flight', 'Consumers', 'Oldest pending (ms)'],
+                array_map(
+                    static fn (array $queue): array => [
+                        (string) ($queue['name'] ?? '-'),
+                        (string) ($queue['stream'] ?? '-'),
+                        (string) ($queue['backlogCount'] ?? 0),
+                        (string) ($queue['inFlightCount'] ?? 0),
+                        (string) ($queue['consumerCount'] ?? 0),
+                        isset($queue['oldestPendingAgeMs']) ? (string) $queue['oldestPendingAgeMs'] : '-',
+                    ],
+                    $queues,
+                ),
+            );
+        }
+
         $io->section('Workers');
         if ($workers === []) {
             $io->text('No worker state available.');

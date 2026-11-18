@@ -341,9 +341,18 @@
             }).join('');
         };
 
-        const renderQueue = function (queue) {
+        const renderQueue = function (queue, queues) {
             if (!queueTarget) {
                 return;
+            }
+
+            // Several transports: listed in the order workers read them, each with its backlog.
+            if (Array.isArray(queues) && queues.length > 1) {
+                queue = {
+                    name: queues.map(function (item) { return (item.name || '-') + ' (' + (item.backlogCount || 0) + ')'; }).join(' → '),
+                    stream: queues.map(function (item) { return item.stream || '-'; }).join(' → '),
+                    group: queue.group,
+                };
             }
 
             queueTarget.innerHTML = ''
@@ -498,7 +507,7 @@
 
         const renderSnapshot = function (snapshot) {
             renderSummary(snapshot.summary || {});
-            renderQueue(snapshot.queue || {});
+            renderQueue(snapshot.queue || {}, snapshot.queues || []);
             renderRateLimiters(snapshot.rateLimiters);
             renderWorkers(snapshot.workers || []);
             renderLocks(snapshot.activeLocks || []);

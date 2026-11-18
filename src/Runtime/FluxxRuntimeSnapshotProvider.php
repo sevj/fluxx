@@ -45,6 +45,7 @@ final readonly class FluxxRuntimeSnapshotProvider
         #[Autowire('%fluxx.runtime.transport_name%')]
         private string $transportName = 'fluxx',
         private ?StepProgressStoreInterface $stepProgressStore = null,
+        private ?FluxxTransports $transports = null,
     ) {
     }
 
@@ -76,6 +77,7 @@ final readonly class FluxxRuntimeSnapshotProvider
                     'stream' => null,
                     'group' => null,
                 ],
+                'queues' => [],
                 'workers' => [],
                 'activeLocks' => [],
                 'messages' => [],
@@ -89,22 +91,53 @@ final readonly class FluxxRuntimeSnapshotProvider
      */
     private function buildSnapshot(DateTimeImmutable $refreshedAt): array
     {
-        $receiver = $this->createFluxxReceiver();
-        $redisSnapshot = $this->fetchRedisSnapshot($refreshedAt);
+        $queues = [];
+        $redisSnapshots = [];
+        $envelopes = [];
+        $backlogCount = 0;
+
+        // Continuation first, the order workers read them in: its messages are the next to run.
+        foreach ($this->transportDsns() as $name => $dsn) {
+            $receiver = $this->createFluxxReceiver($dsn);
+            $redisSnapshot = $this->fetchRedisSnapshot($dsn, $refreshedAt);
+            $queueBacklog = $receiver->getMessageCount();
+            $remaining = self::MESSAGE_LIMIT - count($envelopes);
+
+            if ($remaining > 0) {
+                foreach ($receiver->all($remaining) as $envelope) {
+                    $envelopes[] = $envelope;
+                }
+            }
+
+            $backlogCount += $queueBacklog;
+            $redisSnapshots[] = $redisSnapshot;
+            $queues[] = [
+                'name' => $name,
+                'stream' => $redisSnapshot['stream'],
+                'group' => $redisSnapshot['group'],
+                'backlogCount' => $queueBacklog,
+                'inFlightCount' => $redisSnapshot['pendingCount'],
+                'consumerCount' => count($redisSnapshot['workers']),
+                'oldestMessageAgeMs' => $redisSnapshot['oldestMessageAgeMs'],
+                'oldestPendingAgeMs' => $redisSnapshot['oldestPendingAgeMs'],
+            ];
+        }
+
+        $redisSnapshot = self::mergeRedisSnapshots($redisSnapshots);
         $workerRows = $this->mergeWorkerRuntimeState($redisSnapshot['workers'], $refreshedAt);
         $visibleWorkerRows = array_values(array_filter(
             $workerRows,
             static fn (array $worker): bool => !in_array($worker['state'] ?? null, ['offline', 'stopped'], true),
         ));
-        $envelopes = iterator_to_array($receiver->all(self::MESSAGE_LIMIT), false);
         $messages = $this->buildMessageRows($envelopes, $redisSnapshot['pendingById'], $refreshedAt);
         $activeLocks = $this->buildActiveLockRows();
+        $mainQueue = $queues[array_key_last($queues)];
 
         return [
             'ok' => true,
             'refreshedAt' => $refreshedAt->format(DATE_ATOM),
             'summary' => [
-                'backlogCount' => $receiver->getMessageCount(),
+                'backlogCount' => $backlogCount,
                 'inFlightCount' => $redisSnapshot['pendingCount'],
                 'consumerCount' => count($visibleWorkerRows),
                 'activeLockCount' => count($activeLocks),
@@ -113,14 +146,96 @@ final readonly class FluxxRuntimeSnapshotProvider
                 'oldestPendingAgeMs' => $redisSnapshot['oldestPendingAgeMs'],
             ],
             'queue' => [
-                'name' => $this->transportName,
-                'stream' => $redisSnapshot['stream'],
-                'group' => $redisSnapshot['group'],
+                'name' => $mainQueue['name'],
+                'stream' => $mainQueue['stream'],
+                'group' => $mainQueue['group'],
             ],
+            'queues' => $queues,
             'workers' => $workerRows,
             'activeLocks' => $activeLocks,
             'messages' => $messages,
             'rateLimiters' => $this->rateLimiterSnapshotProvider->snapshot($refreshedAt),
+        ];
+    }
+
+    /**
+     * @return array<string, string> DSN by transport name, continuation first
+     */
+    private function transportDsns(): array
+    {
+        return $this->transports?->dsns() ?? [$this->transportName => $this->fluxxTransportDsn];
+    }
+
+    /**
+     * One view over the streams of all Fluxx transports. A worker reads every stream under the same
+     * consumer name: it is one worker, with its pending messages added up and its most recent read.
+     *
+     * @param list<array{
+     *     stream: string,
+     *     group: string,
+     *     pendingCount: int,
+     *     oldestMessageAgeMs: ?int,
+     *     oldestPendingAgeMs: ?int,
+     *     workers: list<array<string, mixed>>,
+     *     pendingById: array<string, array{consumerName: string, idleMs: int, deliveryCount: int}>
+     * }> $snapshots
+     *
+     * @return array{
+     *     pendingCount: int,
+     *     oldestMessageAgeMs: ?int,
+     *     oldestPendingAgeMs: ?int,
+     *     workers: list<array<string, mixed>>,
+     *     pendingById: array<string, array{consumerName: string, idleMs: int, deliveryCount: int}>
+     * }
+     */
+    public static function mergeRedisSnapshots(array $snapshots): array
+    {
+        $pendingCount = 0;
+        $oldestMessageAgeMs = null;
+        $oldestPendingAgeMs = null;
+        $workersByName = [];
+        $pendingById = [];
+
+        foreach ($snapshots as $snapshot) {
+            $pendingCount += $snapshot['pendingCount'];
+            $pendingById += $snapshot['pendingById'];
+
+            if ($snapshot['oldestMessageAgeMs'] !== null) {
+                $oldestMessageAgeMs = max($oldestMessageAgeMs ?? 0, $snapshot['oldestMessageAgeMs']);
+            }
+
+            if ($snapshot['oldestPendingAgeMs'] !== null) {
+                $oldestPendingAgeMs = max($oldestPendingAgeMs ?? 0, $snapshot['oldestPendingAgeMs']);
+            }
+
+            foreach ($snapshot['workers'] as $worker) {
+                $name = (string) $worker['name'];
+                $known = $workersByName[$name] ?? null;
+
+                if ($known === null) {
+                    $workersByName[$name] = $worker;
+
+                    continue;
+                }
+
+                $mostRecent = $worker['idleMs'] < $known['idleMs'] ? $worker : $known;
+                $mostRecent['pendingCount'] = $known['pendingCount'] + $worker['pendingCount'];
+                $workersByName[$name] = $mostRecent;
+            }
+        }
+
+        $workers = array_values($workersByName);
+        usort(
+            $workers,
+            static fn (array $left, array $right): int => [$right['pendingCount'], $left['idleMs']] <=> [$left['pendingCount'], $right['idleMs']],
+        );
+
+        return [
+            'pendingCount' => $pendingCount,
+            'oldestMessageAgeMs' => $oldestMessageAgeMs,
+            'oldestPendingAgeMs' => $oldestPendingAgeMs,
+            'workers' => $workers,
+            'pendingById' => $pendingById,
         ];
     }
 
@@ -154,10 +269,10 @@ final readonly class FluxxRuntimeSnapshotProvider
         return $rows;
     }
 
-    private function createFluxxReceiver(): RedisReceiver
+    private function createFluxxReceiver(string $dsn): RedisReceiver
     {
         return new RedisReceiver(
-            Connection::fromDsn($this->fluxxTransportDsn, []),
+            Connection::fromDsn($dsn, []),
             $this->transportSerializer,
         );
     }
@@ -272,9 +387,9 @@ final readonly class FluxxRuntimeSnapshotProvider
      *     pendingById: array<string, array{consumerName: string, idleMs: int, deliveryCount: int}>
      * }
      */
-    private function fetchRedisSnapshot(DateTimeImmutable $refreshedAt): array
+    private function fetchRedisSnapshot(string $dsn, DateTimeImmutable $refreshedAt): array
     {
-        $config = $this->parseRedisDsn($this->fluxxTransportDsn);
+        $config = $this->parseRedisDsn($dsn);
         $redis = $this->createRedisClient($config);
         $workers = $this->normalizeRedisMapList($redis->rawCommand('XINFO', 'CONSUMERS', $config['stream'], $config['group']) ?: []);
         $pendingSummary = $redis->rawCommand('XPENDING', $config['stream'], $config['group']) ?: [];

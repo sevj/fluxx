@@ -6,15 +6,15 @@ namespace Fluxx\Runtime\WorkerState;
 
 use DateTimeImmutable;
 use Fluxx\Operations\OrphanRunFinisher;
+use Fluxx\Runtime\FluxxTransports;
 use Fluxx\Settings\RuntimeSettingsManager;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 
 /**
  * Automatically finalizes orphaned runs (see {@see OrphanRunFinisher}).
  *
- * Listens to worker idle ticks on the Fluxx transport and runs the finisher at
+ * Listens to worker idle ticks on the Fluxx transports and runs the finisher at
  * most once per interval, so a worker death (crash, OOM, container loss) is
  * healed by the next worker cycle without any operator action. Exceptions are
  * swallowed: healing is best-effort and must never break message consumption.
@@ -28,8 +28,7 @@ final class OrphanRunWatchdog implements EventSubscriberInterface
     public function __construct(
         private OrphanRunFinisher $orphanRunFinisher,
         private RuntimeSettingsManager $runtimeSettingsManager,
-        #[Autowire('%fluxx.runtime.transport_name%')]
-        private string $transportName,
+        private FluxxTransports $transports,
     ) {
     }
 
@@ -43,7 +42,7 @@ final class OrphanRunWatchdog implements EventSubscriberInterface
     public function onWorkerRunning(WorkerRunningEvent $event): void
     {
         if (
-            !in_array($this->transportName, $event->getWorker()->getMetadata()->getTransportNames(), true)
+            !$this->transports->includesFluxxTransport($event->getWorker()->getMetadata()->getTransportNames())
             || !$event->isWorkerIdle()
         ) {
             return;

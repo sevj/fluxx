@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [Unreleased]
+
+### Added
+- Continuation transport (`fluxx.runtime.continuation_transport_name`, DSN in
+  `MESSENGER_TRANSPORT_FLUXX_CONTINUE_DSN`): the steps of runs that have already started (next steps,
+  retries, deferrals, run reports) go to it, and workers consume it before the main transport, so a
+  started run finishes before new runs begin. Off by default; see *Finishing started runs first* in
+  `README.md`. Workflows do not change.
+- `fluxx:runtime:inspect` lists each queue, and the system health reports a queue with messages that
+  no worker reads.
+
+### Changed
+- `purge-dead-consumers`, `reclaim-pending`, `self-heal` and `fluxx:runtime:reset` cover every Fluxx
+  transport. The runtime snapshot gains a `queues` list; `summary` holds the totals.
+- A worker is recorded under `fluxx.runtime.transport_name` whichever Fluxx queue its message came
+  from (the receiver name tells the queue).
+- `StepMessageDispatcher::dispatch()` takes optional stamps.
+
 ## [1.20.1] - 2026-11-18
 
 ### Changed

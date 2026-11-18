@@ -221,6 +221,49 @@ final class FluxxRuntimeSnapshotProviderTest extends TestCase
         self::assertSame(['done' => 3, 'total' => 12, 'label' => 'lots', 'percent' => 25], $row['stepProgress']);
     }
 
+    #[Test]
+    public function it_merges_the_streams_of_both_fluxx_transports_into_one_view(): void
+    {
+        $continuation = [
+            'stream' => 'fluxx_continue',
+            'group' => 'fluxx',
+            'pendingCount' => 2,
+            'oldestMessageAgeMs' => 4000,
+            'oldestPendingAgeMs' => 300,
+            'workers' => [
+                ['name' => 'worker-1', 'pendingCount' => 1, 'idleMs' => 100, 'lastSeenAt' => 'recent', 'state' => 'active'],
+                ['name' => 'worker-2', 'pendingCount' => 1, 'idleMs' => 9000, 'lastSeenAt' => 'old', 'state' => 'idle'],
+            ],
+            'pendingById' => ['2-0' => ['consumerName' => 'worker-1', 'idleMs' => 300, 'deliveryCount' => 1]],
+        ];
+        $main = [
+            'stream' => 'fluxx',
+            'group' => 'fluxx',
+            'pendingCount' => 1,
+            'oldestMessageAgeMs' => 90000,
+            'oldestPendingAgeMs' => null,
+            'workers' => [
+                ['name' => 'worker-2', 'pendingCount' => 1, 'idleMs' => 50, 'lastSeenAt' => 'recent', 'state' => 'active'],
+            ],
+            'pendingById' => ['1-0' => ['consumerName' => 'worker-2', 'idleMs' => 50, 'deliveryCount' => 1]],
+        ];
+
+        $merged = FluxxRuntimeSnapshotProvider::mergeRedisSnapshots([$continuation, $main]);
+
+        self::assertSame(3, $merged['pendingCount']);
+        self::assertSame(90000, $merged['oldestMessageAgeMs']);
+        self::assertSame(300, $merged['oldestPendingAgeMs']);
+        self::assertEqualsCanonicalizing(['1-0', '2-0'], array_keys($merged['pendingById']));
+
+        // One row per worker: pending added up, state and last read from its most recent stream.
+        $workers = array_column($merged['workers'], null, 'name');
+        self::assertCount(2, $workers);
+        self::assertSame(2, $workers['worker-2']['pendingCount']);
+        self::assertSame(50, $workers['worker-2']['idleMs']);
+        self::assertSame('active', $workers['worker-2']['state']);
+        self::assertSame(1, $workers['worker-1']['pendingCount']);
+    }
+
     private function buildWorkerRow(
         FluxxRuntimeSnapshotProvider $provider,
         array $redisWorker,

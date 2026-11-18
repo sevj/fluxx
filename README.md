@@ -147,6 +147,12 @@ fluxx:
         # and self-heal. Must match a transport under framework.messenger.transports.
         transport_name: fluxx
 
+        # Optional transport for the steps of runs that have already started.
+        # Workers read it before transport_name, so started runs finish before new
+        # ones begin. Its DSN comes from MESSENGER_TRANSPORT_FLUXX_CONTINUE_DSN.
+        # Null (default) keeps a single transport. See "Finishing started runs first".
+        continuation_transport_name: ~
+
         defaults:
             stale_lock_timeout_seconds: 1800    # lock older than this is recoverable
             worker_heartbeat_timeout_seconds: 120  # worker idle/offline threshold
@@ -171,6 +177,57 @@ fluxx:
         token: '%env(FLUXX_OBSERVER_TOKEN)%'
         timeout_seconds: 10
 ```
+
+## Finishing started runs first
+
+With one transport, the queue is processed breadth-first: a step that completes appends its next
+step at the end of the queue. Under a burst of new runs (hundreds of webhooks at once), every run
+does its first step before any run does its second, so the first run only finishes once the whole
+backlog is drained, and until then nothing reaches the target system.
+
+The continuation transport makes the processing depth-first. Messages that start a run (a new run,
+a relaunch) keep following the host's routing; every message of a run that has already started (its
+next steps, its retries and deferrals, its report) is sent to the continuation transport with a
+`TransportNamesStamp`. Workers consume it first, and Messenger's worker goes back to its first
+transport after each message, so a started run always goes before a new one. The total throughput
+does not change; the number of half-done runs stays bounded by the number of workers. Workflows do
+not change.
+
+To enable it in a host:
+
+1. Declare the transport next to `fluxx`, on the same Redis, in its own stream, with the same
+   consumer name per worker (a DSN path names the stream and wins over transport options, hence a
+   separate DSN):
+
+   ```yaml
+   # config/packages/messenger.yaml
+   framework:
+       messenger:
+           transports:
+               fluxx_continue:
+                   dsn: '%env(MESSENGER_TRANSPORT_FLUXX_CONTINUE_DSN)%'
+                   retry_strategy: { max_retries: 3, multiplier: 2 }   # as for fluxx
+   ```
+
+   ```dotenv
+   MESSENGER_TRANSPORT_FLUXX_CONTINUE_DSN="redis://:${REDIS_PASSWORD}@redis:6379/fluxx_continue/fluxx/worker"
+   ```
+
+2. Enable it: `fluxx.runtime.continuation_transport_name: fluxx_continue`.
+
+3. Consume both, continuation first, each worker with its own consumer name on both streams:
+
+   ```sh
+   export MESSENGER_TRANSPORT_FLUXX_DSN="${FLUXX_DSN_DEFAULT}/${CONSUMER_NAME}"
+   export MESSENGER_TRANSPORT_FLUXX_CONTINUE_DSN="${FLUXX_CONTINUE_DSN_DEFAULT}/${CONSUMER_NAME}"
+   exec php bin/console messenger:consume fluxx_continue fluxx
+   ```
+
+Deploy the option and the new worker command together: continuations sent to a transport no worker
+reads would wait there. The system health reports a queue with messages and no consumer, and
+`fluxx:runtime:inspect` lists each queue with its backlog. The runtime tools (`inspect`, the runtime
+dashboard, `purge-dead-consumers`, `reclaim-pending`, `self-heal`, `reset`) cover both streams, and a
+worker is recorded once, under `transport_name`, whichever queue its message came from.
 
 ## Fluxx Observer
 

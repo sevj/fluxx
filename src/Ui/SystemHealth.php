@@ -72,6 +72,21 @@ final readonly class SystemHealth
             );
         }
 
+        // A queue no worker reads, such as a continuation transport left out of messenger:consume.
+        foreach (is_array($snapshot['queues'] ?? null) ? $snapshot['queues'] : [] as $queue) {
+            if ($consumerCount > 0 && (int) ($queue['backlogCount'] ?? 0) > 0 && (int) ($queue['consumerCount'] ?? 0) === 0) {
+                $findings[] = new SystemHealthFindingView(
+                    'critical',
+                    'A queue is not consumed',
+                    sprintf(
+                        '%d messages wait in the "%s" transport but no worker reads it: add it to messenger:consume.',
+                        (int) $queue['backlogCount'],
+                        (string) ($queue['name'] ?? '-'),
+                    ),
+                );
+            }
+        }
+
         if ($backlogCount >= 500) {
             $findings[] = new SystemHealthFindingView('critical', 'Backlog is high', sprintf('%d messages are queued in the Fluxx transport.', $backlogCount));
         } elseif ($backlogCount >= 100) {
