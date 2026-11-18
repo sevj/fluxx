@@ -46,7 +46,8 @@ final readonly class FluxxEngine implements FluxxEngineInterface
             batchId: $batchId,
             metadata: $metadata,
         );
-        $workflowRun->markRunning();
+        // Pending until a worker runs its first step (FluxxRuntime::runStep() marks it running): a run
+        // waiting in the queue is not shown as being processed, and its start time is the real one.
         $this->workflowExecutionLockManager->acquire($workflowRun, $definition);
 
         $this->entityManager->persist($workflowRun);

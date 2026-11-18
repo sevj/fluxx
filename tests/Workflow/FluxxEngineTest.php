@@ -60,7 +60,7 @@ final class FluxxEngineTest extends TestCase
 
         self::assertIsString($runId);
         self::assertInstanceOf(WorkflowRun::class, $persistedRun);
-        self::assertSame(WorkflowRunStatus::Running, $persistedRun->status());
+        self::assertSame(WorkflowRunStatus::Pending, $persistedRun->status());
         self::assertSame('contacts', $persistedRun->workflowName());
     }
 
