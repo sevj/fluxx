@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.21.2] - 2026-11-18
+
+### Fixed
+- The runtime snapshot loads the owner runs of the active locks in one query instead of one per lock.
+  With ~2,000 locks (a burst of webhooks) it took ~2.7 s of the ~3.2 s of each refresh of the runtime
+  page, and of the system health.
+
 ## [1.21.1] - 2026-11-18
 
 ### Fixed
