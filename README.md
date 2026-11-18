@@ -545,6 +545,14 @@ Recommended host-application flow:
 - stream and consumer group names should stay stable across deploys
 - size Redis retention according to replay and audit needs
 
+### Rate limiters
+
+- the runtime dashboard lists every Symfony rate limiter (`framework.rate_limiter`) and how much of
+  it is used, reading its keyless bucket
+- consume a limiter shared by the whole application without a key, `$factory->create()`: a key
+  (`$factory->create('hubspot')`) fills another bucket, `<name>-<key>`, and the dashboard shows the
+  limiter as unused
+
 ### Retention
 
 - define a retention policy for workflow runs, payload snapshots, and failed messages
