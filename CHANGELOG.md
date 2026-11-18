@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.20.1] - 2026-11-18
+
+### Changed
+- The active runs page only lists the runs a worker has started (`running` and `retrying`): runs still
+  waiting for a worker (`pending`, or `relaunched` and not started yet) are left out.
+
 ## [1.20.0] - 2026-11-18
 
 ### Added
