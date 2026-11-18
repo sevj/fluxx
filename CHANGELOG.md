@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.21.1] - 2026-11-18
+
+### Fixed
+- A run started through `FluxxEngine::run()` stays `pending` until a worker runs its first step, instead
+  of being marked `running` when it is queued. The active runs page, which lists the started runs only
+  since 1.20.1, no longer shows every queued run, and a run's start time (and the duration reported to
+  Fluxx Observer) no longer includes its wait in the queue. Synchronous runs are unchanged.
+
 ## [1.21.0] - 2026-11-18
 
 ### Upgrade notes
