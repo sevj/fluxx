@@ -6,6 +6,7 @@ namespace Fluxx\Runtime;
 
 use DateTimeImmutable;
 use Fluxx\Entity\RuntimeWorkerState;
+use Fluxx\Entity\WorkflowExecutionLock;
 use Fluxx\Runtime\RateLimiter\RateLimiterSnapshotProvider;
 use Fluxx\Reporting\WorkflowStepRunStatistics;
 use Fluxx\Repository\RuntimeWorkerStateRepository;
@@ -245,9 +246,15 @@ final readonly class FluxxRuntimeSnapshotProvider
     private function buildActiveLockRows(): array
     {
         $rows = [];
+        $locks = $this->workflowExecutionLockRepository->findActiveOrdered();
+        // One query for every owner run: a burst of webhooks holds thousands of locks.
+        $runs = $this->workflowRunRepository->findByRunIdsIndexed(array_map(
+            static fn (WorkflowExecutionLock $lock): string => $lock->ownerRunId(),
+            $locks,
+        ));
 
-        foreach ($this->workflowExecutionLockRepository->findActiveOrdered() as $lock) {
-            $run = $this->workflowRunRepository->findOneByRunId($lock->ownerRunId());
+        foreach ($locks as $lock) {
+            $run = $runs[$lock->ownerRunId()] ?? null;
             $workflowName = $lock->workflowName();
 
             if ($run !== null && $this->registry->has($workflowName)) {
