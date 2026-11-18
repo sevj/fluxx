@@ -34,7 +34,7 @@ final readonly class ActiveRunBoard
     public function page(): ActiveRunBoardPage
     {
         $now = new DateTimeImmutable();
-        $runs = $this->workflowRunRepository->findActiveRuns(self::MAX_ACTIVE_RUNS);
+        $runs = $this->workflowRunRepository->findStartedActiveRuns(self::MAX_ACTIVE_RUNS);
         $stepRunsByRunId = $this->workflowStepRunRepository->findByWorkflowRunsGrouped($runs);
         $recentStepRuns = $this->workflowStepRunRepository->findRecentActivity(self::MAX_ACTIVITY);
         $workerStates = $this->runtimeWorkerStateRepository->findIndexedByTransportName($this->transportName);

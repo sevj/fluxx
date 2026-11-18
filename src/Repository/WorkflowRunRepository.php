@@ -195,6 +195,28 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
             ->getResult();
     }
 
+    /**
+     * Active runs a worker has started: runs still waiting for one to pick them
+     * up (pending, or relaunched and not yet started) are left out.
+     *
+     * @return list<WorkflowRun>
+     */
+    public function findStartedActiveRuns(int $limit = 50): array
+    {
+        return $this->createQueryBuilder('workflow_run')
+            ->andWhere('workflow_run.status IN (:statuses)')
+            ->setParameter('statuses', [
+                WorkflowRunStatus::Retrying,
+                WorkflowRunStatus::Running,
+            ])
+            ->orderBy('workflow_run.createdAt', SortDirection::Ascending)
+            ->addOrderBy('workflow_run.id', SortDirection::Ascending)
+            ->setFirstResult(0)
+            ->setMaxResults(max($limit, 1))
+            ->getQuery()
+            ->getResult();
+    }
+
     public function countErroredByWorkflowName(string $workflowName): int
     {
         return (int) $this->createQueryBuilder('workflow_run')
