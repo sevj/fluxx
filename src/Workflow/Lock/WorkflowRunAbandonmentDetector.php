@@ -27,6 +27,12 @@ final readonly class WorkflowRunAbandonmentDetector
 
     public function isAbandoned(WorkflowRun $workflowRun, DateTimeImmutable $inactiveSince): bool
     {
+        // Not started yet: its first message waits in the queue, however long the backlog is. Taking
+        // its lock away would let a second run for the same key start before it.
+        if (!$workflowRun->status()->hasStarted()) {
+            return false;
+        }
+
         $stepRuns = $this->workflowStepRunRepository->findByWorkflowRunOrdered($workflowRun);
         $now = new DateTimeImmutable();
 

@@ -20,6 +20,15 @@ enum WorkflowRunStatus: string
     /**
      * Whether a run in this status can still change on its own.
      */
+    /**
+     * False while the run waits for a worker to run its first step: queued, or relaunched and not
+     * picked up yet. However long it waits, it is not abandoned.
+     */
+    public function hasStarted(): bool
+    {
+        return !in_array($this, [self::Pending, self::Relaunched], true);
+    }
+
     public function isActive(): bool
     {
         return in_array($this, [self::Pending, self::Relaunched, self::Retrying, self::Running], true);

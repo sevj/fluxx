@@ -62,6 +62,23 @@ final class WorkflowRunAbandonmentDetectorTest extends TestCase
         self::assertTrue($this->isAbandoned($this->runStartedAt(new DateTimeImmutable('-1 hour')), [], activeWorker: false));
     }
 
+    #[Test]
+    public function a_run_waiting_in_the_queue_for_a_worker_is_not_abandoned(): void
+    {
+        $run = $this->queuedSince(new WorkflowRun(runId: 'run-1', workflowName: 'contacts', sourceSystem: 'CSV', targetSystem: 'Hubspot', trigger: 'webhook'));
+
+        self::assertFalse($this->isAbandoned($run, [], activeWorker: false));
+    }
+
+    #[Test]
+    public function a_relaunch_waiting_in_the_queue_for_a_worker_is_not_abandoned(): void
+    {
+        $run = $this->queuedSince(new WorkflowRun(runId: 'run-2', workflowName: 'contacts', sourceSystem: 'CSV', targetSystem: 'Hubspot', trigger: 'relaunch'));
+        $run->markRelaunched();
+
+        self::assertFalse($this->isAbandoned($run, [], activeWorker: false));
+    }
+
     /**
      * @param list<WorkflowStepRun> $stepRuns
      */
@@ -74,6 +91,16 @@ final class WorkflowRunAbandonmentDetectorTest extends TestCase
 
         return (new WorkflowRunAbandonmentDetector($stepRunLookup, $workerLookup))
             ->isAbandoned($run, new DateTimeImmutable('-15 minutes'));
+    }
+
+    /**
+     * Created an hour ago and never started: well past the threshold, as a run deep in a backlog.
+     */
+    private function queuedSince(WorkflowRun $run): WorkflowRun
+    {
+        (new \ReflectionProperty(WorkflowRun::class, 'createdAt'))->setValue($run, new DateTimeImmutable('-1 hour'));
+
+        return $run;
     }
 
     private function runStartedAt(DateTimeImmutable $startedAt): WorkflowRun

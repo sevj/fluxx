@@ -19,8 +19,11 @@ use Fluxx\Settings\RuntimeSettingsManager;
  * Closes workflow runs that can no longer make progress.
  *
  * A run becomes an orphan when its worker died (crash, OOM, container loss)
- * or its messages were consumed elsewhere: it stays `running`, `retrying` or
- * `pending` forever while nothing executes it anymore. This operation finalizes
+ * or its messages were consumed elsewhere: it stays `running` or `retrying`
+ * forever while nothing executes it anymore. A run that has not started
+ * (`pending`, `relaunched`) is never an orphan: its first message waits in the
+ * queue, and a long backlog must not fail it; one whose message was lost is
+ * cancelled by hand. This operation finalizes
  * those runs as failed so the delivered steps become no-ops and the run fades
  * out of the live views.
  *
@@ -56,7 +59,8 @@ final readonly class OrphanRunFinisher
         $now = new DateTimeImmutable();
         $staleThreshold = $now->modify(sprintf('-%d seconds', $staleSeconds));
 
-        $candidates = $this->workflowRunRepository->findActiveRuns(max($maxRuns, 1));
+        // Started runs only: a queued one is not an orphan, and must not use up the limit.
+        $candidates = $this->workflowRunRepository->findStartedActiveRuns(max($maxRuns, 1));
 
         if ($candidates === []) {
             return [];
