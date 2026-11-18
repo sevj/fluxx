@@ -139,6 +139,42 @@ final class WorkflowRunRepository extends ServiceEntityRepository implements Wor
     }
 
     /**
+     * Runs the observer must hear about: those created, started or finished since the given
+     * instant, and every run still active. Runs whose payloads were pruned are left out: their
+     * outcome was reported before, and their pruned status would hide it. Paginated on the id,
+     * after the given one.
+     *
+     * @return list<WorkflowRun>
+     */
+    public function findObservableSince(DateTimeImmutable $since, int $afterId, int $limit): array
+    {
+        $queryBuilder = $this->createQueryBuilder('workflow_run');
+
+        return $queryBuilder
+            ->andWhere('workflow_run.id > :afterId')
+            ->andWhere('workflow_run.status != :pruned')
+            ->andWhere($queryBuilder->expr()->orX(
+                'workflow_run.createdAt >= :since',
+                'workflow_run.startedAt >= :since',
+                'workflow_run.finishedAt >= :since',
+                'workflow_run.status IN (:active)',
+            ))
+            ->setParameter('afterId', $afterId)
+            ->setParameter('pruned', WorkflowRunStatus::PayloadsPruned)
+            ->setParameter('since', $since, Types::DATETIME_IMMUTABLE)
+            ->setParameter('active', [
+                WorkflowRunStatus::Pending,
+                WorkflowRunStatus::Relaunched,
+                WorkflowRunStatus::Retrying,
+                WorkflowRunStatus::Running,
+            ])
+            ->orderBy('workflow_run.id', SortDirection::Ascending)
+            ->setMaxResults(max($limit, 1))
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return list<WorkflowRun>
      */
     public function findActiveRuns(int $limit = 50): array

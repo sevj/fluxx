@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [Unreleased]
+
+### Added
+- Push to Fluxx Observer: `fluxx:observer:push` sends the system health and the reports of the runs
+  changed since its previous push, and of every active run, to the observer set in the new
+  `fluxx.observer` configuration (`url`, `token`, `timeout_seconds`). Only metadata is sent: no
+  record, payload, error message or error context. See the *Fluxx Observer* section of `README.md`.
+
+### Changed
+- `symfony/http-client` is now required.
+
 ## [1.19.0] - 2026-11-17
 
 ### Upgrade notes

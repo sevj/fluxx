@@ -26,7 +26,8 @@
         "symfony/twig-bundle": "^7.3 || ^8.0",
         "symfony/translation": "^7.3 || ^8.0",
         "symfony/yaml": "^7.3 || ^8.0",
-        "symfony/rate-limiter": "^7.3 || ^8.0"
+        "symfony/rate-limiter": "^7.3 || ^8.0",
+        "symfony/http-client": "^7.3 || ^8.0"
     },
     "autoload": {
         "psr-4": {

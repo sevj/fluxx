@@ -86,6 +86,9 @@ final class FluxxExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('fluxx.runtime.defaults.max_payload_records', $config['runtime']['defaults']['max_payload_records']);
         $container->setParameter('fluxx.error_classification.enabled', $config['error_classification']['enabled']);
         $container->setParameter('fluxx.error_classification.business_exception_classes', $config['error_classification']['business_exception_classes']);
+        $container->setParameter('fluxx.observer.url', (string) $config['observer']['url']);
+        $container->setParameter('fluxx.observer.token', (string) $config['observer']['token']);
+        $container->setParameter('fluxx.observer.timeout_seconds', $config['observer']['timeout_seconds']);
 
         $container->registerForAutoconfiguration(RunReportSectionInterface::class)
             ->addTag('fluxx.run_report_section');

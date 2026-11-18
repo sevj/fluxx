@@ -369,22 +369,6 @@ final readonly class SystemHealth
         return $remainingMinutes > 0 ? sprintf('%dh %02dm', $hours, $remainingMinutes) : sprintf('%dh', $hours);
     }
 
-    private function applicationVersion(): string
-    {
-        if (class_exists(InstalledVersions::class) && InstalledVersions::isInstalled('sevj/fluxx')) {
-            $prettyVersion = InstalledVersions::getPrettyVersion('sevj/fluxx') ?? 'dev';
-            $reference = InstalledVersions::getReference('sevj/fluxx');
-
-            if (is_string($reference) && $reference !== '') {
-                return sprintf('%s (%s)', $prettyVersion, substr($reference, 0, 7));
-            }
-
-            return $prettyVersion;
-        }
-
-        return 'dev';
-    }
-
     private function symfonyVersion(): string
     {
         if (class_exists(InstalledVersions::class) && InstalledVersions::isInstalled('symfony/framework-bundle')) {

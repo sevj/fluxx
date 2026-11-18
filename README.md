@@ -163,7 +163,38 @@ fluxx:
             - 'LogicException'
             - 'DomainException'
             - 'OutOfBoundsException'
+
+    observer:
+        # Fluxx Observer instance receiving this application's health and run
+        # reports. Pushing is disabled while either value is empty.
+        url: '%env(FLUXX_OBSERVER_URL)%'
+        token: '%env(FLUXX_OBSERVER_TOKEN)%'
+        timeout_seconds: 10
 ```
+
+## Fluxx Observer
+
+Fluxx Observer gathers the health and the runs of every
+application running Fluxx on one read-only dashboard. Register the application there (it issues an
+ingest token), set `fluxx.observer.url` and `fluxx.observer.token`, then schedule the push, for
+instance every 5 minutes:
+
+```cron
+*/5 * * * * php /path/to/app/bin/console fluxx:observer:push
+```
+
+Each push sends:
+
+- the system health page: overall state, facts, metrics, checks and findings. Workers and locks
+  stay on the host;
+- a report of every run created, started or finished since the previous push, and of every run still
+  active: workflow, systems, trigger, status, batch id, dates, duration, the processed, success and
+  error totals of its steps, its retries and warnings, the run it relaunches, and for a failed run
+  the category and code of its error.
+
+No record, payload, error message or error context leaves the application. The push resumes from
+its last success, so runs are not lost while the observer is unreachable, and runs whose payloads were
+pruned are not sent again. `--since="-2 days"` sends the runs changed in a given period again.
 
 ## Defining A Workflow
 
@@ -403,6 +434,7 @@ fluxx:run:cancel
 fluxx:run:report
 fluxx:step:retry
 fluxx:runtime:inspect
+fluxx:observer:push
 ```
 
 Examples:
