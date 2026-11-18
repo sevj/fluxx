@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
-## [Unreleased]
+## [1.21.0] - 2026-11-18
+
+### Upgrade notes
+- Nothing to do to keep the current behaviour. To finish started runs first, declare the continuation
+  transport, set `MESSENGER_TRANSPORT_FLUXX_CONTINUE_DSN`, enable
+  `fluxx.runtime.continuation_transport_name` and consume it first (`messenger:consume fluxx_continue
+  fluxx`), all in the same deploy.
 
 ### Added
 - Continuation transport (`fluxx.runtime.continuation_transport_name`, DSN in
