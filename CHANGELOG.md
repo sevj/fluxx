@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). See the *Versioning* section
 of `README.md` for the definition of the public API.
 
+## [1.21.4] - 2026-11-19
+
+### Changed
+- The run report keeps every anomaly line and every rejected record, instead of the first 20 lines of
+  an anomaly and the first 100 rejected records of an object. Nothing a step reported is dropped any
+  more: the step reports already stored all of it.
+- Anomaly lines are listed largest count first, instead of in the order the step added them. A long
+  list scrolls inside its block.
+
+### Upgrade notes
+- A report built before 1.21.4 still lacks the lines it dropped: rebuild it (*Rebuild the report*, or
+  `fluxx:run:report <run-id>`) to list them all.
+- Run `assets:install` for the stylesheet.
+
 ## [1.21.3] - 2026-11-18
 
 ### Fixed
