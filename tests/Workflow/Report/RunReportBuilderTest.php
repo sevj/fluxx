@@ -220,7 +220,7 @@ final class RunReportBuilderTest extends TestCase
     }
 
     #[Test]
-    public function rejected_objects_are_capped_but_counted(): void
+    public function rejected_objects_are_all_kept(): void
     {
         $run = $this->workflowRun(WorkflowRunStatus::Completed);
         $rejected = array_map(static fn (int $i): array => ['key' => 'k-' . $i, 'message' => 'Invalid'], range(1, 80));
@@ -229,9 +229,9 @@ final class RunReportBuilderTest extends TestCase
 
         $object = $this->builder()->build($run)['objects'][0];
 
-        self::assertCount(RunReportBuilder::MAX_REJECTED_PER_OBJECT, $object['rejected']);
+        self::assertCount(160, $object['rejected']);
         self::assertSame(160, $object['rejected_total']);
-        self::assertSame('second', $object['rejected'][99]['step']);
+        self::assertSame(['key' => 'k-80', 'message' => 'Invalid', 'step' => 'second'], $object['rejected'][159]);
     }
 
     #[Test]
@@ -310,10 +310,10 @@ final class RunReportBuilderTest extends TestCase
     }
 
     #[Test]
-    public function anomaly_lines_are_capped_but_counted(): void
+    public function anomaly_lines_are_all_kept_largest_count_first(): void
     {
         $run = $this->workflowRun(WorkflowRunStatus::Completed);
-        $lines = [];
+        $lines = ['label' => 'not a count'];
         foreach (range(1, 30) as $i) {
             $lines['owner-' . $i] = $i;
         }
@@ -321,9 +321,10 @@ final class RunReportBuilderTest extends TestCase
 
         $anomaly = $this->builder()->build($run)['anomalies'][0];
 
-        self::assertCount(RunReportBuilder::MAX_ANOMALY_LINES, $anomaly['lines']);
-        self::assertSame(20, $anomaly['lines']['owner-20']);
-        self::assertSame(30, $anomaly['line_total']);
+        self::assertCount(31, $anomaly['lines']);
+        self::assertSame(['owner-30', 'owner-29', 'owner-28'], array_slice(array_keys($anomaly['lines']), 0, 3));
+        self::assertSame('label', array_key_last($anomaly['lines']));
+        self::assertSame(31, $anomaly['line_total']);
     }
 
     #[Test]

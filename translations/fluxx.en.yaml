@@ -461,7 +461,7 @@ run_report:
         unreadable: 'The report of these steps could not be read:'
         line_count: '%count% line(s)'
         record_count: '%count% record(s)'
-        hidden_lines: '%count% more line(s) not stored.'
+        hidden_lines: '%count% more line(s) missing from this report: rebuild it to list them all.'
         excluded_title: Excluded by rule
         excluded_kind: Rule
         rejected_title: 'Rejected records: %object%'

@@ -461,7 +461,7 @@ run_report:
         unreadable: 'Le rapport de ces étapes est illisible :'
         line_count: '%count% ligne(s)'
         record_count: '%count% fiche(s)'
-        hidden_lines: '%count% ligne(s) supplémentaire(s) non conservée(s).'
+        hidden_lines: '%count% ligne(s) supplémentaire(s) absente(s) de ce rapport : reconstruisez-le pour toutes les lister.'
         excluded_title: Exclus par règle
         excluded_kind: Règle
         rejected_title: 'Fiches refusées : %object%'

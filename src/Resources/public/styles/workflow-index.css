@@ -3463,6 +3463,11 @@ td .run-flow .system-chip {
     border-top: 1px solid var(--border);
 }
 
+.run-report-anomaly > .run-report-lines {
+    max-height: 480px;
+    overflow-y: auto;
+}
+
 .run-report-lines {
     display: grid;
     gap: 6px;

@@ -24,8 +24,6 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 final readonly class RunReportBuilder
 {
     public const FORMAT_VERSION = 1;
-    public const MAX_REJECTED_PER_OBJECT = 100;
-    public const MAX_ANOMALY_LINES = 20;
 
     public function __construct(
         private SynchronizationRegistry $registry,
@@ -223,12 +221,13 @@ final readonly class RunReportBuilder
 
             foreach ($stepReport->anomalies() as $anomaly) {
                 $lines = array_filter($anomaly->lines, static fn (mixed $value): bool => is_int($value) || is_string($value));
+                uasort($lines, self::compareAnomalyLines(...));
                 $anomalies[] = [
                     'step' => $code,
                     'object' => $stepReport->entries()[0]->label,
                     'title' => $anomaly->title,
                     'severity' => $anomaly->severity->value,
-                    'lines' => array_slice($lines, 0, self::MAX_ANOMALY_LINES, true),
+                    'lines' => $lines,
                     'line_total' => count($lines),
                 ];
             }
@@ -283,10 +282,7 @@ final readonly class RunReportBuilder
             }
 
             ++$object['rejected_total'];
-
-            if (count($object['rejected']) < self::MAX_REJECTED_PER_OBJECT) {
-                $object['rejected'][] = ['key' => (string) $record['key'], 'message' => $record['message'], 'step' => $stepCode];
-            }
+            $object['rejected'][] = ['key' => (string) $record['key'], 'message' => $record['message'], 'step' => $stepCode];
         }
 
         if (!in_array($stepCode, $object['steps'], true)) {
@@ -506,5 +502,17 @@ final readonly class RunReportBuilder
         }
 
         return $code;
+    }
+
+    /**
+     * Counts first, largest first; other values keep their order after them.
+     */
+    private static function compareAnomalyLines(int|string $left, int|string $right): int
+    {
+        if (is_int($left) && is_int($right)) {
+            return $right <=> $left;
+        }
+
+        return is_int($right) <=> is_int($left);
     }
 }

@@ -367,6 +367,8 @@ new WorkflowDefinition(
   counters apply to the entry declared last (`object()` starts another object entry).
   Steps without one are read from the metadata keys `created`, `updated`, `excluded`
   (reason => count) and `rejected_records` (`{key|efficy_key, message}`).
+- The run report keeps every anomaly line, largest count first, and every rejected record: nothing
+  a step reported is dropped.
 - A section is a service implementing `RunReportSectionInterface` (autoconfigured) that returns a
   `ReportSection`. A section that throws is shown as unavailable; the report is still saved.
 - The report is built by a `BuildRunReportMessage` sent once the run is committed. Route it to the
